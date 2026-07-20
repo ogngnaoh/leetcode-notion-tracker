@@ -11,15 +11,17 @@
     "dev:bridge": "tsx watch src/bridge/server.ts",
     "start:bridge": "tsx src/bridge/server.ts",
     "notion:setup": "tsx src/notion/setup.ts",
+    "notion:migrate:v2": "tsx src/notion/migrate-v2-cli.ts",
     "notion:verify": "tsx src/notion/verify.ts",
     "build:extension": "node scripts/build-extension.mjs",
     "build": "npm run typecheck && npm run build:extension",
     "test": "vitest run",
+    "test:browser": "npm run build:extension && playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run typecheck && npm run test && npm run build:extension && npm run security:scan",
+    "check": "npm run format:check && npm run typecheck && npm run test && npm run test:browser && npm run security:scan",
     "security:scan": "node scripts/scan-secrets.mjs"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "@types/chrome": "^0.1.33",
     "@types/node": "^24.10.1",
     "esbuild": "^0.28.1",

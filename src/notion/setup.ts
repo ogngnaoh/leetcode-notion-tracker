@@ -101,7 +101,7 @@ async function main(): Promise<void> {
   });
 
   const manifest: NotionManifest = {
-    version: 1,
+    version: 2,
     notionApiVersion: NOTION_API_VERSION,
     createdAt: new Date().toISOString(),
     parentPageId: env.NOTION_PARENT_PAGE_ID,

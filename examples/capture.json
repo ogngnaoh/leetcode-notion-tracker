@@ -2,22 +2,17 @@
   "clientEventId": "eb9fdc89-8098-4f76-9a68-26e94dc75fc6",
   "problem": {
     "slug": "two-sum",
-    "title": "1. Two Sum",
+    "title": "Two Sum",
     "number": 1,
     "url": "https://leetcode.com/problems/two-sum/",
-    "difficulty": "Easy"
+    "difficulty": "Easy",
+    "topics": ["Array", "Hash Table"]
   },
   "attempt": {
-    "attemptedAt": "2026-07-20T12:00:00.000Z",
+    "attemptedAt": "2026-07-20T08:00:00-04:00",
+    "attemptedOn": "2026-07-20",
     "language": "Python",
-    "submissionResult": "Accepted",
-    "outcome": "Green",
-    "coldAttempt": true,
-    "helpUsed": "None",
-    "failureCode": null,
-    "totalMinutes": 12,
-    "primaryPattern": "Arrays & Hashing",
-    "notes": "Recognize complement lookup and maintain one pass.",
-    "code": "def twoSum(nums, target):\n    seen = {}\n    for i, value in enumerate(nums):\n        if target - value in seen:\n            return [seen[target - value], i]\n        seen[value] = i"
+    "code": "def twoSum(nums, target):\n    seen = {}\n    for i, value in enumerate(nums):\n        if target - value in seen:\n            return [seen[target - value], i]\n        seen[value] = i",
+    "result": "Solved"
   }
 }

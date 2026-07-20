@@ -1,14 +1,15 @@
+import type { AttemptResult } from '../../src/shared/contract.js';
+import { getProblemStatus, sendCaptureBody } from './api.js';
+import { CaptureSessionStore } from './capture-session.js';
 import type {
-  CaptureEvent,
-  FailureCode,
-  HelpUsed,
-  Outcome,
-  SubmissionResult,
-} from '../../src/shared/contract.js';
-import { sendCapture } from './api.js';
-import { CaptureSubmissionCoordinator } from './capture-submission.js';
+  ContentScriptResponse,
+  LeetCodeContextChangedMessage,
+} from './leetcode-context-runtime.js';
+import type { LeetCodeSnapshot } from './leetcode-extraction.js';
+import { SidePanelController, type SidePanelView } from './sidepanel-controller.js';
+import { SidePanelTabCoordinator, type VisibleTab } from './sidepanel-tab-coordinator.js';
+import { createSnapshotReader } from './sidepanel-snapshot-reader.js';
 import { getSettings } from './storage.js';
-import type { LeetCodeContext } from './types.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
@@ -16,147 +17,173 @@ function element<T extends HTMLElement>(id: string): T {
   return value as T;
 }
 
-const form = element<HTMLFormElement>('capture-form');
-const problemTitle = element<HTMLParagraphElement>('problem-title');
-const problemMeta = element<HTMLParagraphElement>('problem-meta');
-const reloadButton = element<HTMLButtonElement>('reload');
-const submitButton = element<HTMLButtonElement>('submit');
+const problemNumber = element<HTMLSpanElement>('problem-number');
+const problemTitle = element<HTMLHeadingElement>('problem-title');
+const problemDifficulty = element<HTMLSpanElement>('problem-difficulty');
+const reviewState = element<HTMLSpanElement>('review-state');
+const topics = element<HTMLUListElement>('problem-topics');
+const codeLanguage = element<HTMLSpanElement>('code-language');
+const codeLineCount = element<HTMLSpanElement>('code-line-count');
+const capturedCode = element<HTMLPreElement>('captured-code');
+const outcomeActions = element<HTMLDivElement>('outcome-actions');
+const retryAttempt = element<HTMLButtonElement>('retry-attempt');
+const successConfirmation = element<HTMLParagraphElement>('success-confirmation');
 const status = element<HTMLParagraphElement>('status');
-const language = element<HTMLInputElement>('language');
-const outcome = element<HTMLSelectElement>('outcome');
-const submissionResult = element<HTMLSelectElement>('submission-result');
-const totalMinutes = element<HTMLInputElement>('total-minutes');
-const helpUsed = element<HTMLSelectElement>('help-used');
-const primaryPattern = element<HTMLInputElement>('primary-pattern');
-const failureCode = element<HTMLSelectElement>('failure-code');
-const coldAttempt = element<HTMLInputElement>('cold-attempt');
-const notes = element<HTMLTextAreaElement>('notes');
-const code = element<HTMLTextAreaElement>('code');
 const openOptions = element<HTMLButtonElement>('open-options');
+const outcomeButtons = Array.from(
+  outcomeActions.querySelectorAll<HTMLButtonElement>('button[data-result]'),
+);
 
-let context: LeetCodeContext | null = null;
-const submissionCoordinator = new CaptureSubmissionCoordinator();
+function exactLineCount(code: string): number {
+  return code.length === 0 ? 0 : code.split('\n').length;
+}
 
-function setPendingUi(pending: boolean): void {
-  for (const field of form.querySelectorAll<
-    HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-  >('input, select, textarea')) {
-    field.disabled = pending;
+function renderTopics(labels: string[]): void {
+  topics.replaceChildren();
+  for (const label of labels) {
+    const item = document.createElement('li');
+    item.className = 'chip';
+    item.textContent = label;
+    topics.append(item);
   }
-  reloadButton.disabled = pending;
-  submitButton.textContent = pending ? 'Retry same attempt' : 'Log attempt';
 }
 
-function setStatus(message: string, kind: 'neutral' | 'success' | 'error' = 'neutral'): void {
-  status.textContent = message;
-  status.className = kind === 'neutral' ? 'status' : `status ${kind}`;
-}
-
-async function activeTab(): Promise<chrome.tabs.Tab> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error('No active tab found.');
-  return tab;
-}
-
-async function loadContext(): Promise<void> {
-  setStatus('Reading the current LeetCode problem…');
-  const tab = await activeTab();
-  if (!tab.url?.startsWith('https://leetcode.com/problems/')) {
-    context = null;
-    problemTitle.textContent = 'Open a LeetCode problem.';
-    problemMeta.textContent = '';
-    setStatus('The active tab is not a LeetCode problem.', 'error');
+function renderSnapshot(snapshot: LeetCodeSnapshot | null): void {
+  if (!snapshot) {
+    problemNumber.textContent = '—';
+    problemTitle.textContent = 'Open a LeetCode problem';
+    problemDifficulty.textContent = 'Unknown';
+    renderTopics([]);
+    codeLanguage.textContent = 'Unknown';
+    codeLineCount.textContent = '0 lines';
+    capturedCode.textContent = '';
     return;
   }
 
-  context = (await chrome.tabs.sendMessage(tab.id!, {
-    type: 'GET_LEETCODE_CONTEXT',
-  })) as LeetCodeContext | null;
-  if (!context) throw new Error('Could not read the current problem. Refresh the LeetCode tab.');
-  problemTitle.textContent = context.title;
-  problemMeta.textContent = `${context.difficulty} · ${context.slug}`;
-  setStatus('Ready.');
+  problemNumber.textContent = snapshot.problem.number
+    ? `#${snapshot.problem.number}`
+    : 'UNNUMBERED';
+  problemTitle.textContent = snapshot.problem.title;
+  problemDifficulty.textContent = snapshot.problem.difficulty;
+  renderTopics(snapshot.problem.topics);
+  codeLanguage.textContent = snapshot.language;
+  const code = snapshot.codeAvailable ? snapshot.code : '';
+  const lines = exactLineCount(code);
+  codeLineCount.textContent =
+    snapshot.codeAvailable && !snapshot.codeRange.complete
+      ? `visible lines ${snapshot.codeRange.startLine}–${snapshot.codeRange.endLine}`
+      : `${lines} ${lines === 1 ? 'line' : 'lines'}`;
+  capturedCode.textContent = code;
 }
 
-function optionalNumber(input: HTMLInputElement): number | null {
-  if (input.value.trim() === '') return null;
-  return Number(input.value);
+function render(view: SidePanelView): void {
+  renderSnapshot(view.snapshot);
+  reviewState.textContent = view.reviewLabel;
+  outcomeActions.hidden = view.mode !== 'ready';
+  retryAttempt.hidden = view.mode !== 'retry';
+  successConfirmation.hidden = view.mode === 'retry' || view.loggedResult === null;
+  for (const button of outcomeButtons) button.disabled = view.busy;
+  for (const button of outcomeButtons) {
+    button.setAttribute('aria-pressed', String(button.dataset.result === view.loggedResult));
+  }
+  retryAttempt.disabled = view.busy;
+  retryAttempt.setAttribute('aria-busy', String(view.busy));
+  successConfirmation.textContent = view.loggedResult
+    ? `${view.loggedResult} logged for this exact code.`
+    : '';
+  status.textContent = view.message;
+  status.className =
+    view.mode === 'ready' && view.loggedResult !== null
+      ? 'status success'
+      : view.mode === 'blocked' || view.mode === 'retry'
+        ? 'status error'
+        : 'status';
+  openOptions.dataset.attention = String(view.showSettings);
 }
 
-function optionalText(input: HTMLInputElement | HTMLTextAreaElement): string | null {
-  const value = input.value.trim();
-  return value === '' ? null : value;
+async function activeTab(): Promise<VisibleTab> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id === undefined) throw new Error('No active tab found.');
+  return { id: tab.id, ...(tab.url === undefined ? {} : { url: tab.url }) };
 }
 
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  void (async () => {
-    if (!context) await loadContext();
-    if (!context) throw new Error('No LeetCode problem is available to log.');
-
-    const settings = await getSettings();
-    if (!settings.bridgeToken) {
-      throw new Error('Open Bridge settings and save your bridge token first.');
-    }
-
-    submitButton.disabled = true;
-    setStatus('Writing to Notion…');
-    const submission = submissionCoordinator.submit(
-      (): CaptureEvent => ({
-        clientEventId: crypto.randomUUID(),
-        problem: context!,
-        attempt: {
-          attemptedAt: new Date().toISOString(),
-          language: language.value.trim(),
-          submissionResult: submissionResult.value as SubmissionResult,
-          outcome: outcome.value as Outcome,
-          coldAttempt: coldAttempt.checked,
-          helpUsed: helpUsed.value as HelpUsed,
-          failureCode: (failureCode.value || null) as FailureCode | null,
-          totalMinutes: optionalNumber(totalMinutes),
-          primaryPattern: optionalText(primaryPattern),
-          notes: optionalText(notes),
-          code: optionalText(code),
-        },
-      }),
-      (capture) => sendCapture(settings, capture),
-    );
-    setPendingUi(submissionCoordinator.hasPending);
-    const result = await submission;
-    setPendingUi(false);
-    const next = result.review.nextReview
-      ? ` Next review: ${new Date(result.review.nextReview).toLocaleDateString()}.`
-      : '';
-    setStatus(
-      `${result.duplicate ? 'Already logged.' : 'Logged.'} ${result.review.mastery}.${next}`,
-      'success',
-    );
-    notes.value = '';
-    code.value = '';
-  })()
-    .catch((error: unknown) => {
-      setPendingUi(submissionCoordinator.hasPending);
-      setStatus(error instanceof Error ? error.message : 'Unable to log the attempt.', 'error');
-    })
-    .finally(() => {
-      submitButton.disabled = false;
-    });
+const readSnapshot = createSnapshotReader({
+  sendMessage: (tabId) =>
+    chrome.tabs.sendMessage(tabId, {
+      type: 'GET_LEETCODE_CONTEXT',
+    }) as Promise<ContentScriptResponse | undefined>,
+  injectContentScript: async (tabId, files) => {
+    await chrome.scripting.executeScript({ target: { tabId }, files });
+  },
 });
 
-reloadButton.addEventListener('click', () => {
-  void loadContext().catch((error: unknown) => {
-    setStatus(error instanceof Error ? error.message : 'Unable to read the problem.', 'error');
+const sessionStorage = {
+  get: async (key: string) => chrome.storage.session.get(key),
+  set: async (items: Record<string, unknown>) => chrome.storage.session.set(items),
+  remove: async (key: string) => chrome.storage.session.remove(key),
+};
+
+const tabCoordinator = new SidePanelTabCoordinator({
+  getActiveTab: activeTab,
+  readSnapshot,
+  createController: (tabId) =>
+    new SidePanelController({
+      store: new CaptureSessionStore(sessionStorage, tabId),
+      getSettings,
+      getFreshSnapshot: () => readSnapshot(tabId),
+      getProblemStatus,
+      sendCaptureBody,
+      randomUUID: () => crypto.randomUUID(),
+      now: () => new Date(),
+    }),
+  render,
+});
+
+for (const button of outcomeButtons) {
+  button.addEventListener('click', () => {
+    void tabCoordinator.selectResult(button.dataset.result as AttemptResult);
   });
+}
+retryAttempt.addEventListener('click', () => {
+  void tabCoordinator.retryPending();
+});
+
+chrome.runtime.onMessage.addListener((message: unknown, sender) => {
+  if (
+    sender.tab?.id === undefined ||
+    typeof message !== 'object' ||
+    message === null ||
+    !('type' in message) ||
+    message.type !== 'LEETCODE_CONTEXT_CHANGED'
+  ) {
+    return;
+  }
+  const changed = message as LeetCodeContextChangedMessage;
+  void tabCoordinator.acceptContext(sender.tab.id, changed.context);
+});
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  void tabCoordinator.rebindActiveTab(activeInfo.tabId);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!tab.active || (changeInfo.url === undefined && changeInfo.status !== 'complete')) return;
+  void tabCoordinator.refreshActiveTab(tabId, tab.url);
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  void tabCoordinator.rebindActiveTab();
 });
 
 openOptions.addEventListener('click', () => {
   void chrome.runtime.openOptionsPage();
 });
 
-void (async () => {
-  const settings = await getSettings();
-  language.value = settings.defaultLanguage;
-  await loadContext();
-})().catch((error: unknown) => {
-  setStatus(error instanceof Error ? error.message : 'Unable to initialize.', 'error');
+void tabCoordinator.rebindActiveTab().catch((error: unknown) => {
+  status.textContent =
+    error instanceof Error
+      ? error.message
+      : 'Could not read the current problem. Refresh the LeetCode tab.';
+  status.className = 'status error';
 });

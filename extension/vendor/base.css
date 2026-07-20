@@ -1,0 +1,101 @@
+/* ============================================================
+   BASE — reset, element defaults, and type utilities
+   Load after tokens.css.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);   /* 12px default — the Acne size */
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking);
+  color: var(--text-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img, svg, video { display: block; max-width: 100%; }
+
+/* Headings are semantic and default to the 12px UI label style.
+   Apply a .text-* utility when you want real display hierarchy. */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking);
+  text-transform: var(--uppercase);
+}
+
+p { margin: 0; }
+
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+hr { border: 0; border-top: var(--border-width) solid var(--border-default); margin: var(--space-4) 0; }
+
+code, pre, kbd, samp { font-family: var(--font-mono); font-size: var(--font-size-2xs); letter-spacing: 0; }
+
+/* Accessible focus — visible outline in accent blue */
+:focus-visible { outline: var(--border-thick) solid var(--focus-ring); outline-offset: 1px; }
+:focus:not(:focus-visible) { outline: none; }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ---------- Type utilities (opt-in scale) ---------- */
+.text-2xs   { font-size: var(--font-size-2xs); }
+.text-base  { font-size: var(--font-size-base); line-height: var(--leading-ui); }
+.text-sm    { font-size: var(--font-size-sm);  line-height: var(--leading-link); }
+.text-md    { font-size: var(--font-size-md);  line-height: var(--leading-normal); letter-spacing: var(--tracking-tight); }
+.text-lg    { font-size: var(--font-size-lg);  line-height: var(--leading-normal); letter-spacing: var(--tracking-tight); }
+.text-xl    { font-size: var(--font-size-xl);  line-height: var(--leading-tight);  letter-spacing: var(--tracking-tight); }
+.text-2xl   { font-size: var(--font-size-2xl); line-height: var(--leading-tight);  letter-spacing: var(--tracking-tight); }
+.text-3xl   { font-size: var(--font-size-3xl); line-height: var(--leading-tight);  letter-spacing: var(--tracking-tight); }
+
+.uppercase  { text-transform: uppercase; }
+.normal-case{ text-transform: none; }
+.weight-regular { font-weight: var(--weight-regular); }
+.weight-medium  { font-weight: var(--weight-medium); }
+.weight-bold    { font-weight: var(--weight-bold); }
+
+.text-muted   { color: var(--text-secondary); }
+.text-accent  { color: var(--color-accent); }
+.text-success { color: var(--color-success); }
+
+/* Vibrant text colors — only AA-safe-as-text values.
+   Pink/orange are OMITTED here (they fail as text); warm-gray is large/non-text only. */
+.text-cobalt   { color: var(--color-cobalt); }
+.text-info     { color: var(--color-info); }
+.text-warning  { color: var(--color-warning); }
+.text-critical { color: var(--color-critical); }
+
+/* Vibrant/neutral backgrounds — each sets its correct paired text color. */
+.bg-pink   { background: var(--color-pink);   color: var(--color-black); }
+.bg-cobalt { background: var(--color-cobalt); color: var(--color-white); }
+.bg-orange { background: var(--color-orange); color: var(--color-black); }
+.bg-cream  { background: var(--color-cream);  color: var(--color-black); }
+.bg-beige  { background: var(--color-beige);  color: var(--color-black); }
+
+/* Semantic soft-surface backgrounds (dark paired text). */
+.bg-info-surface     { background: var(--color-info-surface);     color: var(--color-info); }
+.bg-success-surface  { background: var(--color-success-surface);  color: var(--color-success); }
+.bg-warning-surface  { background: var(--color-warning-surface);  color: var(--color-warning); }
+.bg-critical-surface { background: var(--color-critical-surface); color: var(--color-critical); }
+
+.mono { font-family: var(--font-mono); letter-spacing: 0; }
+
+/* Eyebrow / section label */
+.eyebrow { text-transform: uppercase; color: var(--text-secondary); letter-spacing: var(--tracking); }
+
+/* Prose block: readable long-form using 12px/30px, or bump with .text-md */
+.prose { max-width: 60ch; line-height: var(--leading-body); }
+.prose p + p { margin-top: var(--space-4); }

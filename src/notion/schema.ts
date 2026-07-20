@@ -2,6 +2,18 @@ export const NOTION_API_VERSION = '2026-03-11' as const;
 
 const option = (name: string) => ({ name });
 
+export const DIFFICULTY_OPTION_NAMES = ['Easy', 'Medium', 'Hard', 'Unknown'] as const;
+
+export const STATE_OPTIONS = [
+  { name: 'New', color: 'gray' },
+  { name: 'Couldn’t solve', color: 'red' },
+  { name: 'Needed help', color: 'yellow' },
+  { name: 'Solved', color: 'green' },
+  { name: 'Mastered', color: 'blue' },
+] as const;
+
+export const RESULT_OPTIONS = STATE_OPTIONS.slice(1, 4);
+
 export const PROBLEMS_PROPERTIES = {
   Problem: { title: {} },
   'External Key': { rich_text: {} },
@@ -9,13 +21,11 @@ export const PROBLEMS_PROPERTIES = {
   Number: { number: { format: 'number' as const } },
   URL: { url: {} },
   Difficulty: {
-    select: { options: ['Easy', 'Medium', 'Hard', 'Unknown'].map(option) },
+    select: { options: DIFFICULTY_OPTION_NAMES.map(option) },
   },
-  'Primary Pattern': { rich_text: {} },
-  Mastery: {
-    select: { options: ['Unseen', 'Red', 'Yellow', 'Green', 'Mastered'].map(option) },
-  },
-  'Green Count': { number: { format: 'number' as const } },
+  Topics: { multi_select: {} },
+  'Practice State': { select: { options: STATE_OPTIONS } },
+  'Solved Streak': { number: { format: 'number' as const } },
   'Next Review': { date: {} },
   'Last Attempt': { date: {} },
   'Extension Managed': { checkbox: {} },
@@ -28,58 +38,15 @@ export const ATTEMPTS_PROPERTIES = {
   'Attempted At': { date: {} },
   'Source URL': { url: {} },
   Language: { rich_text: {} },
-  'Submission Result': {
-    select: {
-      options: [
-        'Accepted',
-        'Wrong Answer',
-        'Time Limit Exceeded',
-        'Memory Limit Exceeded',
-        'Runtime Error',
-        'Compile Error',
-        'Not Submitted',
-      ].map(option),
-    },
-  },
-  Outcome: { select: { options: ['Red', 'Yellow', 'Green'].map(option) } },
-  'Cold Attempt': { checkbox: {} },
-  'Help Used': {
-    select: {
-      options: [
-        'None',
-        'Pattern Hint',
-        'Conceptual Hint',
-        'Pseudocode',
-        'Editorial',
-        'Code Viewed',
-      ].map(option),
-    },
-  },
-  'Failure Code': {
-    select: {
-      options: [
-        'P — Pattern Recognition',
-        'A — Algorithm / Invariant',
-        'I — Implementation / Syntax',
-        'E — Edge Cases / Testing',
-        'T — Time Management',
-        'C — Communication',
-      ].map(option),
-    },
-  },
-  'Total Minutes': { number: { format: 'number' as const } },
-  'Primary Pattern': { rich_text: {} },
-  Notes: { rich_text: {} },
-  'Resulting Mastery': {
-    select: { options: ['Red', 'Yellow', 'Green', 'Mastered'].map(option) },
-  },
-  'Resulting Green Count': { number: { format: 'number' as const } },
+  Result: { select: { options: RESULT_OPTIONS } },
+  'Resulting State': { select: { options: STATE_OPTIONS } },
+  'Resulting Solved Streak': { number: { format: 'number' as const } },
   'Resulting Next Review': { date: {} },
   'Extension Managed': { checkbox: {} },
   'Created Time': { created_time: {} },
 } as const;
 
-export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
+export const V1_PROBLEMS_TYPES: Record<string, string> = {
   Problem: 'title',
   'External Key': 'rich_text',
   Slug: 'rich_text',
@@ -95,7 +62,7 @@ export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
   Attempts: 'relation',
 };
 
-export const REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
+export const V1_ATTEMPTS_TYPES: Record<string, string> = {
   Attempt: 'title',
   'Client Event ID': 'rich_text',
   Problem: 'relation',
@@ -116,4 +83,46 @@ export const REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
   'Resulting Next Review': 'date',
   'Extension Managed': 'checkbox',
   'Created Time': 'created_time',
+};
+
+export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
+  Problem: 'title',
+  'External Key': 'rich_text',
+  Slug: 'rich_text',
+  Number: 'number',
+  URL: 'url',
+  Difficulty: 'select',
+  Topics: 'multi_select',
+  'Practice State': 'select',
+  'Solved Streak': 'number',
+  'Next Review': 'date',
+  'Last Attempt': 'date',
+  'Extension Managed': 'checkbox',
+  Attempts: 'relation',
+};
+
+export const REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
+  Attempt: 'title',
+  'Client Event ID': 'rich_text',
+  Problem: 'relation',
+  'Problem Key': 'rich_text',
+  'Attempted At': 'date',
+  'Source URL': 'url',
+  Language: 'rich_text',
+  Result: 'select',
+  'Resulting State': 'select',
+  'Resulting Solved Streak': 'number',
+  'Resulting Next Review': 'date',
+  'Extension Managed': 'checkbox',
+  'Created Time': 'created_time',
+};
+
+export const INTERMEDIATE_PROBLEMS_TYPES: Record<string, string> = {
+  ...V1_PROBLEMS_TYPES,
+  ...REQUIRED_PROBLEMS_TYPES,
+};
+
+export const INTERMEDIATE_ATTEMPTS_TYPES: Record<string, string> = {
+  ...V1_ATTEMPTS_TYPES,
+  ...REQUIRED_ATTEMPTS_TYPES,
 };

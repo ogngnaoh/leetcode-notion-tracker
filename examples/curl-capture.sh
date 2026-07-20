@@ -8,4 +8,4 @@ curl --fail-with-body \
   --url http://127.0.0.1:8787/api/capture \
   --header "Authorization: Bearer ${BRIDGE_TOKEN}" \
   --header "Content-Type: application/json" \
-  --data @examples/capture.json
+  --data-binary @examples/capture.json

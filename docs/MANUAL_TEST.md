@@ -27,14 +27,18 @@
 3. Save bridge settings in the options page.
 4. Open `https://leetcode.com/problems/two-sum/`.
 5. Open the extension side panel.
-6. Confirm title, slug, URL, and difficulty are reasonable.
-7. Submit a Green attempt.
-8. Confirm the side panel displays the next review date.
-9. Confirm the Notion Problem and Attempt match the submitted fields.
+6. Without focusing or scrolling the editor, confirm title, difficulty, topics, language, and rendered
+   code appear; a partial snapshot must say `visible lines X–Y`.
+7. Confirm the compact problem card is followed by three equal outcomes and then expanded code.
+8. Choose one truthful outcome and confirm all outcomes remain active with that result selected.
+9. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
+10. Confirm the Notion Problem and immutable Attempts match both submitted events.
+11. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
 
 ## Failure checks
 
 - Stop the bridge and verify the extension shows a useful error.
 - Use a wrong bridge token and verify HTTP 401 is surfaced.
 - Open a non-LeetCode tab and verify capture is blocked.
-- Refresh a LeetCode problem if the content script was installed after the tab opened.
+- Reload the extension while LeetCode remains open and verify startup reinjection recognizes it without
+  refreshing the page.

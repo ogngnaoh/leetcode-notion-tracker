@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LeetCode Tracker Settings</title>
+    <link rel="stylesheet" href="vendor/tokens.css" />
+    <link rel="stylesheet" href="vendor/base.css" />
+    <link rel="stylesheet" href="vendor/components.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -24,11 +27,7 @@
           Bridge token
           <input id="bridge-token" type="password" minlength="24" required />
         </label>
-        <label>
-          Default language
-          <input id="default-language" type="text" maxlength="50" placeholder="Python" />
-        </label>
-        <button class="button primary" type="submit">Save settings</button>
+        <button class="btn btn--block" type="submit">Save settings</button>
         <p id="settings-status" class="status" role="status"></p>
       </form>
     </main>

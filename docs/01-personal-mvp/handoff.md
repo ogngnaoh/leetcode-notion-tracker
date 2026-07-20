@@ -1,11 +1,23 @@
 # Start here next session
 
-Continue the active Chrome slice in `05-chrome-e2e.md`. Build the extension, restart the bridge, load/configure `dist/extension`, and run the explicit-confirmation, metadata, failure, retained-retry, and live Medium capture checks.
+Complete active Slice 06 release evidence: run the fresh required checks, record exact outputs in a
+release slice document, mark the milestone shipped, and commit documentation separately from Slice 05.
 
 # Current state
 
-Baseline, retry safety, Notion provisioning, and bridge verification are shipped. The fixed sample is present exactly once in Notion and replay is idempotent. The bridge is stopped. The Chrome extension has not yet been loaded or tested in the owner's browser.
+Slices 01–05 are shipped. Slice 05 now uses public rendered Monaco lines and gutters without focus or
+scroll, labels partial ranges, reinjects the read-only content script once after extension reload, and
+keeps outcomes active after success. Every deliberate click gets a new Client Event ID; only uncertain
+retry reuses the frozen exact body. Focused Vitest passed 223/223 and the revised MV3 suite passed
+16/16; both are changed-check development evidence. Live Valid Sudoku acceptance created Client Event
+ID `8318f850-d922-49a3-9e6a-37af14d9c492`, stored exact rendered lines 1–9, set `Couldn’t solve` / 0 /
+`2026-07-20`, and replayed duplicate without a second Attempt.
+Final review findings are resolved, including migration property pagination, stale-event protection,
+Unicode-safe Notion chunks, common description routes, and capture lifecycle races.
 
 # Open concerns
 
-Chrome loading and live LeetCode checks require interactive browser control and the owner's signed-in state if applicable. The retained retry must be verified with a new live Medium event so the existing fixed Two Sum sample remains unchanged.
+The approved plan assumed a pre-existing Valid Sudoku Attempt, but the complete post-capture Notion
+inventory contained only the corrected Attempt; no earlier row was available to compare or preserve,
+and this effort deleted none. The optional UI-only `Due now` view remains manual. Tests changed in this
+effort are development evidence, not independent verification.

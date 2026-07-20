@@ -1,0 +1,144 @@
+@import "fonts/fonts.css";  /* free, open-licensed brand faces (Inter + IBM Plex Mono) */
+
+/* ============================================================
+   ACNE-INSPIRED DESIGN SYSTEM — Tokens (product-agnostic)
+   Framework-agnostic CSS custom properties.
+   Palette: minimal Acne structure (black/white/blue + greys) with a
+   vibrant "maximalist minimalism" color layer on top (see VIBRANT PALETTE).
+   Type/weights: extended for real products (restrained scale).
+   Verified foundations from acnestudios.com.
+   ============================================================ */
+
+:root {
+  /* ---------- COLOR (minimal, exact Acne) ---------- */
+  --color-black:          #000000;  /* primary text, filled/active surfaces */
+  --color-white:          #FFFFFF;  /* primary background, text on fills */
+  --color-accent:         #0018A8;  /* Acne blue — links, focus, selected, info */
+  --color-muted:          #6B6B6B;  /* secondary / meta text */
+  --color-success:        #007701;  /* positive status (from site) */
+  --color-surface:        #F7F7F7;  /* subtle fills, hover, zebra */
+  --color-border:         #F2F2F2;  /* hairline dividers, ghost outline */
+  --color-border-strong:  #C2C2C2;  /* inputs, controls, disabled */
+  /* NOTE: the vibrant layer below sits ON TOP of this minimal structure —
+     it adds color, not decoration. Soft `-surface` tints are allowed for
+     semantic backgrounds (alerts/badges); gradients and shadows remain banned. */
+
+  /* ---------- VIBRANT PALETTE (maximalist minimalism layer) ----------
+     New expressive color that rides on the minimal structure above.
+     Structural values (accent/muted/success/etc.) are unchanged. */
+
+  /* Tier 1 — Hero (surface/fill only; pair with BLACK text) */
+  --color-pink:      #F7CAC9;  /* Rose Quartz — hero blocks, badge fills, promo. FAILS as text. */
+
+  /* Tier 2 — Bold pops (cobalt + orange only) */
+  --color-cobalt:    #0047AB;  /* electric pop — passes as text; fills use WHITE text */
+  --color-blue-deep: #0018A8;  /* alias of Acne blue — deep structural blue */
+  --color-orange:    #FF5C00;  /* fill/accent ONLY — NEVER text; fills use BLACK text */
+
+  /* Tier 3 — Muted supporting neutrals (the calm base the pops sit against) */
+  --color-cream:     #F5F1EA;  /* warm off-white surface — black text passes */
+  --color-beige:     #E7DFD3;  /* deeper warm neutral surface — black text passes */
+  --color-warm-gray: #8C857B;  /* warm muted — LARGE/non-text only (fails normal-text AA) */
+
+  /* Semantic set + soft surface companions (surfaces = alert/badge bg only) */
+  --color-info:             #0018A8;  /* reuse accent — info text/fill pass */
+  --color-info-surface:     #EAEDFB;
+  --color-success-surface:  #E5F5E0;  /* --color-success #007701 already defined above */
+  --color-warning:          #B36200;
+  --color-warning-surface:  #FBEED9;
+  --color-critical:         #C4271C;  /* error/destructive AND reduced/sale price text */
+  --color-critical-surface: #FBE4E1;
+
+  /* Helpful aliases */
+  --price-sale: var(--color-critical);  /* reduced/sale price = critical red (AA-safe) */
+
+  /* Semantic aliases (kept within the minimal palette) */
+  --text-primary:     var(--color-black);
+  --text-secondary:   var(--color-muted);
+  --text-on-dark:     var(--color-white);
+  --bg-page:          var(--color-white);
+  --bg-subtle:        var(--color-surface);
+  --border-default:   var(--color-border);
+  --border-control:   var(--color-border-strong);
+  --focus-ring:       var(--color-accent);
+
+  /* ---------- TYPOGRAPHY ---------- */
+  /* Free, open-licensed faces shipped with the system (see fonts/fonts.css).
+     System fonts trail as fallbacks while the woff2 loads. */
+  --font-sans: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Base is 12px — the Acne size and the default for UI text.
+     The larger steps are a RESTRAINED scale for real hierarchy/display;
+     use them sparingly. Default UI should stay at --font-size-base. */
+  --font-size-2xs:   11px;
+  --font-size-base:  12px;   /* DEFAULT — labels, nav, buttons, body UI */
+  --font-size-sm:    13px;
+  --font-size-md:    16px;   /* comfortable reading */
+  --font-size-lg:    20px;
+  --font-size-xl:    28px;
+  --font-size-2xl:   40px;   /* display / hero */
+  --font-size-3xl:   64px;   /* large display, use rarely */
+
+  --weight-regular:  400;    /* default — the only weight on classic Acne */
+  --weight-medium:   500;    /* subtle emphasis: active nav, table headers */
+  --weight-bold:     700;    /* rare, strong emphasis only */
+
+  --leading-tight:   1.05;   /* display */
+  --leading-ui:      20px;   /* 12px UI rows */
+  --leading-link:    24px;   /* clickable / short */
+  --leading-body:    30px;   /* 12px descriptions */
+  --leading-normal:  1.5;    /* scaled reading text */
+
+  --tracking:        0.3px;  /* the constant Acne letter-spacing */
+  --tracking-tight:  0px;
+  --uppercase:       uppercase;
+
+  /* ---------- SPACING (≈5px rhythm observed on site) ---------- */
+  --space-0:  0;
+  --space-1:  5px;
+  --space-2:  10px;
+  --space-3:  15px;
+  --space-4:  20px;
+  --space-5:  30px;
+  --space-6:  45px;
+  --space-7:  60px;
+  --space-8:  90px;
+  --space-9:  120px;
+  /* Common control paddings seen live: 4px 9px (compact), 19px 9px (CTA). */
+
+  /* ---------- SHAPE & BORDERS ---------- */
+  --radius:        0px;   /* square corners everywhere — never round */
+  --border-width:  1px;   /* hairline structure */
+  --border-thick:  2px;   /* focus ring / emphasis only */
+
+  /* ---------- ELEVATION ---------- */
+  --shadow-none:   none;  /* no drop shadows — separate with borders + whitespace */
+
+  /* ---------- LAYOUT ---------- */
+  --header-height:  60px;
+  --container-max:  1440px;
+  --grid-columns:   12;     /* general layout grid */
+  --grid-gutter:    var(--space-4);
+  --grid-fullbleed-columns: 16; /* Acne's editorial base grid */
+  --grid-fullbleed-gutter:  0px;
+  --image-aspect:   2 / 3;  /* portrait — editorial default */
+
+  /* ---------- MOTION ---------- */
+  --transition:      120ms ease;
+  --transition-slow: 240ms ease;
+
+  /* ---------- Z-INDEX ---------- */
+  --z-base:      0;
+  --z-sticky:    100;
+  --z-dropdown:  200;
+  --z-overlay:   300;
+  --z-modal:     400;
+  --z-toast:     500;
+  --z-tooltip:   600;
+
+  /* ---------- BREAKPOINTS (reference; use in @media) ---------- */
+  --bp-sm:  640px;
+  --bp-md:  1024px;
+  --bp-lg:  1440px;
+}

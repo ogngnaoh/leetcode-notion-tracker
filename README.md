@@ -6,7 +6,7 @@ The project deliberately solves one workflow:
 
 1. Open a LeetCode problem.
 2. Open the Chrome side panel.
-3. Record outcome, help used, time, pattern, and reflection.
+3. Confirm the visible attempt with one of three outcomes.
 4. Send the capture to a local bridge.
 5. Upsert the canonical problem, append an immutable attempt, and update the next review date in Notion.
 
@@ -15,14 +15,14 @@ The project deliberately solves one workflow:
 - **Two Notion databases:** one current `Problem` record and many immutable `Attempt` records.
 - **Local bridge:** the Notion token never enters the extension.
 - **Exact schema:** the extension is for this personal tracker, not every arbitrary Notion database.
-- **Manual confirmation:** LeetCode metadata is prefilled, but you decide Red, Yellow, or Green.
+- **Manual confirmation:** nothing is sent until you choose `Couldn’t solve`, `Needed help`, or `Solved`.
 - **No provisioning framework:** one setup command creates the databases once.
 
 ## Repository layout
 
 ```text
 src/shared/       Capture contract, stable keys, review schedule
-src/notion/       One-time Notion setup and schema verification
+src/notion/       One-time setup, v1→v2 migration, and exact schema verification
 src/bridge/       Local Hono bridge and Notion repository
 extension/        Manifest V3 side-panel extension
 scripts/          Extension build script
@@ -34,6 +34,7 @@ docs/             Architecture, schema, security, and manual QA
 
 - Node.js 22+
 - Chrome 114+
+- Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
 - A Notion workspace
 - A Notion internal integration with read, insert, and update content capabilities
 - One empty Notion page shared with that integration
@@ -57,7 +58,7 @@ PORT=8787
 
 The parent page ID is the ID from the empty Notion page where the two databases should be created.
 
-## 2. Create the tracker in Notion
+## 2. Create or migrate the tracker in Notion
 
 ```bash
 npm run notion:setup
@@ -72,6 +73,34 @@ npm run notion:verify
 - `build/notion-manifest.json` containing non-secret database and data-source IDs
 
 The command refuses to run when the manifest already exists, preventing accidental duplicate databases.
+
+If the existing manifest is version 1, first inspect the in-place migration plan:
+
+```bash
+npm run notion:migrate:v2
+```
+
+Dry-run is the default. It validates the exact v1/intermediate shape, queries every Problems and
+Attempts row with pagination, and writes a token-free JSON backup under ignored `build/`, but it
+does not mutate Notion or the manifest. After reviewing the printed path, row counts, and plan, apply
+the same migration explicitly:
+
+```bash
+npm run notion:migrate:v2 -- --apply
+npm run notion:verify
+```
+
+Apply adds and backfills v2 fields before any deletion. It preserves non-empty removed values in one
+`Legacy v1 fields` section on each affected page, verifies the intermediate state, removes obsolete
+columns, verifies exact v2, and only then atomically bumps the existing manifest to version 2. It
+keeps all database, data-source, page, relation, and unchanged property IDs. Safe retries recognize
+the exact intermediate shape and do not duplicate legacy sections; a completed v2 rerun is a no-op.
+Before its first mutation, apply atomically writes a token-free recovery journal to
+`build/notion-v2-journal.json`. A matching journal preserves the original backup, values, and
+backfill expectations across partial backfill, schema deletion, verification, or manifest-write
+failures. It is removed only after the version-2 manifest is durable.
+Recovery also verifies the journal's SHA-256 binding to the original backup and rejects any extra or
+malformed backfill/expected fields before sending a page update.
 
 ## 3. Start the local bridge
 
@@ -104,40 +133,45 @@ Then:
 3. Select **Load unpacked**.
 4. Choose `dist/extension`.
 5. Open the extension's **Details → Extension options**.
-6. Save `http://127.0.0.1:8787`, your `BRIDGE_TOKEN`, and your default language.
+6. Save `http://127.0.0.1:8787` and your `BRIDGE_TOKEN`.
 7. Open a page matching `https://leetcode.com/problems/<slug>/`.
 8. Select the extension icon to open the side panel.
 
 ## Daily use
 
-The extension detects:
+On panel startup, the extension reads from the public problem-page DOM without focusing or scrolling
+LeetCode:
 
 - Problem slug
 - Problem title and number when visible
 - Canonical URL
 - Difficulty when visible
+- Topic links that are rendered in the DOM, including links below the viewport
+- Monaco's rendered logical lines, reconstructed from public line-number and `top` positions
+- The nearby visible language control
 
-You record:
+The code disclosure starts expanded. When Monaco has not rendered the whole file, the panel labels
+the exact `visible lines X–Y` range; a normal visible non-Monaco textarea is the only fallback. If an
+extension reload left the tab without a content-script receiver, the panel injects the read-only
+script once and retries immediately.
 
-- Red, Yellow, or Green
-- Submission result
-- Language
-- Minutes
-- Help used
-- Failure code
-- Primary pattern
-- Reflection
-- Optional code snapshot
+Each deliberate outcome click creates a new immutable Attempt and Client Event ID, even when the
+code is unchanged. The last successful outcome remains selected until another success or fingerprint
+change. Only an uncertain write reuses its frozen body and Client Event ID through `Retry same
+attempt`.
 
 Review scheduling is intentionally small:
 
-| Result       | New state                 | Next review |
-| ------------ | ------------------------- | ----------- |
-| Red          | Red, Green Count reset    | 1 day       |
-| Yellow       | Yellow, Green Count reset | 2 days      |
-| First Green  | Green                     | 3 days      |
-| Second Green | Green                     | 7 days      |
-| Third Green  | Mastered                  | None        |
+| Result             | New state / solved streak | Next review      |
+| ------------------ | ------------------------- | ---------------- |
+| Couldn’t solve     | Couldn’t solve / 0        | Same day         |
+| Needed help        | Needed help / 0           | 1 day            |
+| Solved, streak 1–4 | Solved / 1–4              | 1, 3, 7, 14 days |
+| Solved, streak 5   | Mastered / 5              | None             |
+
+After migration, create a `Due now` view once in the Notion UI: filter `Next Review` **on or before
+Today**, then sort `Next Review` ascending. The public Notion API does not support managing this view,
+so the repository does not claim that the view exists yet.
 
 ## Quality checks
 
@@ -145,7 +179,21 @@ Review scheduling is intentionally small:
 npm run check
 ```
 
-This runs formatting checks, TypeScript, unit tests, and the extension production build.
+This runs formatting checks, TypeScript, unit tests, the extension production build, a headless
+single-worker MV3 suite using the
+[official persistent-context extension pattern](https://playwright.dev/docs/chrome-extensions) in
+Playwright's bundled Chromium, and the security scan. Install the aligned browser once after
+dependencies:
+
+```bash
+npx playwright install chromium
+```
+
+The MV3 suite starts its own authenticated mock bridge and must claim `127.0.0.1:8787`; stop the real
+bridge (or any other process using that port) before running it. A port collision fails immediately
+with an actionable error rather than allowing tests to reach a real bridge. LeetCode-shaped pages
+are fulfilled in-memory at matching `https://leetcode.com/problems/<slug>/` navigation URLs; the
+suite does not contact LeetCode or Notion.
 
 ## Scope boundaries
 
@@ -157,7 +205,6 @@ The MVP does **not**:
 - Crawl problem lists
 - Automatically decide mastery
 - Automatically log every submission
-- Capture Monaco editor contents
 - Support arbitrary Notion schemas
 - Provide multi-user OAuth
 - Include a recruiting CRM

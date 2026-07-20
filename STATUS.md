@@ -12,27 +12,39 @@
 - Bearer-token protection for capture writes
 - Direct Notion API repository
 - One-time two-database setup command
-- Schema verification command
+- Safe, dry-run-by-default in-place Notion v1→v2 migration command
+- Exact v2 schema verification command
 - MV3 side-panel extension
 - LeetCode current-page metadata extraction
+- Automatic public-DOM topic/language extraction and rendered Monaco logical-line reconstruction
+- Compact one-click panel with expanded code, persistent last-result selection, and per-tab exact retry
+- One-time content-script reinjection after extension reload
+- Deterministic bundled-Chromium MV3 acceptance suite
 - Extension settings page
-- Manual capture form
+- Explicit click-only capture controls
 - Extension production build
 - Unit and route tests
 
-## Requires your credentials or browser session
+## Verified with the real workspace and Chrome
 
-- Running `notion:setup` against your actual workspace
-- Confirming current LeetCode DOM selectors on the live website
-- Loading the unpacked extension in Chrome
-- End-to-end write verification in your Notion workspace
+- The v2 manifest targets exactly one Problems and one Attempts data source.
+- Live Valid Sudoku recognition populated number, title, Medium, Array/Hash Table/Matrix, Python, and
+  rendered lines 1–9 without editor focus or page scrolling.
+- A user-confirmed `Couldn’t solve` capture created Attempt
+  `8318f850-d922-49a3-9e6a-37af14d9c492`, stored the exact rendered code, and set state/streak/date to
+  `Couldn’t solve` / `0` / `2026-07-20`.
+- Replaying that Client Event ID returned `duplicate: true` and kept the Valid Sudoku Attempt count at
+  one.
+
+## Remaining manual workspace step
+
+- Create the UI-only `Due now` view: `Next Review on or before Today`, ascending.
 
 ## Intentionally deferred
 
 - Cloud deployment
 - Offline queue
-- Automatic accepted-submission prompt
-- Automatic code capture
+- Public-API management of the `Due now` Notion view (unsupported by Notion)
 - Multiple tracker schemas
 - Notion OAuth for other users
 - Recruiting/application tracking

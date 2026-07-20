@@ -28,5 +28,6 @@ await build({
 for (const file of ['manifest.json', 'sidepanel.html', 'options.html', 'styles.css']) {
   await cp(resolve(source, file), resolve(output, file));
 }
+await cp(resolve(source, 'vendor'), resolve(output, 'vendor'), { recursive: true });
 
 console.log(`Extension built at ${output}`);

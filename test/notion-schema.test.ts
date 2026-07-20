@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
   ATTEMPTS_PROPERTIES,
@@ -23,5 +24,63 @@ describe('Notion schema', () => {
       expect(REQUIRED_ATTEMPTS_TYPES[name]).toBe(configuredType(config));
     }
     expect(REQUIRED_ATTEMPTS_TYPES.Problem).toBe('relation');
+  });
+
+  it('defines the exact v2 property names and types', () => {
+    expect(REQUIRED_PROBLEMS_TYPES).toEqual({
+      Problem: 'title',
+      'External Key': 'rich_text',
+      Slug: 'rich_text',
+      Number: 'number',
+      URL: 'url',
+      Difficulty: 'select',
+      Topics: 'multi_select',
+      'Practice State': 'select',
+      'Solved Streak': 'number',
+      'Next Review': 'date',
+      'Last Attempt': 'date',
+      'Extension Managed': 'checkbox',
+      Attempts: 'relation',
+    });
+    expect(REQUIRED_ATTEMPTS_TYPES).toEqual({
+      Attempt: 'title',
+      'Client Event ID': 'rich_text',
+      Problem: 'relation',
+      'Problem Key': 'rich_text',
+      'Attempted At': 'date',
+      'Source URL': 'url',
+      Language: 'rich_text',
+      Result: 'select',
+      'Resulting State': 'select',
+      'Resulting Solved Streak': 'number',
+      'Resulting Next Review': 'date',
+      'Extension Managed': 'checkbox',
+      'Created Time': 'created_time',
+    });
+  });
+
+  it('uses the required native colors for every v2 state and result option', () => {
+    expect(PROBLEMS_PROPERTIES['Practice State'].select.options).toEqual([
+      { name: 'New', color: 'gray' },
+      { name: 'Couldn’t solve', color: 'red' },
+      { name: 'Needed help', color: 'yellow' },
+      { name: 'Solved', color: 'green' },
+      { name: 'Mastered', color: 'blue' },
+    ]);
+    expect(ATTEMPTS_PROPERTIES.Result.select.options).toEqual([
+      { name: 'Couldn’t solve', color: 'red' },
+      { name: 'Needed help', color: 'yellow' },
+      { name: 'Solved', color: 'green' },
+    ]);
+    expect(ATTEMPTS_PROPERTIES['Resulting State'].select.options).toEqual(
+      PROBLEMS_PROPERTIES['Practice State'].select.options,
+    );
+  });
+
+  it('exposes a dry-run-by-default v2 migration command', async () => {
+    const packageJson = JSON.parse(
+      await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    expect(packageJson.scripts['notion:migrate:v2']).toBe('tsx src/notion/migrate-v2-cli.ts');
   });
 });

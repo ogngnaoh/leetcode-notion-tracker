@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { sendCapture } from '../extension/src/api.js';
+import { getProblemStatus, sendCapture } from '../extension/src/api.js';
 import {
   CaptureRequestError,
   CaptureSubmissionCoordinator,
@@ -9,7 +9,6 @@ import type { CaptureEvent, CaptureResult } from '../src/shared/contract.js';
 const settings = {
   bridgeUrl: 'http://127.0.0.1:8787',
   bridgeToken: 'a-very-long-personal-bridge-token',
-  defaultLanguage: 'Python',
 };
 
 function captureEvent(clientEventId = 'eb9fdc89-8098-4f76-9a68-26e94dc75fc6'): CaptureEvent {
@@ -17,23 +16,18 @@ function captureEvent(clientEventId = 'eb9fdc89-8098-4f76-9a68-26e94dc75fc6'): C
     clientEventId,
     problem: {
       slug: 'two-sum',
-      title: '1. Two Sum',
+      title: 'Two Sum',
       number: 1,
       url: 'https://leetcode.com/problems/two-sum/',
       difficulty: 'Easy',
+      topics: ['Array', 'Hash Table'],
     },
     attempt: {
-      attemptedAt: '2026-07-20T12:00:00.000Z',
+      attemptedAt: '2026-07-20T08:30:00-04:00',
+      attemptedOn: '2026-07-20',
       language: 'Python',
-      submissionResult: 'Accepted',
-      outcome: 'Green',
-      coldAttempt: true,
-      helpUsed: 'None',
-      failureCode: null,
-      totalMinutes: 12,
-      primaryPattern: 'Arrays & Hashing',
-      notes: 'One-pass hash map.',
-      code: null,
+      code: 'def twoSum(nums, target):\n    return []',
+      result: 'Solved',
     },
   };
 }
@@ -43,9 +37,9 @@ const captureResult: CaptureResult = {
   problemPageId: 'problem-page-id',
   attemptPageId: 'attempt-page-id',
   review: {
-    mastery: 'Green',
-    greenCount: 1,
-    nextReview: '2026-07-23T12:00:00.000Z',
+    practiceState: 'Solved',
+    solvedStreak: 1,
+    nextReview: '2026-07-21',
   },
 };
 
@@ -190,4 +184,100 @@ describe('sendCapture', () => {
 
     await expect(sendCapture(settings, captureEvent())).resolves.toEqual(captureResult);
   });
+
+  it('rejects a legacy review response as malformed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ...captureResult,
+            review: { mastery: 'Green', greenCount: 1, nextReview: '2026-07-23T12:00:00Z' },
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+
+    await expect(sendCapture(settings, captureEvent())).rejects.toMatchObject({
+      message: 'The local bridge returned an invalid success response. Retry the same attempt.',
+      disposition: 'uncertain',
+    });
+  });
+});
+
+describe('getProblemStatus', () => {
+  it.each([
+    [{ found: false }],
+    [
+      {
+        found: true,
+        practiceState: 'Solved',
+        solvedStreak: 2,
+        nextReview: '2026-07-23',
+        lastAttempt: '2026-07-20T08:30:00-04:00',
+      },
+    ],
+  ])('returns a validated exact status union', async (status) => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(status), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getProblemStatus(settings, 'two-sum')).resolves.toEqual(status);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/api/problems/two-sum/status',
+      expect.objectContaining({ method: 'GET', headers: { Authorization: expect.any(String) } }),
+    );
+  });
+
+  it('rejects malformed or non-exact status responses', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ found: false, lastAttempt: null }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(getProblemStatus(settings, 'two-sum')).rejects.toMatchObject({
+      message: 'The local bridge returned an invalid problem status.',
+    });
+  });
+
+  it.each([
+    '2026-07-20Z',
+    '2026-07-20 08:30:00Z',
+    '2026-02-30T08:30:00Z',
+    '2026-07-20T24:30:00Z',
+    '2026-07-20T08:30:00+24:00',
+  ])(
+    'rejects lastAttempt outside the shared ISO timestamp-with-offset contract: %s',
+    async (lastAttempt) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              found: true,
+              practiceState: 'Solved',
+              solvedStreak: 1,
+              nextReview: '2026-07-21',
+              lastAttempt,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      );
+
+      await expect(getProblemStatus(settings, 'two-sum')).rejects.toMatchObject({
+        message: 'The local bridge returned an invalid problem status.',
+      });
+    },
+  );
 });

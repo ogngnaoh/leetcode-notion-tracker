@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Log the current LeetCode problem and your reflection to a personal Notion tracker.",
   "minimum_chrome_version": "114",
-  "permissions": ["activeTab", "sidePanel", "storage"],
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "host_permissions": [
     "https://leetcode.com/problems/*",
     "http://127.0.0.1:8787/*",

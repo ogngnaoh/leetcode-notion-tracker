@@ -9,14 +9,12 @@ function element<T extends HTMLElement>(id: string): T {
 const form = element<HTMLFormElement>('settings-form');
 const bridgeUrl = element<HTMLInputElement>('bridge-url');
 const bridgeToken = element<HTMLInputElement>('bridge-token');
-const defaultLanguage = element<HTMLInputElement>('default-language');
 const status = element<HTMLParagraphElement>('settings-status');
 
 async function load(): Promise<void> {
   const settings = await getSettings();
   bridgeUrl.value = settings.bridgeUrl;
   bridgeToken.value = settings.bridgeToken;
-  defaultLanguage.value = settings.defaultLanguage;
 }
 
 form.addEventListener('submit', (event) => {
@@ -25,7 +23,6 @@ form.addEventListener('submit', (event) => {
     await saveSettings({
       bridgeUrl: bridgeUrl.value.trim().replace(/\/$/, ''),
       bridgeToken: bridgeToken.value,
-      defaultLanguage: defaultLanguage.value.trim() || 'Python',
     });
     status.textContent = 'Settings saved.';
     status.className = 'status success';

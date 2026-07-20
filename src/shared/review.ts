@@ -1,65 +1,63 @@
-import type { Mastery, Outcome, ReviewState } from './contract.js';
+import type { AttemptResult, ReviewState } from './contract.js';
 
-const GREEN_REVIEW_DAYS = [3, 7] as const;
+const SOLVED_REVIEW_DAYS = [1, 3, 7, 14] as const;
 
-function addDays(isoTimestamp: string, days: number): string {
-  const date = new Date(isoTimestamp);
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`Invalid attempt timestamp: ${isoTimestamp}`);
-  }
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString();
+function calendarParts(value: string): [number, number, number] | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const parts: [number, number, number] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  return date.getUTCFullYear() === parts[0] &&
+    date.getUTCMonth() === parts[1] - 1 &&
+    date.getUTCDate() === parts[2]
+    ? parts
+    : null;
+}
+
+function addCalendarDays(calendarDate: string, days: number): string {
+  const parts = calendarParts(calendarDate);
+  if (!parts) throw new Error('attemptedOn must be a valid YYYY-MM-DD calendar date.');
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+  return date.toISOString().slice(0, 10);
 }
 
 export function computeReviewState(
-  currentGreenCount: number,
-  outcome: Outcome,
-  attemptedAt: string,
+  currentSolvedStreak: number,
+  result: AttemptResult,
+  attemptedOn: string,
 ): ReviewState {
-  if (!Number.isInteger(currentGreenCount) || currentGreenCount < 0) {
-    throw new Error('currentGreenCount must be a non-negative integer.');
+  if (
+    !Number.isInteger(currentSolvedStreak) ||
+    currentSolvedStreak < 0 ||
+    currentSolvedStreak > 5
+  ) {
+    throw new Error('currentSolvedStreak must be an integer from 0 through 5.');
+  }
+  if (!calendarParts(attemptedOn)) {
+    throw new Error('attemptedOn must be a valid YYYY-MM-DD calendar date.');
+  }
+  if (result !== 'Couldn’t solve' && result !== 'Needed help' && result !== 'Solved') {
+    throw new Error('result must be Couldn’t solve, Needed help, or Solved.');
   }
 
-  if (outcome === 'Red') {
+  if (result === 'Couldn’t solve') {
+    return { practiceState: result, solvedStreak: 0, nextReview: attemptedOn };
+  }
+  if (result === 'Needed help') {
     return {
-      mastery: 'Red',
-      greenCount: 0,
-      nextReview: addDays(attemptedAt, 1),
+      practiceState: result,
+      solvedStreak: 0,
+      nextReview: addCalendarDays(attemptedOn, 1),
     };
   }
 
-  if (outcome === 'Yellow') {
-    return {
-      mastery: 'Yellow',
-      greenCount: 0,
-      nextReview: addDays(attemptedAt, 2),
-    };
+  const solvedStreak = Math.min(currentSolvedStreak + 1, 5);
+  if (solvedStreak === 5) {
+    return { practiceState: 'Mastered', solvedStreak, nextReview: null };
   }
-
-  const greenCount = currentGreenCount + 1;
-  if (greenCount >= 3) {
-    return {
-      mastery: 'Mastered',
-      greenCount,
-      nextReview: null,
-    };
-  }
-
-  const delay = GREEN_REVIEW_DAYS[greenCount - 1] ?? GREEN_REVIEW_DAYS[1];
   return {
-    mastery: 'Green',
-    greenCount,
-    nextReview: addDays(attemptedAt, delay),
+    practiceState: 'Solved',
+    solvedStreak,
+    nextReview: addCalendarDays(attemptedOn, SOLVED_REVIEW_DAYS[solvedStreak - 1]!),
   };
-}
-
-export function masteryRank(mastery: Mastery): number {
-  const ranks: Record<Mastery, number> = {
-    Unseen: 0,
-    Red: 1,
-    Yellow: 2,
-    Green: 3,
-    Mastered: 4,
-  };
-  return ranks[mastery];
 }

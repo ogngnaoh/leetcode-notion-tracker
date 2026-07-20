@@ -1,8 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { Client, isFullPage } from '@notionhq/client';
+import { z } from 'zod';
 import type { CaptureEvent, NotionManifest, ReviewState } from '../shared/contract.js';
-import { NotionManifestSchema } from '../shared/contract.js';
+import {
+  DifficultySchema,
+  NotionManifestSchema,
+  PracticeStateSchema,
+  ReviewStateSchema,
+} from '../shared/contract.js';
 import { attemptTitle } from '../shared/keys.js';
+import { unicodeSafeTextChunks } from '../shared/text-chunks.js';
 import { NOTION_API_VERSION } from '../notion/schema.js';
 import type { CaptureRepository, ProblemRecord, StoredAttempt } from './repository.js';
 
@@ -18,74 +25,141 @@ function propertyMap(page: unknown): Record<string, any> {
   return candidate.properties as Record<string, any>;
 }
 
-function getRichText(properties: Record<string, any>, name: string): string | null {
+function requiredProperty(properties: Record<string, any>, name: string, type: string): any {
   const value = properties[name];
-  return value?.type === 'rich_text' ? (value.rich_text?.[0]?.plain_text ?? null) : null;
+  if (value?.type !== type) throw new Error(`Notion property ${name} must be ${type}.`);
+  return value;
 }
 
-function getNumber(properties: Record<string, any>, name: string): number | null {
-  const value = properties[name];
-  return value?.type === 'number' ? (value.number ?? null) : null;
+function requiredTitle(properties: Record<string, any>, name: string): string {
+  const value = requiredProperty(properties, name, 'title').title?.[0]?.plain_text;
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`Notion property ${name} must contain a title.`);
+  }
+  return value;
 }
 
-function getSelect(properties: Record<string, any>, name: string): string | null {
-  const value = properties[name];
-  return value?.type === 'select' ? (value.select?.name ?? null) : null;
+function requiredRichText(properties: Record<string, any>, name: string): string {
+  const value = requiredProperty(properties, name, 'rich_text').rich_text?.[0]?.plain_text;
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`Notion property ${name} must contain text.`);
+  }
+  return value;
 }
 
-function getDate(properties: Record<string, any>, name: string): string | null {
-  const value = properties[name];
-  return value?.type === 'date' ? (value.date?.start ?? null) : null;
+function nullableNumber(properties: Record<string, any>, name: string): number | null {
+  const value = requiredProperty(properties, name, 'number').number;
+  if (value !== null && typeof value !== 'number') {
+    throw new Error(`Notion property ${name} must contain a number or null.`);
+  }
+  return value;
 }
 
-function getRelationId(properties: Record<string, any>, name: string): string | null {
-  const value = properties[name];
-  return value?.type === 'relation' ? (value.relation?.[0]?.id ?? null) : null;
+function requiredNumber(properties: Record<string, any>, name: string): number {
+  const value = nullableNumber(properties, name);
+  if (value === null) throw new Error(`Notion property ${name} must contain a number.`);
+  return value;
+}
+
+function requiredSelect(properties: Record<string, any>, name: string): string {
+  const value = requiredProperty(properties, name, 'select').select?.name;
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`Notion property ${name} must contain a selection.`);
+  }
+  return value;
+}
+
+function nullableDate(properties: Record<string, any>, name: string): string | null {
+  const value = requiredProperty(properties, name, 'date').date;
+  if (value === null) return null;
+  if (typeof value?.start !== 'string') {
+    throw new Error(`Notion property ${name} must contain a date or null.`);
+  }
+  return value.start;
+}
+
+function requiredDate(properties: Record<string, any>, name: string): string {
+  const value = nullableDate(properties, name);
+  if (value === null) throw new Error(`Notion property ${name} must contain a date.`);
+  return value;
+}
+
+function requiredRelationId(properties: Record<string, any>, name: string): string {
+  const value = requiredProperty(properties, name, 'relation').relation?.[0]?.id;
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`Notion property ${name} must contain a relation.`);
+  }
+  return value;
+}
+
+function requiredUrl(properties: Record<string, any>, name: string): string {
+  const value = requiredProperty(properties, name, 'url').url;
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`Notion property ${name} must contain a URL.`);
+  }
+  return value;
+}
+
+function requiredMultiSelect(properties: Record<string, any>, name: string): string[] {
+  const values = requiredProperty(properties, name, 'multi_select').multi_select;
+  if (!Array.isArray(values) || values.some((item) => typeof item?.name !== 'string')) {
+    throw new Error(`Notion property ${name} must contain selections.`);
+  }
+  return values.map((item) => item.name as string);
+}
+
+const IsoTimestampSchema = z.string().datetime({ offset: true });
+
+function parseProblem(page: unknown): ProblemRecord {
+  const candidate = page as Parameters<typeof isFullPage>[0];
+  const properties = propertyMap(candidate);
+  const review = ReviewStateSchema.parse({
+    practiceState: PracticeStateSchema.parse(requiredSelect(properties, 'Practice State')),
+    solvedStreak: requiredNumber(properties, 'Solved Streak'),
+    nextReview: nullableDate(properties, 'Next Review'),
+  });
+  const lastAttempt = nullableDate(properties, 'Last Attempt');
+  if (lastAttempt !== null) IsoTimestampSchema.parse(lastAttempt);
+  return {
+    pageId: candidate.id,
+    externalKey: requiredRichText(properties, 'External Key'),
+    slug: requiredRichText(properties, 'Slug'),
+    title: requiredTitle(properties, 'Problem'),
+    number: nullableNumber(properties, 'Number'),
+    url: requiredUrl(properties, 'URL'),
+    difficulty: DifficultySchema.parse(requiredSelect(properties, 'Difficulty')),
+    topics: requiredMultiSelect(properties, 'Topics'),
+    ...review,
+    lastAttempt,
+  };
 }
 
 function textChunks(
   value: string,
   chunkSize = 1900,
 ): Array<{ type: 'text'; text: { content: string } }> {
-  const chunks: Array<{ type: 'text'; text: { content: string } }> = [];
-  for (let index = 0; index < value.length; index += chunkSize) {
-    chunks.push({ type: 'text', text: { content: value.slice(index, index + chunkSize) } });
-  }
-  return chunks.length > 0 ? chunks : [{ type: 'text', text: { content: '' } }];
+  return unicodeSafeTextChunks(value, chunkSize).map((content) => ({
+    type: 'text',
+    text: { content },
+  }));
 }
 
 function pageChildren(event: CaptureEvent): Array<Record<string, unknown>> {
-  const children: Array<Record<string, unknown>> = [
+  return [
     {
       object: 'block',
       type: 'heading_2',
-      heading_2: { rich_text: richText('Reflection') },
+      heading_2: { rich_text: richText('Captured code') },
     },
     {
       object: 'block',
-      type: 'paragraph',
-      paragraph: { rich_text: richText(event.attempt.notes || 'No reflection recorded.') },
+      type: 'code',
+      code: {
+        language: 'plain text',
+        rich_text: textChunks(event.attempt.code),
+      },
     },
   ];
-
-  if (event.attempt.code) {
-    children.push(
-      {
-        object: 'block',
-        type: 'heading_2',
-        heading_2: { rich_text: richText('Captured code') },
-      },
-      {
-        object: 'block',
-        type: 'code',
-        code: {
-          language: 'plain text',
-          rich_text: textChunks(event.attempt.code),
-        },
-      },
-    );
-  }
-  return children;
 }
 
 export async function loadNotionManifest(path: string): Promise<NotionManifest> {
@@ -117,24 +191,27 @@ export class NotionCaptureRepository implements CaptureRepository {
     const page = response.results.find((result) => isFullPage(result));
     if (!page || !isFullPage(page)) return null;
 
-    const properties = propertyMap(page);
-    const problemPageId = getRelationId(properties, 'Problem');
-    const mastery = getSelect(properties, 'Resulting Mastery');
-    const attemptedAt = getDate(properties, 'Attempted At');
-    if (!problemPageId || !mastery || !attemptedAt) {
-      throw new Error(`Attempt ${page.id} is missing extension-managed idempotency fields.`);
+    try {
+      const properties = propertyMap(page);
+      const attemptedAt = requiredDate(properties, 'Attempted At');
+      IsoTimestampSchema.parse(attemptedAt);
+      const review = ReviewStateSchema.parse({
+        practiceState: requiredSelect(properties, 'Resulting State'),
+        solvedStreak: requiredNumber(properties, 'Resulting Solved Streak'),
+        nextReview: nullableDate(properties, 'Resulting Next Review'),
+      });
+      return {
+        pageId: page.id,
+        problemPageId: requiredRelationId(properties, 'Problem'),
+        problemKey: requiredRichText(properties, 'Problem Key'),
+        attemptedAt,
+        review,
+      };
+    } catch {
+      throw new Error(
+        `Attempt ${page.id} is missing or invalid extension-managed idempotency fields.`,
+      );
     }
-
-    return {
-      pageId: page.id,
-      problemPageId,
-      attemptedAt,
-      review: {
-        mastery: mastery as ReviewState['mastery'],
-        greenCount: getNumber(properties, 'Resulting Green Count') ?? 0,
-        nextReview: getDate(properties, 'Resulting Next Review'),
-      },
-    };
   }
 
   async findProblemByExternalKey(externalKey: string): Promise<ProblemRecord | null> {
@@ -147,13 +224,12 @@ export class NotionCaptureRepository implements CaptureRepository {
       },
     });
     const page = response.results.find((result) => isFullPage(result));
-    if (!page || !isFullPage(page)) return null;
-    const properties = propertyMap(page);
-    return {
-      pageId: page.id,
-      externalKey: getRichText(properties, 'External Key') ?? externalKey,
-      greenCount: getNumber(properties, 'Green Count') ?? 0,
-    };
+    return page && isFullPage(page) ? parseProblem(page) : null;
+  }
+
+  async findProblemByPageId(pageId: string): Promise<ProblemRecord | null> {
+    const page = await this.notion.pages.retrieve({ page_id: pageId });
+    return isFullPage(page) ? parseProblem(page) : null;
   }
 
   async createProblem(event: CaptureEvent, externalKey: string): Promise<ProblemRecord> {
@@ -169,11 +245,9 @@ export class NotionCaptureRepository implements CaptureRepository {
         Number: { number: event.problem.number ?? null },
         URL: { url: event.problem.url },
         Difficulty: { select: { name: event.problem.difficulty } },
-        'Primary Pattern': {
-          rich_text: richText(event.attempt.primaryPattern ?? ''),
-        },
-        Mastery: { select: { name: 'Unseen' } },
-        'Green Count': { number: 0 },
+        Topics: { multi_select: event.problem.topics.map((name) => ({ name })) },
+        'Practice State': { select: { name: 'New' } },
+        'Solved Streak': { number: 0 },
         'Next Review': { date: null },
         'Last Attempt': { date: null },
         'Extension Managed': { checkbox: true },
@@ -183,8 +257,28 @@ export class NotionCaptureRepository implements CaptureRepository {
     return {
       pageId: page.id,
       externalKey,
-      greenCount: 0,
+      ...event.problem,
+      number: event.problem.number ?? null,
+      topics: [...event.problem.topics],
+      practiceState: 'New',
+      solvedStreak: 0,
+      nextReview: null,
+      lastAttempt: null,
     };
+  }
+
+  async updateProblemMetadata(problemPageId: string, event: CaptureEvent): Promise<void> {
+    await this.notion.pages.update({
+      page_id: problemPageId,
+      properties: {
+        Problem: { title: richText(event.problem.title) },
+        Slug: { rich_text: richText(event.problem.slug) },
+        Number: { number: event.problem.number ?? null },
+        URL: { url: event.problem.url },
+        Difficulty: { select: { name: event.problem.difficulty } },
+        Topics: { multi_select: event.problem.topics.map((name) => ({ name })) },
+      },
+    });
   }
 
   async createAttempt(
@@ -206,20 +300,9 @@ export class NotionCaptureRepository implements CaptureRepository {
         'Attempted At': { date: { start: event.attempt.attemptedAt } },
         'Source URL': { url: event.problem.url },
         Language: { rich_text: richText(event.attempt.language) },
-        'Submission Result': { select: { name: event.attempt.submissionResult } },
-        Outcome: { select: { name: event.attempt.outcome } },
-        'Cold Attempt': { checkbox: event.attempt.coldAttempt },
-        'Help Used': { select: { name: event.attempt.helpUsed } },
-        'Failure Code': event.attempt.failureCode
-          ? { select: { name: event.attempt.failureCode } }
-          : { select: null },
-        'Total Minutes': { number: event.attempt.totalMinutes ?? null },
-        'Primary Pattern': {
-          rich_text: richText(event.attempt.primaryPattern ?? ''),
-        },
-        Notes: { rich_text: richText(event.attempt.notes ?? '') },
-        'Resulting Mastery': { select: { name: review.mastery } },
-        'Resulting Green Count': { number: review.greenCount },
+        Result: { select: { name: event.attempt.result } },
+        'Resulting State': { select: { name: review.practiceState } },
+        'Resulting Solved Streak': { number: review.solvedStreak },
         'Resulting Next Review': review.nextReview
           ? { date: { start: review.nextReview } }
           : { date: null },
@@ -231,6 +314,7 @@ export class NotionCaptureRepository implements CaptureRepository {
     return {
       pageId: page.id,
       problemPageId: problem.pageId,
+      problemKey: externalKey,
       attemptedAt: event.attempt.attemptedAt,
       review,
     };
@@ -244,8 +328,8 @@ export class NotionCaptureRepository implements CaptureRepository {
     await this.notion.pages.update({
       page_id: problemPageId,
       properties: {
-        Mastery: { select: { name: review.mastery } },
-        'Green Count': { number: review.greenCount },
+        'Practice State': { select: { name: review.practiceState } },
+        'Solved Streak': { number: review.solvedStreak },
         'Next Review': review.nextReview ? { date: { start: review.nextReview } } : { date: null },
         'Last Attempt': { date: { start: attemptedAt } },
       },

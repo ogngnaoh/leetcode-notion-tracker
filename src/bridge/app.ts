@@ -7,16 +7,8 @@ interface AppOptions {
   bridgeToken: string;
   captureService: CaptureService;
   logger?: {
-    error(message: string, diagnostics: CaptureFailureDiagnostics): void;
+    error(message: string, diagnostics: Record<string, unknown>): void;
   };
-}
-
-interface CaptureFailureDiagnostics {
-  clientEventId: string;
-  problemSlug: string;
-  errorName: string;
-  errorStatus: number | null;
-  errorMessage: string;
 }
 
 const MAX_ERROR_MESSAGE_LENGTH = 240;
@@ -45,7 +37,7 @@ export function createApp(options: AppOptions): Hono {
     cors({
       origin: '*',
       allowHeaders: ['Authorization', 'Content-Type'],
-      allowMethods: ['POST', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
     }),
   );
 
@@ -62,6 +54,27 @@ export function createApp(options: AppOptions): Hono {
       return context.json({ error: 'Unauthorized' }, 401);
     }
     await next();
+  });
+
+  app.get('/api/problems/:slug/status', async (context) => {
+    const slug = context.req.param('slug');
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      return context.json({ error: 'Invalid problem slug' }, 400);
+    }
+    try {
+      return context.json(await options.captureService.getProblemStatus(slug));
+    } catch (error) {
+      logger.error('Problem status failed', {
+        problemSlug: slug,
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorStatus: errorStatus(error),
+        errorMessage: redactErrorMessage(error, options.bridgeToken),
+      });
+      return context.json(
+        { error: 'Problem status failed. Check the local bridge terminal.' },
+        500,
+      );
+    }
   });
 
   app.post('/api/capture', async (context) => {
