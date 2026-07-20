@@ -21,3 +21,9 @@ The source `components.css` hash records the complete reviewed source even thoug
 rules are redistributed. Inter and IBM Plex Mono are free, open-licensed fonts under SIL Open Font
 License 1.1. The license and copyright notices are distributed beside the font files in
 `extension/vendor/fonts/OFL.txt` and copied into the built extension.
+
+The extension logo uses Lucide SquareTerminal, the standard Lucide icon available through shadcn/ui.
+Lucide is distributed under the ISC License; its notice is included at
+`extension/icons/LICENSE-lucide.txt`. Chrome does not support SVG files declared as extension icons,
+so `extension/square-terminal.svg` is rendered at exactly 16, 32, 48, and 128 pixels under
+`extension/icons/` and copied into the production build.

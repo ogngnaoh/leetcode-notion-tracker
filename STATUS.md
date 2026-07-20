@@ -23,6 +23,8 @@
 - Extension settings page
 - Explicit click-only capture controls
 - Extension production build
+- Version 0.1.2 LC Log personal-use branding with the `leetcode tracker (notion-powered)` description
+  and Chrome-supported Lucide SquareTerminal PNG icons
 - Unit and route tests
 - Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery
 

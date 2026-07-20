@@ -5,6 +5,31 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
+  it('ships LC Log version 0.1.2 with consistent user-facing identity', async () => {
+    const [manifestText, sidePanel, options] = await Promise.all([
+      readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
+      readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
+      readFile(resolve(root, 'extension/options.html'), 'utf8'),
+    ]);
+    const manifest = JSON.parse(manifestText) as {
+      name: string;
+      version: string;
+      description: string;
+      action?: { default_title?: string };
+    };
+
+    expect(manifest).toMatchObject({
+      name: 'LC Log',
+      version: '0.1.2',
+      description: 'leetcode tracker (notion-powered)',
+    });
+    expect(manifest.action?.default_title).toBe('Open LC Log');
+    expect(sidePanel).toMatch(/<title>LC Log<\/title>/);
+    expect(sidePanel).toMatch(/<h1[^>]*>LC Log<\/h1>/);
+    expect(options).toMatch(/<title>LC Log Settings<\/title>/);
+    expect(options).toMatch(/<h1>LC Log<\/h1>/);
+  });
+
   it('contains exactly three symmetrical outcome controls and no form or reload control', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
@@ -23,7 +48,7 @@ describe('one-click side panel artifact', () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     expect([...html.matchAll(/<h1\b/g)]).toHaveLength(1);
-    expect(html).toMatch(/<h1[^>]*>LeetCode Tracker<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>LC Log<\/h1>/);
     expect(html).not.toContain('PERSONAL PRACTICE LOG');
     expect(html.indexOf('class="problem-panel"')).toBeLessThan(
       html.indexOf('class="capture-section"'),
@@ -90,5 +115,43 @@ describe('one-click side panel artifact', () => {
     ) as { permissions?: string[] };
 
     expect(manifest.permissions).toContain('scripting');
+  });
+
+  it('ships Chrome-supported PNG icons at every declared size', async () => {
+    const [manifestText, svg, license, provenance] = await Promise.all([
+      readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
+      readFile(resolve(root, 'extension/square-terminal.svg'), 'utf8'),
+      readFile(resolve(root, 'extension/icons/LICENSE-lucide.txt'), 'utf8'),
+      readFile(resolve(root, 'docs/EXTENSION_ASSETS.md'), 'utf8'),
+    ]);
+    const manifest = JSON.parse(manifestText) as {
+      icons?: Record<string, string>;
+      action?: { default_icon?: Record<string, string> };
+    };
+    const expectedIcons = {
+      '16': 'icons/square-terminal-16.png',
+      '32': 'icons/square-terminal-32.png',
+      '48': 'icons/square-terminal-48.png',
+      '128': 'icons/square-terminal-128.png',
+    };
+
+    expect(manifest.icons).toEqual(expectedIcons);
+    expect(manifest.action?.default_icon).toEqual(expectedIcons);
+
+    for (const [declaredSize, path] of Object.entries(expectedIcons)) {
+      const png = await readFile(resolve(root, 'extension', path));
+      expect(png.subarray(0, 8)).toEqual(
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      );
+      expect(png.readUInt32BE(16)).toBe(Number(declaredSize));
+      expect(png.readUInt32BE(20)).toBe(Number(declaredSize));
+    }
+
+    expect(svg).toContain('aria-label="LC Log logo"');
+    expect(svg).toContain('d="m7 11 2-2-2-2"');
+    expect(svg).toContain('d="M11 13h4"');
+    expect(svg).toContain('x="3" y="3" width="18" height="18" rx="2"');
+    expect(license).toContain('ISC License');
+    expect(provenance).toContain('Lucide SquareTerminal');
   });
 });

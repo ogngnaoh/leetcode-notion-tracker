@@ -83,7 +83,7 @@ Do not substitute another scheduling algorithm.
   otherwise label it `visible lines X–Y`.
 - Extract title, number, difficulty, topics, and language independently. Never focus or scroll the
   page.
-- Layout A has one `LeetCode Tracker` heading, a compact problem card, three equal outcomes, then an
+- Layout A has one `LC Log` heading, a compact problem card, three equal outcomes, then an
   expanded code disclosure.
 - After success, keep outcomes active, select the last result with `aria-pressed`, and retain its
   confirmation until another success or a fingerprint change.
