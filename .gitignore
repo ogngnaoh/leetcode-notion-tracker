@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/*
+!build/.gitkeep
+.env
+.env.local
+*.log
+.DS_Store
+coverage/

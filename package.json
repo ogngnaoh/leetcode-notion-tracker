@@ -1,0 +1,41 @@
+{
+  "name": "leetcode-notion-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A lean personal Chrome extension that logs LeetCode practice to two Notion databases.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:bridge": "tsx watch src/bridge/server.ts",
+    "start:bridge": "tsx src/bridge/server.ts",
+    "notion:setup": "tsx src/notion/setup.ts",
+    "notion:verify": "tsx src/notion/verify.ts",
+    "build:extension": "node scripts/build-extension.mjs",
+    "build": "npm run typecheck && npm run build:extension",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run typecheck && npm run test && npm run build:extension && npm run security:scan",
+    "security:scan": "node scripts/scan-secrets.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.10",
+    "@notionhq/client": "^5.23.2",
+    "dotenv": "^17.2.3",
+    "hono": "^4.12.31",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.33",
+    "@types/node": "^24.10.1",
+    "esbuild": "^0.28.1",
+    "prettier": "^3.8.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeetCode Tracker Settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="settings-shell">
+      <p class="eyebrow">SETTINGS</p>
+      <h1>LeetCode → Notion</h1>
+      <p class="muted">
+        The Notion token stays in the local bridge. This page stores only the bridge address and its
+        personal access token.
+      </p>
+
+      <form id="settings-form" class="card stack">
+        <label>
+          Bridge URL
+          <input id="bridge-url" type="url" required placeholder="http://127.0.0.1:8787" />
+        </label>
+        <label>
+          Bridge token
+          <input id="bridge-token" type="password" minlength="24" required />
+        </label>
+        <label>
+          Default language
+          <input id="default-language" type="text" maxlength="50" placeholder="Python" />
+        </label>
+        <button class="button primary" type="submit">Save settings</button>
+        <p id="settings-status" class="status" role="status"></p>
+      </form>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

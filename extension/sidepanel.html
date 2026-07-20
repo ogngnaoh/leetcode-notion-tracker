@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeetCode Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">PERSONAL PRACTICE LOG</p>
+        <h1>LeetCode → Notion</h1>
+        <p class="muted">The current problem is detected; you supply the learning context.</p>
+      </header>
+
+      <section class="card" aria-labelledby="problem-heading">
+        <div class="row between">
+          <h2 id="problem-heading">Current problem</h2>
+          <button id="reload" class="button secondary" type="button">Reload</button>
+        </div>
+        <p id="problem-title" class="problem-title">Open a LeetCode problem.</p>
+        <p id="problem-meta" class="muted"></p>
+      </section>
+
+      <form id="capture-form" class="stack">
+        <div class="grid two">
+          <label>
+            Outcome
+            <select id="outcome" required>
+              <option value="Green">Green — cold solve</option>
+              <option value="Yellow">Yellow — slow or hinted</option>
+              <option value="Red">Red — needed solution</option>
+            </select>
+          </label>
+          <label>
+            Submission
+            <select id="submission-result">
+              <option>Accepted</option>
+              <option>Wrong Answer</option>
+              <option>Time Limit Exceeded</option>
+              <option>Memory Limit Exceeded</option>
+              <option>Runtime Error</option>
+              <option>Compile Error</option>
+              <option selected>Not Submitted</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid two">
+          <label>
+            Language
+            <input id="language" type="text" maxlength="50" placeholder="Python" required />
+          </label>
+          <label>
+            Total minutes
+            <input id="total-minutes" type="number" min="0" max="1440" placeholder="25" />
+          </label>
+        </div>
+
+        <label>
+          Help used
+          <select id="help-used">
+            <option>None</option>
+            <option>Pattern Hint</option>
+            <option>Conceptual Hint</option>
+            <option>Pseudocode</option>
+            <option>Editorial</option>
+            <option>Code Viewed</option>
+          </select>
+        </label>
+
+        <label>
+          Primary pattern
+          <input id="primary-pattern" type="text" maxlength="100" placeholder="Sliding Window" />
+        </label>
+
+        <label>
+          Main failure code
+          <select id="failure-code">
+            <option value="">None</option>
+            <option>P — Pattern Recognition</option>
+            <option>A — Algorithm / Invariant</option>
+            <option>I — Implementation / Syntax</option>
+            <option>E — Edge Cases / Testing</option>
+            <option>T — Time Management</option>
+            <option>C — Communication</option>
+          </select>
+        </label>
+
+        <label class="checkbox-row">
+          <input id="cold-attempt" type="checkbox" checked />
+          This was a cold attempt
+        </label>
+
+        <label>
+          Reflection
+          <textarea
+            id="notes"
+            rows="5"
+            maxlength="2000"
+            placeholder="What was the key trigger, invariant, bug, or edge case?"
+          ></textarea>
+        </label>
+
+        <details>
+          <summary>Optional code snapshot</summary>
+          <label>
+            Code
+            <textarea
+              id="code"
+              class="code"
+              rows="9"
+              maxlength="20000"
+              placeholder="Paste code only when it is useful to keep with this attempt."
+            ></textarea>
+          </label>
+        </details>
+
+        <button id="submit" class="button primary" type="submit">Log attempt</button>
+        <p id="status" class="status" role="status"></p>
+      </form>
+
+      <footer>
+        <button id="open-options" class="link-button" type="button">Bridge settings</button>
+      </footer>
+    </main>
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>
