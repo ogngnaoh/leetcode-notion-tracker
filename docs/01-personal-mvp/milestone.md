@@ -22,8 +22,8 @@ Goal: Ship a reliable personal Chrome-to-local-bridge-to-Notion workflow so one 
 ## Slices
 
 1. **Baseline and tracking** — shipped — initialized local Git, restored the corrected public-registry lockfile, passed the unchanged project check, and committed the scaffold plus milestone records.
-2. **Retry safety and secret-safe errors** — active — retain uncertain capture events, classify API failures, lock retry fields, and redact bridge diagnostics.
-3. **Real Notion provisioning** — pending — create and verify exactly two databases and a secret-free manifest.
+2. **Retry safety and secret-safe errors** — shipped — uncertain failures retain the exact in-memory event, retry fields lock, responses are validated and classified, and bridge diagnostics are bounded and redacted.
+3. **Real Notion provisioning** — active — create and verify exactly two databases and a secret-free manifest.
 4. **Bridge verification** — pending — verify health, authentication, validation, duplicate replay, reconciliation, and Notion state.
 5. **Chrome end to end** — pending — verify live metadata, explicit confirmation, retained retry, and one live Medium capture.
 6. **Release** — pending — run fresh checks and scans, update observed evidence, ship the milestone, and commit release documentation.
@@ -35,6 +35,8 @@ Goal: Ship a reliable personal Chrome-to-local-bridge-to-Notion workflow so one 
 - Tests added during this milestone are development status evidence, not independent verification.
 - The unchanged `npm run check`, real schema inspection, duplicate sample replay, live Chrome capture, and secret scan are the completion evidence.
 - The original lockfile contained 116 sandbox-internal `resolved` URLs. They were rewritten to `https://registry.npmjs.org/` without changing pinned versions or integrity hashes; a fresh `npm ci` then restored 61 packages with zero reported vulnerabilities.
+- The user reviewed the retry-coordinator, API-classification, malformed-JSON, and secret-safe route tests after their expected red runs and before production changes.
+- Runtime schema validation was kept out of the extension bundle; a narrow success-response guard preserves the contract while keeping the built side panel at 7.9 KB.
 
 ## Exit criteria
 

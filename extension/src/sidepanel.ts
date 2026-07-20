@@ -6,6 +6,7 @@ import type {
   SubmissionResult,
 } from '../../src/shared/contract.js';
 import { sendCapture } from './api.js';
+import { CaptureSubmissionCoordinator } from './capture-submission.js';
 import { getSettings } from './storage.js';
 import type { LeetCodeContext } from './types.js';
 
@@ -34,6 +35,17 @@ const code = element<HTMLTextAreaElement>('code');
 const openOptions = element<HTMLButtonElement>('open-options');
 
 let context: LeetCodeContext | null = null;
+const submissionCoordinator = new CaptureSubmissionCoordinator();
+
+function setPendingUi(pending: boolean): void {
+  for (const field of form.querySelectorAll<
+    HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  >('input, select, textarea')) {
+    field.disabled = pending;
+  }
+  reloadButton.disabled = pending;
+  submitButton.textContent = pending ? 'Retry same attempt' : 'Log attempt';
+}
 
 function setStatus(message: string, kind: 'neutral' | 'success' | 'error' = 'neutral'): void {
   status.textContent = message;
@@ -87,27 +99,31 @@ form.addEventListener('submit', (event) => {
       throw new Error('Open Bridge settings and save your bridge token first.');
     }
 
-    const capture: CaptureEvent = {
-      clientEventId: crypto.randomUUID(),
-      problem: context,
-      attempt: {
-        attemptedAt: new Date().toISOString(),
-        language: language.value.trim(),
-        submissionResult: submissionResult.value as SubmissionResult,
-        outcome: outcome.value as Outcome,
-        coldAttempt: coldAttempt.checked,
-        helpUsed: helpUsed.value as HelpUsed,
-        failureCode: (failureCode.value || null) as FailureCode | null,
-        totalMinutes: optionalNumber(totalMinutes),
-        primaryPattern: optionalText(primaryPattern),
-        notes: optionalText(notes),
-        code: optionalText(code),
-      },
-    };
-
     submitButton.disabled = true;
     setStatus('Writing to Notion…');
-    const result = await sendCapture(settings, capture);
+    const submission = submissionCoordinator.submit(
+      (): CaptureEvent => ({
+        clientEventId: crypto.randomUUID(),
+        problem: context!,
+        attempt: {
+          attemptedAt: new Date().toISOString(),
+          language: language.value.trim(),
+          submissionResult: submissionResult.value as SubmissionResult,
+          outcome: outcome.value as Outcome,
+          coldAttempt: coldAttempt.checked,
+          helpUsed: helpUsed.value as HelpUsed,
+          failureCode: (failureCode.value || null) as FailureCode | null,
+          totalMinutes: optionalNumber(totalMinutes),
+          primaryPattern: optionalText(primaryPattern),
+          notes: optionalText(notes),
+          code: optionalText(code),
+        },
+      }),
+      (capture) => sendCapture(settings, capture),
+    );
+    setPendingUi(submissionCoordinator.hasPending);
+    const result = await submission;
+    setPendingUi(false);
     const next = result.review.nextReview
       ? ` Next review: ${new Date(result.review.nextReview).toLocaleDateString()}.`
       : '';
@@ -119,6 +135,7 @@ form.addEventListener('submit', (event) => {
     code.value = '';
   })()
     .catch((error: unknown) => {
+      setPendingUi(submissionCoordinator.hasPending);
       setStatus(error instanceof Error ? error.message : 'Unable to log the attempt.', 'error');
     })
     .finally(() => {

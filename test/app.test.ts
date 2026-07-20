@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/bridge/app.js';
 import { CaptureService } from '../src/bridge/capture-service.js';
 import { MemoryCaptureRepository } from '../src/bridge/memory-repository.js';
@@ -66,5 +66,69 @@ describe('bridge app', () => {
     });
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ duplicate: false });
+  });
+
+  it('rejects malformed JSON as an invalid capture event', async () => {
+    const app = createApp({
+      bridgeToken: 'a-very-long-personal-bridge-token',
+      captureService: new CaptureService(new MemoryCaptureRepository()),
+    });
+    const response = await app.request('/api/capture', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer a-very-long-personal-bridge-token',
+        'Content-Type': 'application/json',
+      },
+      body: '{',
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'Invalid capture event' });
+  });
+
+  it('returns a fixed message and logs only bounded redacted diagnostics on failure', async () => {
+    const repository = new MemoryCaptureRepository();
+    const captureService = new CaptureService(repository);
+    const notionToken = 'ntn_' + 'A'.repeat(24);
+    const bridgeSecret = 'personal-' + 'B'.repeat(24);
+    const failure = Object.assign(
+      new Error(
+        `Notion rejected ${notionToken}; Authorization: Bearer ${bridgeSecret}; ${'x'.repeat(1_000)}`,
+      ),
+      { status: 502 },
+    );
+    vi.spyOn(captureService, 'capture').mockRejectedValue(failure);
+    const logger = { error: vi.fn() };
+    const app = createApp({
+      bridgeToken: 'a-very-long-personal-bridge-token',
+      captureService,
+      logger,
+    });
+
+    const response = await app.request('/api/capture', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer a-very-long-personal-bridge-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: 'Capture failed. Check the local bridge terminal and run npm run notion:verify.',
+    });
+    expect(logger.error).toHaveBeenCalledOnce();
+    expect(logger.error).toHaveBeenCalledWith('Capture failed', {
+      clientEventId: payload.clientEventId,
+      problemSlug: payload.problem.slug,
+      errorName: 'Error',
+      errorStatus: 502,
+      errorMessage: expect.any(String),
+    });
+    const logged = JSON.stringify(logger.error.mock.calls[0]);
+    expect(logged).not.toContain(notionToken);
+    expect(logged).not.toContain(bridgeSecret);
+    expect(logged.length).toBeLessThan(700);
   });
 });
