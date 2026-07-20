@@ -24,8 +24,8 @@ Goal: Ship a reliable personal Chrome-to-local-bridge-to-Notion workflow so one 
 1. **Baseline and tracking** — shipped — initialized local Git, restored the corrected public-registry lockfile, passed the unchanged project check, and committed the scaffold plus milestone records.
 2. **Retry safety and secret-safe errors** — shipped — uncertain failures retain the exact in-memory event, retry fields lock, responses are validated and classified, and bridge diagnostics are bounded and redacted.
 3. **Real Notion provisioning** — shipped — created and verified exactly two databases, one data source each, reciprocal relations, all required properties, and a secret-free manifest.
-4. **Bridge verification** — active — verify health, authentication, validation, duplicate replay, reconciliation, and Notion state.
-5. **Chrome end to end** — pending — verify live metadata, explicit confirmation, retained retry, and one live Medium capture.
+4. **Bridge verification** — shipped — verified health, authentication, validation, exact duplicate replay, and the resulting real Notion Problem, Attempt, reflection, and code.
+5. **Chrome end to end** — active — verify live metadata, explicit confirmation, retained retry, and one live Medium capture.
 6. **Release** — pending — run fresh checks and scans, update observed evidence, ship the milestone, and commit release documentation.
 
 ## Integration notes
@@ -38,6 +38,7 @@ Goal: Ship a reliable personal Chrome-to-local-bridge-to-Notion workflow so one 
 - The user reviewed the retry-coordinator, API-classification, malformed-JSON, and secret-safe route tests after their expected red runs and before production changes.
 - Runtime schema validation was kept out of the extension bundle; a narrow success-response guard preserves the contract while keeping the built side panel at 7.9 KB.
 - The real shared Notion parent was inspected empty before setup. The one-time setup completed on its first invocation; no cleanup or retry was needed.
+- The fixed sample returned 201 then 200 with identical page IDs and left exactly one Two Sum Attempt. No post-Attempt update failure occurred naturally, so live reconciliation was not exercised.
 
 ## Exit criteria
 

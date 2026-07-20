@@ -1,11 +1,11 @@
 # Start here next session
 
-Continue the active bridge slice in `04-bridge-verification.md`. Start the localhost bridge, verify health/authentication/validation, replay the fixed sample twice, and inspect the resulting Problem and Attempt through the API without printing secrets.
+Continue the active Chrome slice in `05-chrome-e2e.md`. Build the extension, restart the bridge, load/configure `dist/extension`, and run the explicit-confirmation, metadata, failure, retained-retry, and live Medium capture checks.
 
 # Current state
 
-Baseline, retry safety, and real Notion provisioning are shipped. The workspace has exactly two verified tracker databases with one data source each and reciprocal relations. `.env` is owner-only and ignored; the ID-only manifest is also ignored. No live capture has been sent yet.
+Baseline, retry safety, Notion provisioning, and bridge verification are shipped. The fixed sample is present exactly once in Notion and replay is idempotent. The bridge is stopped. The Chrome extension has not yet been loaded or tested in the owner's browser.
 
 # Open concerns
 
-The fixed sample uses a static July 20 timestamp and must produce one Green Problem plus one immutable Attempt on replay. A naturally occurring post-Attempt Problem-update failure cannot be forced during verification. Chrome verification still requires the owner's interactive browser session.
+Chrome loading and live LeetCode checks require interactive browser control and the owner's signed-in state if applicable. The retained retry must be verified with a new live Medium event so the existing fixed Two Sum sample remains unchanged.
