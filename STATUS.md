@@ -40,6 +40,16 @@
 
 - Create the UI-only `Due now` view: `Next Review on or before Today`, ascending.
 
+## Release evidence
+
+- Milestone 01 and all six slices are shipped.
+- Fresh `npm run check` passed 223 Vitest tests, 16 MV3 Playwright scenarios, formatting, TypeScript,
+  the extension build, and the security scan.
+- Fresh `npm run notion:verify` verified 13 exact Problems properties and 13 exact Attempts properties
+  in the real v2 workspace.
+- The standalone security scan and `git diff --check` passed; final review reported no unresolved
+  Critical or Important findings.
+
 ## Intentionally deferred
 
 - Cloud deployment

@@ -1,28 +1,43 @@
 # Verification record
 
-Verified in the generated scaffold on July 20, 2026.
+Verified from the release tree on July 20, 2026.
 
-## Fresh local checks
+## Fresh release gates
 
 ```text
-npm run format:check  → passed
-npm run typecheck     → passed
-npm run test          → 5 files, 15 tests passed
-npm run build:extension → passed
-npm run security:scan → passed
-npm audit             → 0 vulnerabilities
+npm run check          → passed
+  Prettier             → passed
+  TypeScript           → passed
+  Vitest               → 19 files, 223 tests passed
+  MV3 Playwright       → 16 tests passed
+  extension build      → passed
+  security scan        → passed
+npm run notion:verify  → Problems 13 properties; Attempts 13 properties; compatible
+npm run security:scan  → no Notion-token-shaped values in Git files or dist/extension
+git diff --check       → passed
 ```
 
-The extension build produced valid unpacked-extension assets in `dist/extension` during verification.
+The tests and browser fixture changed during implementation and are development evidence. Final
+read-only review found no unresolved Critical or Important findings.
 
-## Not run here
+## Independent live evidence
 
-The following require the owner's credentials or interactive browser session and are therefore delegated to the Codex handoff:
+After reloading the unpacked extension, the owner's Chrome side panel recognized Valid Sudoku without
+editor focus, scrolling, or a page refresh. It showed number/title, Medium difficulty, all three topic
+links, Python, expanded rendered lines 1–9, and active equal outcome controls.
 
-- `npm run notion:setup` against the owner's Notion workspace
-- `npm run notion:verify` against the created databases
-- A real Notion capture through the bridge
-- Loading the unpacked extension in Chrome
-- Live LeetCode DOM-selector verification
+One truthful `Couldn’t solve` click created Client Event ID
+`8318f850-d922-49a3-9e6a-37af14d9c492`. Read-only Notion inspection confirmed one immutable Attempt,
+the exact rendered code body, and canonical Problem state `Couldn’t solve`, solved streak 0, next review
+`2026-07-20`. Replaying the identical event returned `duplicate: true`, the same Attempt page ID, and
+left the Attempt count at one.
 
-No claim is made that those credential-dependent steps have been executed.
+The complete post-capture inventory contained no earlier Valid Sudoku Attempt, despite the plan's
+assumption that one existed. No existing Attempt was modified or deleted. The bridge was stopped,
+Playwright exited, browser control was released, review agents completed, and no visual-companion
+process was started.
+
+## Remaining manual item
+
+Create the optional Notion UI view with `Next Review on or before Today`, sorted ascending. Public API
+view management is unsupported and is intentionally not part of the release automation.

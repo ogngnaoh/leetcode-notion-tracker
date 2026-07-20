@@ -28,7 +28,8 @@ Goal: Ship a reliable personal Chrome-to-local-bridge-to-Notion workflow so one 
 5. **One-Click LeetCode Capture Overhaul** — shipped — migrated the existing two-database tracker,
    shipped automatic rendered-DOM recognition, compact repeatable outcomes, exact uncertain retry,
    deterministic browser coverage, and genuine Chrome-to-Notion acceptance.
-6. **Release** — active — run fresh checks and scans, update observed evidence, ship the milestone, and commit release documentation.
+6. **Release** — shipped — fresh checks, real schema verification, release evidence, and milestone
+   closeout are recorded in `06-release.md`.
 
 ## Integration notes
 
