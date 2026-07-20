@@ -1,11 +1,11 @@
 # Start here next session
 
-Continue the active real-Notion slice in `03-notion-provisioning.md`. Confirm the owner has created and shared one empty parent page and configured `.env` privately before running setup exactly once.
+Continue the active bridge slice in `04-bridge-verification.md`. Start the localhost bridge, verify health/authentication/validation, replay the fixed sample twice, and inspect the resulting Problem and Attempt through the API without printing secrets.
 
 # Current state
 
-Baseline and retry-safety slices are shipped. Commit `94ae18f` holds the verified scaffold. Retry behavior and secret-safe bridge handling are implemented; the unchanged check passes with 25 tests and a 7.9 KB side-panel bundle. The retry-safety commit follows this handoff update.
+Baseline, retry safety, and real Notion provisioning are shipped. The workspace has exactly two verified tracker databases with one data source each and reciprocal relations. `.env` is owner-only and ignored; the ID-only manifest is also ignored. No live capture has been sent yet.
 
 # Open concerns
 
-No `.env` or real Notion manifest exists yet. Provisioning must stop if the parent is not empty or setup partially fails. Chrome verification remains dependent on the owner's interactive signed-in browser session.
+The fixed sample uses a static July 20 timestamp and must produce one Green Problem plus one immutable Attempt on replay. A naturally occurring post-Attempt Problem-update failure cannot be forced during verification. Chrome verification still requires the owner's interactive browser session.
