@@ -24,6 +24,7 @@
 - Explicit click-only capture controls
 - Extension production build
 - Unit and route tests
+- Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery
 
 ## Verified with the real workspace and Chrome
 
@@ -35,6 +36,8 @@
   `Couldn’t solve` / `0` / `2026-07-20`.
 - Replaying that Client Event ID returned `duplicate: true` and kept the Valid Sudoku Attempt count at
   one.
+- The tracked Dock launcher opens through Finder in iTerm2, starts the exact expected localhost bridge,
+  refuses duplicates and unknown port owners, stops with Ctrl-C, and restarts cleanly.
 
 ## Remaining manual workspace step
 
@@ -42,8 +45,8 @@
 
 ## Release evidence
 
-- Milestone 01 and all six slices are shipped.
-- Fresh `npm run check` passed 223 Vitest tests, 16 MV3 Playwright scenarios, formatting, TypeScript,
+- Milestones 01 and 02 are shipped.
+- Fresh `npm run check` passed 241 Vitest tests, 16 MV3 Playwright scenarios, formatting, TypeScript,
   the extension build, and the security scan.
 - Fresh `npm run notion:verify` verified 13 exact Problems properties and 13 exact Attempts properties
   in the real v2 workspace.

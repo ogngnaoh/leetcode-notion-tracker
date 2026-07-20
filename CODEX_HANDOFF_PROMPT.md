@@ -34,6 +34,10 @@ Do not claim health unless the exact command exits successfully in the current t
 Keep exactly two Notion databases, one direct setup/verification path, one localhost Hono bridge,
 one MV3 side-panel extension, one explicit schema contract, and manual user-confirmed logging.
 
+Daily runtime startup is also deliberate: `Start LeetCode Tracker.command` runs the existing bridge
+in a visible foreground iTerm2 session. Do not replace it with a LaunchAgent, login item, hidden daemon,
+cloud bridge, native messaging host, or direct Notion token access unless the user changes scope.
+
 Do not add OAuth, accounts, a hosted database, an ORM, Docker, cloud infrastructure, React, a
 monorepo framework, background crawling, private LeetCode APIs, cookies, request interception,
 private Monaco APIs/editor-model access, automatic submission logging, coaching, or analytics.

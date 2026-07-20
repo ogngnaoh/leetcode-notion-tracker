@@ -3,6 +3,8 @@
 ## Runtime
 
 ```text
+deliberate Dock click → visible iTerm2 launcher → local Hono bridge
+
 LeetCode problem page
   → read-only content script
   → Chrome side panel
@@ -13,6 +15,11 @@ LeetCode problem page
 ```
 
 The extension does not call Notion directly. It stores a low-scope bridge token, while the bridge alone stores the Notion integration token.
+The owner starts the bridge explicitly from the Dock after login. The launcher remains attached to a
+visible iTerm2 session, resolves the repository relative to itself, and never installs a login item or
+hidden daemon. An atomic per-repository, per-port claim in the user's temporary directory closes the
+pre-bind race between rapid clicks; dead-process claims are reclaimed, while live or malformed claims
+fail closed without killing anything.
 
 ## Provisioning
 

@@ -10,9 +10,22 @@
 6. Run `npm run notion:verify`.
 7. Confirm exactly two child databases exist.
 
-## Bridge
+## Visible daily launcher
 
-1. Run `npm run dev:bridge`.
+1. In Finder, associate `.command` files with `/Applications/iTerm.app` and place
+   `Start LeetCode Tracker.command` in the Dock's document area.
+2. Click it once and confirm a visibly titled iTerm2 window reports the bridge listening on the
+   configured localhost port.
+3. Click it again and confirm it reports the existing healthy bridge without starting another process.
+4. Press Ctrl-C in the original window and confirm the bridge stops.
+5. Confirm the extension reports the bridge unavailable, then click the Dock launcher once and confirm
+   service returns.
+6. Temporarily occupy the configured port with a non-tracker process, click the launcher, and confirm
+   it refuses startup without terminating that process.
+
+## Bridge API
+
+1. Start the visible daily launcher (or run `npm run dev:bridge` for development).
 2. Open `http://127.0.0.1:8787/health`.
 3. Confirm the JSON response reports `ok: true`.
 4. Run the sample curl request in `examples/curl-capture.sh` after exporting `BRIDGE_TOKEN`.

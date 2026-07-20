@@ -34,6 +34,7 @@ docs/             Architecture, schema, security, and manual QA
 
 - Node.js 22+
 - Chrome 114+
+- iTerm2 installed at `/Applications/iTerm.app` for the deliberate daily launcher
 - Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
 - A Notion workspace
 - A Notion internal integration with read, insert, and update content capabilities
@@ -102,7 +103,21 @@ failures. It is removed only after the version-2 manifest is durable.
 Recovery also verifies the journal's SHA-256 binding to the original backup and rejects any extra or
 malformed backfill/expected fields before sending a page update.
 
-## 3. Start the local bridge
+## 3. Configure the one-click bridge launcher
+
+The tracker deliberately does not start a hidden service at login. Configure the visible launcher
+once:
+
+1. In Finder, select `Start LeetCode Tracker.command` and open **Get Info**.
+2. Under **Open with**, choose **iTerm.app**, then select **Change All**.
+3. Drag `Start LeetCode Tracker.command` to the Dock's document area, to the right of the divider.
+
+After each login, click that Dock item once. A titled iTerm2 window starts the local bridge and stays
+visible for its entire lifetime. Leave it open while using the extension; press Ctrl-C or close the
+window to stop the bridge. A second click reports an already-running bridge without creating another
+process. An unexpected process on the configured port is reported and never terminated automatically.
+
+For development, the direct command remains available:
 
 ```bash
 npm run dev:bridge
@@ -138,6 +153,13 @@ Then:
 8. Select the extension icon to open the side panel.
 
 ## Daily use
+
+1. Click the `Start LeetCode Tracker.command` item in the Dock.
+2. Wait for the visible iTerm2 window to report that the bridge is listening.
+3. Open any supported LeetCode problem and use the extension side panel.
+
+No Notion credential enters Chrome: the launcher starts the same localhost bridge, which reads the
+ignored local `.env` from the repository.
 
 On panel startup, the extension reads from the public problem-page DOM without focusing or scrolling
 LeetCode:
@@ -189,8 +211,8 @@ dependencies:
 npx playwright install chromium
 ```
 
-The MV3 suite starts its own authenticated mock bridge and must claim `127.0.0.1:8787`; stop the real
-bridge (or any other process using that port) before running it. A port collision fails immediately
+The MV3 suite starts its own authenticated mock bridge and must claim `127.0.0.1:8787`; stop the
+visible launcher bridge with Ctrl-C (or stop any other process using that port) before running it. A port collision fails immediately
 with an actionable error rather than allowing tests to reach a real bridge. LeetCode-shaped pages
 are fulfilled in-memory at matching `https://leetcode.com/problems/<slug>/` navigation URLs; the
 suite does not contact LeetCode or Notion.

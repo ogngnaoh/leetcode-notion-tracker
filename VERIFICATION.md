@@ -1,6 +1,6 @@
 # Verification record
 
-Verified from the release tree on July 20, 2026.
+Verified from the Milestone 02 release tree on July 20, 2026.
 
 ## Fresh release gates
 
@@ -8,7 +8,7 @@ Verified from the release tree on July 20, 2026.
 npm run check          → passed
   Prettier             → passed
   TypeScript           → passed
-  Vitest               → 19 files, 223 tests passed
+  Vitest               → 20 files, 241 tests passed
   MV3 Playwright       → 16 tests passed
   extension build      → passed
   security scan        → passed
@@ -19,6 +19,22 @@ git diff --check       → passed
 
 The tests and browser fixture changed during implementation and are development evidence. Final
 read-only review found no unresolved Critical or Important findings.
+
+## Independent daily-launcher evidence
+
+Finder reported `iTerm (default)` for `.command` files, and the Dock preference contained the tracked
+`Start LeetCode Tracker.command` file in its document area. Opening that exact Finder item created one
+visible iTerm2 launcher process and returned the exact health identity
+`{"ok":true,"service":"leetcode-notion-bridge"}` from `127.0.0.1:8787`.
+
+A second launch reported the existing bridge without creating another listener. Ctrl-C removed the
+listener; a later launch restored it. With a harmless unrelated listener temporarily holding port 8787,
+the launcher refused startup, printed the exact `lsof` inspection command, and left that listener alive.
+The test listener and every launcher-owned bridge were stopped afterward.
+
+The focused launcher checks changed during this work and are development evidence. Independent review
+identified a pre-bind double-click race; the final atomic claim implementation passed follow-up review
+with no unresolved Critical or Important findings.
 
 ## Independent live evidence
 

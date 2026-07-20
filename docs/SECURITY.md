@@ -25,6 +25,10 @@ The bridge token authorizes only the narrow bridge endpoint. It is not a Notion 
 ## Local-first default
 
 The bridge binds to `127.0.0.1`, not every network interface. The extension manifest grants bridge access only to localhost on port 8787.
+The Dock launcher stores no credentials, sources no shell environment file, and prints no secret
+values. It starts the same bridge in a visible foreground iTerm2 session only after an explicit click;
+there is no LaunchAgent, login item, cloud secret, or Notion token in extension storage.
+Its temporary startup claim contains only a process ID and is never used to transport credentials.
 
 ## LeetCode access
 
