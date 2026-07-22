@@ -145,6 +145,15 @@ async function readSessionForPage(page: Page): Promise<unknown> {
   }, page.url());
 }
 
+async function activeChromeTabUrl(): Promise<string | undefined> {
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error('MV3 service worker is unavailable.');
+  return worker.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    return tab?.url;
+  });
+}
+
 async function openProblem(fixture: ProblemFixture): Promise<Page> {
   const page = await context.newPage();
   await page.route('https://leetcode.com/**', async (route) => {
@@ -361,6 +370,12 @@ test('extracts and renders visible public-DOM problem, topics, language, and exa
   });
 
   await expect(panel.locator('#problem-title')).toHaveText('Two Sum');
+  await expect(panel.locator('.tracker-title')).toHaveText('LC TRACK');
+  expect(
+    await panel
+      .locator('.tracker-title img')
+      .evaluate((image: HTMLImageElement) => image.naturalWidth),
+  ).toBeGreaterThan(0);
   await expect(panel.locator('#problem-number')).toHaveText('#1');
   await expect(panel.locator('#problem-difficulty')).toHaveText('Easy');
   await expect(panel.locator('#problem-topics li')).toHaveText(['Array', 'Hash Table']);
@@ -378,6 +393,42 @@ test('extracts and renders visible public-DOM problem, topics, language, and exa
     .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().width));
   expect(new Set(outcomeWidths).size).toBe(1);
   expect(bridge.posts()).toHaveLength(0);
+});
+
+test('focuses an existing dashboard tab and recreates it after closure', async () => {
+  const { problem, panel } = await setupCase();
+  const dashboard = await context.newPage();
+  await dashboard.goto('http://127.0.0.1:8787/dashboard');
+  await expect(dashboard).toHaveTitle('LC Log Daily');
+  await problem.bringToFront();
+
+  await panel.locator('#open-dashboard').click();
+  await expect.poll(activeChromeTabUrl).toBe('http://127.0.0.1:8787/dashboard');
+  expect(context.pages().filter((page) => page.url().endsWith('/dashboard'))).toHaveLength(1);
+
+  await dashboard.close();
+  await problem.bringToFront();
+  await panel.locator('#open-dashboard').click();
+  await expect
+    .poll(() => context.pages().filter((page) => page.url().endsWith('/dashboard')).length)
+    .toBe(1);
+  await expect.poll(activeChromeTabUrl).toBe('http://127.0.0.1:8787/dashboard');
+});
+
+test('shows an actionable shortcut error for an invalid Bridge URL', async () => {
+  const { panel } = await setupCase();
+  const worker = context.serviceWorkers()[0];
+  if (!worker) throw new Error('MV3 service worker is unavailable.');
+  await worker.evaluate(async () => {
+    await chrome.storage.local.set({
+      trackerSettings: { bridgeUrl: 'not a URL', bridgeToken: 'irrelevant-token-value' },
+    });
+  });
+
+  await panel.locator('#open-dashboard').click();
+
+  await expect(panel.locator('#status')).toContainText('valid HTTP or HTTPS Bridge URL');
+  await expect(panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
 });
 
 test('labels a partial Monaco rendering with its visible logical range', async () => {
@@ -428,7 +479,7 @@ for (const result of ['Couldn’t solve', 'Needed help', 'Solved'] as const) {
   test(`${result} sends one exact v2 event after the click`, async () => {
     const { panel } = await setupCase();
     await choose(panel, result);
-    await expect(panel.locator('#success-confirmation')).toContainText(`${result} logged`);
+    await expect(panel.locator('#success-confirmation')).toHaveText('Attempt logged.');
     await expect(panel.locator('#outcome-actions')).toBeVisible();
     await expect(panel.locator(`button[data-result=${JSON.stringify(result)}]`)).toHaveAttribute(
       'aria-pressed',

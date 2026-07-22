@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { readBridgeEnv } from '../bridge/env.js';
@@ -48,6 +48,11 @@ async function main(): Promise<void> {
       signals: process,
       log: console.log,
       nodeExecutable: process.execPath,
+      openDashboard: async (url) => {
+        await new Promise<void>((resolveOpen, rejectOpen) => {
+          execFile('/usr/bin/open', [url], (error) => (error ? rejectOpen(error) : resolveOpen()));
+        });
+      },
     },
   );
 }

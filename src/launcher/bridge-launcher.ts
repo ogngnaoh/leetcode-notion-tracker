@@ -42,6 +42,7 @@ interface BridgeLauncherDependencies {
   signals: SignalSource;
   log(message: string): void;
   nodeExecutable: string;
+  openDashboard?(url: string): Promise<void>;
 }
 
 interface PortProbeSocket {
@@ -238,10 +239,20 @@ export async function runBridgeLauncher(
   dependencies: BridgeLauncherDependencies,
 ): Promise<number> {
   await validateLauncherFiles(options.root, options.manifestPath, dependencies.exists);
+  const dashboardUrl = `http://127.0.0.1:${options.port}/dashboard`;
+  const openDashboard = async () => {
+    if (!dependencies.openDashboard) return;
+    try {
+      await dependencies.openDashboard(dashboardUrl);
+    } catch {
+      dependencies.log(`Could not open the browser. Open ${dashboardUrl} manually.`);
+    }
+  };
   if (await dependencies.probeHealth(options.port)) {
     dependencies.log(
       `LeetCode Tracker bridge is already running on http://127.0.0.1:${options.port}. No second process was started.`,
     );
+    await openDashboard();
     return 0;
   }
 
@@ -261,6 +272,7 @@ export async function runBridgeLauncher(
       dependencies.log(
         `LeetCode Tracker bridge is already running on http://127.0.0.1:${options.port}. No second process was started.`,
       );
+      await openDashboard();
       return 0;
     }
 
@@ -268,7 +280,33 @@ export async function runBridgeLauncher(
     const child = dependencies.spawnBridge(
       bridgeSpawnSpec(options.root, dependencies.nodeExecutable),
     );
-    const exitCode = await waitForBridgeExit(child, dependencies.signals);
+    const exit = waitForBridgeExit(child, dependencies.signals);
+    let exited = false;
+    void exit.then(
+      () => {
+        exited = true;
+      },
+      () => {
+        exited = true;
+      },
+    );
+    if (dependencies.openDashboard) {
+      let opened = false;
+      for (let attempt = 0; attempt < 50 && !exited; attempt += 1) {
+        if (await dependencies.probeHealth(options.port)) {
+          await openDashboard();
+          opened = true;
+          break;
+        }
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+      }
+      if (!opened && !exited) {
+        dependencies.log(
+          `Bridge health did not become ready. Open ${dashboardUrl} after it starts.`,
+        );
+      }
+    }
+    const exitCode = await exit;
     dependencies.log('LeetCode Tracker bridge stopped.');
     return exitCode;
   } finally {

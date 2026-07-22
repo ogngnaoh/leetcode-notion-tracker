@@ -4,7 +4,6 @@ import { Client } from '@notionhq/client';
 import { z } from 'zod';
 import { readManifest } from './io.js';
 import {
-  DIFFICULTY_OPTION_NAMES,
   NOTION_API_VERSION,
   REQUIRED_ATTEMPTS_TYPES,
   REQUIRED_PROBLEMS_TYPES,
@@ -12,6 +11,18 @@ import {
   STATE_OPTIONS,
 } from './schema.js';
 import { verifyV2DataSource } from './verify-data-source.js';
+import {
+  ATTEMPTS_DATABASE_PRESENTATION,
+  ATTEMPTS_VIEW,
+  DIFFICULTY_OPTIONS,
+  PROBLEMS_ALL_VIEW,
+  PROBLEMS_DATABASE_PRESENTATION,
+  PROBLEMS_REVIEW_VIEW,
+  propertyIds,
+  verifyDatabasePresentation,
+  verifyManagedView,
+} from './presentation.js';
+import { listAllViews, requireUniqueView, retrieveManagedView } from './views.js';
 export { verifyV2DataSource } from './verify-data-source.js';
 
 const VerifyEnvSchema = z.object({
@@ -22,20 +33,44 @@ const VerifyEnvSchema = z.object({
 async function main(): Promise<void> {
   const env = VerifyEnvSchema.parse(process.env);
   const manifest = await readManifest(env.NOTION_MANIFEST_PATH);
-  if (manifest.version !== 2) {
-    throw new Error('Notion manifest is version 1. Run npm run notion:migrate:v2 first.');
+  if (manifest.version !== 3) {
+    throw new Error(
+      manifest.version === 1
+        ? 'Notion manifest is version 1. Run npm run notion:migrate:v2 first, then npm run notion:migrate:v3.'
+        : 'Notion manifest is version 2. Run npm run notion:migrate:v3 first.',
+    );
   }
   const notion = new Client({ auth: env.NOTION_TOKEN, notionVersion: NOTION_API_VERSION });
 
-  const [problems, attempts] = await Promise.all([
+  const [problems, attempts, problemsDatabase, attemptsDatabase] = await Promise.all([
     notion.dataSources.retrieve({ data_source_id: manifest.problems.dataSourceId }),
     notion.dataSources.retrieve({ data_source_id: manifest.attempts.dataSourceId }),
+    notion.databases.retrieve({ database_id: manifest.problems.databaseId }),
+    notion.databases.retrieve({ database_id: manifest.attempts.databaseId }),
   ]);
   verifyV2DataSource(problems, 'LeetCode Problems', REQUIRED_PROBLEMS_TYPES, {
     relation: { name: 'Attempts', dataSourceId: manifest.attempts.dataSourceId },
-    selects: { 'Practice State': STATE_OPTIONS },
-    selectNames: { Difficulty: DIFFICULTY_OPTION_NAMES },
+    selects: { 'Practice State': STATE_OPTIONS, Difficulty: DIFFICULTY_OPTIONS },
   });
+  verifyDatabasePresentation(problemsDatabase, 'LeetCode Problems', PROBLEMS_DATABASE_PRESENTATION);
+  verifyDatabasePresentation(attemptsDatabase, 'LeetCode Attempts', ATTEMPTS_DATABASE_PRESENTATION);
+  const [problemViewRefs, attemptViewRefs] = await Promise.all([
+    listAllViews(notion, manifest.problems.dataSourceId),
+    listAllViews(notion, manifest.attempts.dataSourceId),
+  ]);
+  const reviewRef = requireUniqueView(problemViewRefs, 'Review queue');
+  const allRef = requireUniqueView(problemViewRefs, 'All problems');
+  const recentRef = requireUniqueView(attemptViewRefs, 'Recent attempts');
+  if (!reviewRef || !allRef || !recentRef)
+    throw new Error('One or more managed views are missing.');
+  const [review, all, recent] = await Promise.all([
+    retrieveManagedView(notion, reviewRef.id),
+    retrieveManagedView(notion, allRef.id),
+    retrieveManagedView(notion, recentRef.id),
+  ]);
+  verifyManagedView(review, PROBLEMS_REVIEW_VIEW(propertyIds(problems)));
+  verifyManagedView(all, PROBLEMS_ALL_VIEW(propertyIds(problems)));
+  verifyManagedView(recent, ATTEMPTS_VIEW(propertyIds(attempts)));
   verifyV2DataSource(attempts, 'LeetCode Attempts', REQUIRED_ATTEMPTS_TYPES, {
     relation: { name: 'Problem', dataSourceId: manifest.problems.dataSourceId },
     selects: { Result: RESULT_OPTIONS, 'Resulting State': STATE_OPTIONS },

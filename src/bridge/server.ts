@@ -1,9 +1,13 @@
 import 'dotenv/config';
 import { serve } from '@hono/node-server';
+import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { createApp } from './app.js';
 import { CaptureService } from './capture-service.js';
+import { DashboardSettingsStore } from './dashboard-settings.js';
 import { readBridgeEnv } from './env.js';
 import { NotionCaptureRepository } from './notion-repository.js';
+import { DashboardStore } from './dashboard.js';
 
 async function main(): Promise<void> {
   const env = readBridgeEnv();
@@ -11,9 +15,26 @@ async function main(): Promise<void> {
     env.NOTION_TOKEN,
     env.NOTION_MANIFEST_PATH,
   );
+  const dashboardSettings = new DashboardSettingsStore({
+    path: resolve(process.cwd(), 'build/dashboard-settings.json'),
+    fallbackGoal: env.DAILY_NEW_PROBLEM_GOAL,
+  });
+  const savedSettings = await dashboardSettings.load();
+  const dashboard = new DashboardStore({
+    goal: savedSettings.dailyNewProblemGoal,
+    load: (date) => repository.loadDashboard(date),
+  });
+  void dashboard.refresh().catch(() => {
+    console.error('Dashboard prefetch failed. The dashboard will retry when opened.');
+  });
   const app = createApp({
     bridgeToken: env.BRIDGE_TOKEN,
     captureService: new CaptureService(repository),
+    dashboard,
+    dashboardSettings: {
+      antiForgeryToken: randomUUID(),
+      saveGoal: (goal) => dashboardSettings.save(goal),
+    },
   });
 
   serve({

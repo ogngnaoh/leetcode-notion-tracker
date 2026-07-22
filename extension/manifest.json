@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "LC Log",
+  "name": "LCTrack",
   "version": "0.1.2",
   "description": "leetcode tracker (notion-powered)",
-  "minimum_chrome_version": "114",
+  "minimum_chrome_version": "116",
   "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "host_permissions": [
     "https://leetcode.com/problems/*",
@@ -21,7 +21,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open LC Log",
+    "default_title": "Open LCTrack",
     "default_icon": {
       "16": "icons/square-terminal-16.png",
       "32": "icons/square-terminal-32.png",

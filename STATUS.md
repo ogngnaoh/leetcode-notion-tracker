@@ -14,6 +14,11 @@
 - One-time two-database setup command
 - Safe, dry-run-by-default in-place Notion v1→v2 migration command
 - Exact v2 schema verification command
+- Exact v3 verification and dry-run-by-default v2→v3 migration
+- Local daily dashboard with Notion-backed counts, in-memory refresh, stale fallback, and a locally
+  persisted 1–100 new-solve target
+- Dry-run-by-default rollback for the retired paid Notion dashboard
+- Reproducible Notion icons, descriptions, native option colors, and managed table views
 - MV3 side-panel extension
 - LeetCode current-page metadata extraction
 - Automatic public-DOM topic/language extraction and rendered Monaco logical-line reconstruction
@@ -21,9 +26,11 @@
 - One-time content-script reinjection after extension reload
 - Deterministic bundled-Chromium MV3 acceptance suite
 - Extension settings page
+- Always-visible extension shortcut that focuses or creates the configured local dashboard tab
+- Tab-scoped extension action available on any tab without carrying the panel into other Chrome tabs
 - Explicit click-only capture controls
 - Extension production build
-- Version 0.1.2 LC Log personal-use branding with the `leetcode tracker (notion-powered)` description
+- Version 0.1.2 LCTrack personal-use branding with the `leetcode tracker (notion-powered)` description
   and Chrome-supported Lucide SquareTerminal PNG icons
 - Unit and route tests
 - Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery
@@ -40,18 +47,20 @@
   one.
 - The tracked Dock launcher opens through Finder in iTerm2, starts the exact expected localhost bridge,
   refuses duplicates and unknown port owners, stops with Ctrl-C, and restarts cleanly.
-
-## Remaining manual workspace step
-
-- Create the UI-only `Due now` view: `Next Review on or before Today`, ascending.
+- The live Problems and Attempts databases have the LC Log presentation contract; API read-back
+  confirmed the original Problem page ID and null Difficulty, zero Attempts, and zero pending changes.
+- The live manifest is version 3 with `First Solved` backfilled from paginated Attempts.
+- Independent 2026-07-21 queries confirmed 1 new solve and 5 due-review rows with exact direct URLs,
+  fields, and ordering.
 
 ## Release evidence
 
-- Milestones 01 and 02 are shipped.
-- Fresh `npm run check` passed 241 Vitest tests, 16 MV3 Playwright scenarios, formatting, TypeScript,
-  the extension build, and the security scan.
-- Fresh `npm run notion:verify` verified 13 exact Problems properties and 13 exact Attempts properties
-  in the real v2 workspace.
+- Milestones 01 through 05 are shipped; milestone 04’s paid Notion dashboard is retired.
+- Fresh `npm run check` passed formatting, TypeScript, all 326 Vitest tests, all 22 Playwright
+  scenarios, the extension build, and the security scan after the label-clearance, tab-scoping, and
+  direct-user-gesture side-panel opening follow-ups.
+- The latest external `npm run notion:verify` evidence verified 14 Problems and 13 Attempts properties
+  plus icons, descriptions, option colors, and managed views in the real v3 workspace.
 - The standalone security scan and `git diff --check` passed; final review reported no unresolved
   Critical or Important findings.
 
@@ -59,7 +68,6 @@
 
 - Cloud deployment
 - Offline queue
-- Public-API management of the `Due now` Notion view (unsupported by Notion)
 - Multiple tracker schemas
 - Notion OAuth for other users
 - Recruiting/application tracking

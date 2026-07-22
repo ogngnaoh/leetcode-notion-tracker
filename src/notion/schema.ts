@@ -1,8 +1,8 @@
+import { DIFFICULTY_OPTIONS } from './presentation.js';
+
 export const NOTION_API_VERSION = '2026-03-11' as const;
 
-const option = (name: string) => ({ name });
-
-export const DIFFICULTY_OPTION_NAMES = ['Easy', 'Medium', 'Hard', 'Unknown'] as const;
+export const DIFFICULTY_OPTION_NAMES = DIFFICULTY_OPTIONS.map(({ name }) => name);
 
 export const STATE_OPTIONS = [
   { name: 'New', color: 'gray' },
@@ -21,13 +21,14 @@ export const PROBLEMS_PROPERTIES = {
   Number: { number: { format: 'number' as const } },
   URL: { url: {} },
   Difficulty: {
-    select: { options: DIFFICULTY_OPTION_NAMES.map(option) },
+    select: { options: DIFFICULTY_OPTIONS },
   },
   Topics: { multi_select: {} },
   'Practice State': { select: { options: STATE_OPTIONS } },
   'Solved Streak': { number: { format: 'number' as const } },
   'Next Review': { date: {} },
   'Last Attempt': { date: {} },
+  'First Solved': { date: {} },
   'Extension Managed': { checkbox: {} },
 } as const;
 
@@ -85,7 +86,7 @@ export const V1_ATTEMPTS_TYPES: Record<string, string> = {
   'Created Time': 'created_time',
 };
 
-export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
+export const V2_REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
   Problem: 'title',
   'External Key': 'rich_text',
   Slug: 'rich_text',
@@ -101,7 +102,12 @@ export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
   Attempts: 'relation',
 };
 
-export const REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
+export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
+  ...V2_REQUIRED_PROBLEMS_TYPES,
+  'First Solved': 'date',
+};
+
+export const V2_REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
   Attempt: 'title',
   'Client Event ID': 'rich_text',
   Problem: 'relation',
@@ -117,12 +123,14 @@ export const REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
   'Created Time': 'created_time',
 };
 
+export const REQUIRED_ATTEMPTS_TYPES = V2_REQUIRED_ATTEMPTS_TYPES;
+
 export const INTERMEDIATE_PROBLEMS_TYPES: Record<string, string> = {
   ...V1_PROBLEMS_TYPES,
-  ...REQUIRED_PROBLEMS_TYPES,
+  ...V2_REQUIRED_PROBLEMS_TYPES,
 };
 
 export const INTERMEDIATE_ATTEMPTS_TYPES: Record<string, string> = {
   ...V1_ATTEMPTS_TYPES,
-  ...REQUIRED_ATTEMPTS_TYPES,
+  ...V2_REQUIRED_ATTEMPTS_TYPES,
 };

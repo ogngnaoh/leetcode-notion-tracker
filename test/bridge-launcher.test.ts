@@ -55,6 +55,49 @@ describe('visible bridge launcher', () => {
     expect(isPortOccupied).not.toHaveBeenCalled();
   });
 
+  it('opens the dashboard once for an already healthy bridge', async () => {
+    const openDashboard = vi.fn(async () => undefined);
+    await expect(
+      launcher.runBridgeLauncher(
+        { root: '/tracker', port: 8787, manifestPath: 'build/notion-manifest.json' },
+        {
+          exists: vi.fn(async () => true),
+          probeHealth: vi.fn(async () => true),
+          isPortOccupied: vi.fn(async () => true),
+          spawnBridge: vi.fn(),
+          signals: new EventEmitter(),
+          log: vi.fn(),
+          nodeExecutable: '/node',
+          openDashboard,
+        },
+      ),
+    ).resolves.toBe(0);
+    expect(openDashboard).toHaveBeenCalledOnce();
+    expect(openDashboard).toHaveBeenCalledWith('http://127.0.0.1:8787/dashboard');
+  });
+
+  it('logs the dashboard URL and remains successful when macOS open fails', async () => {
+    const log = vi.fn();
+    await expect(
+      launcher.runBridgeLauncher(
+        { root: '/tracker', port: 8787, manifestPath: 'build/notion-manifest.json' },
+        {
+          exists: vi.fn(async () => true),
+          probeHealth: vi.fn(async () => true),
+          isPortOccupied: vi.fn(),
+          spawnBridge: vi.fn(),
+          signals: new EventEmitter(),
+          log,
+          nodeExecutable: '/node',
+          openDashboard: vi.fn(async () => Promise.reject(new Error('open failed'))),
+        },
+      ),
+    ).resolves.toBe(0);
+    expect(log).toHaveBeenCalledWith(
+      'Could not open the browser. Open http://127.0.0.1:8787/dashboard manually.',
+    );
+  });
+
   it('refuses an unexpected listener without terminating it', async () => {
     await expect(
       launcher.decideBridgeStartup(8787, {
@@ -183,6 +226,40 @@ describe('visible bridge launcher', () => {
       'Starting LeetCode Tracker bridge on http://127.0.0.1:8787…',
       'LeetCode Tracker bridge stopped.',
     ]);
+  });
+
+  it('waits for health, opens once, and stops polling when the child exits', async () => {
+    vi.useFakeTimers();
+    const child = Object.assign(new EventEmitter(), { kill: vi.fn(() => true) });
+    const spawnBridge = vi.fn(() => child);
+    const probeHealth = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const openDashboard = vi.fn(async () => undefined);
+    const completion = launcher.runBridgeLauncher(
+      { root: '/tracker', port: 8787, manifestPath: 'build/notion-manifest.json' },
+      {
+        exists: vi.fn(async () => true),
+        probeHealth,
+        isPortOccupied: vi.fn(async () => false),
+        spawnBridge,
+        signals: new EventEmitter(),
+        log: vi.fn(),
+        nodeExecutable: '/node',
+        openDashboard,
+      },
+    );
+    await vi.waitFor(() => expect(spawnBridge).toHaveBeenCalledOnce());
+    await vi.advanceTimersByTimeAsync(100);
+    expect(openDashboard).toHaveBeenCalledOnce();
+    child.emit('exit', 0, null);
+    await expect(completion).resolves.toBe(0);
+    const callsAtExit = probeHealth.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(probeHealth).toHaveBeenCalledTimes(callsAtExit);
+    vi.useRealTimers();
   });
 
   it('atomically suppresses two concurrent launchers before the bridge binds', async () => {

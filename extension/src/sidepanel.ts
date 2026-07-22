@@ -9,6 +9,8 @@ import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 import { SidePanelController, type SidePanelView } from './sidepanel-controller.js';
 import { SidePanelTabCoordinator, type VisibleTab } from './sidepanel-tab-coordinator.js';
 import { createSnapshotReader } from './sidepanel-snapshot-reader.js';
+import { difficultyBadgeClass } from './difficulty-badge.js';
+import { openDashboardShortcut } from './dashboard-shortcut.js';
 import { getSettings } from './storage.js';
 
 function element<T extends HTMLElement>(id: string): T {
@@ -30,6 +32,7 @@ const retryAttempt = element<HTMLButtonElement>('retry-attempt');
 const successConfirmation = element<HTMLParagraphElement>('success-confirmation');
 const status = element<HTMLParagraphElement>('status');
 const openOptions = element<HTMLButtonElement>('open-options');
+const openDashboard = element<HTMLButtonElement>('open-dashboard');
 const outcomeButtons = Array.from(
   outcomeActions.querySelectorAll<HTMLButtonElement>('button[data-result]'),
 );
@@ -64,6 +67,7 @@ function renderSnapshot(snapshot: LeetCodeSnapshot | null): void {
     ? `#${snapshot.problem.number}`
     : 'UNNUMBERED';
   problemTitle.textContent = snapshot.problem.title;
+  problemDifficulty.className = `badge ${difficultyBadgeClass(snapshot.problem.difficulty)}`;
   problemDifficulty.textContent = snapshot.problem.difficulty;
   renderTopics(snapshot.problem.topics);
   codeLanguage.textContent = snapshot.language;
@@ -88,9 +92,7 @@ function render(view: SidePanelView): void {
   }
   retryAttempt.disabled = view.busy;
   retryAttempt.setAttribute('aria-busy', String(view.busy));
-  successConfirmation.textContent = view.loggedResult
-    ? `${view.loggedResult} logged for this exact code.`
-    : '';
+  successConfirmation.textContent = view.loggedResult ? 'Attempt logged.' : '';
   status.textContent = view.message;
   status.className =
     view.mode === 'ready' && view.loggedResult !== null
@@ -178,6 +180,36 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 
 openOptions.addEventListener('click', () => {
   void chrome.runtime.openOptionsPage();
+});
+
+openDashboard.addEventListener('click', () => {
+  openDashboard.disabled = true;
+  void getSettings()
+    .then((settings) =>
+      openDashboardShortcut(settings.bridgeUrl, {
+        queryTabs: () => chrome.tabs.query({}),
+        focusWindow: async (windowId) => {
+          await chrome.windows.update(windowId, { focused: true });
+        },
+        activateTab: async (tabId) => {
+          await chrome.tabs.update(tabId, { active: true });
+        },
+        createTab: async (url) => {
+          await chrome.tabs.create({ url });
+        },
+      }),
+    )
+    .catch((error: unknown) => {
+      status.textContent =
+        error instanceof Error && error.message.includes('Bridge URL')
+          ? error.message
+          : 'Could not open the dashboard. Check Bridge settings and make sure Chrome can open the local bridge.';
+      status.className = 'status error';
+      openOptions.dataset.attention = 'true';
+    })
+    .finally(() => {
+      openDashboard.disabled = false;
+    });
 });
 
 void tabCoordinator.rebindActiveTab().catch((error: unknown) => {

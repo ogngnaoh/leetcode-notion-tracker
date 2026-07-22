@@ -13,6 +13,7 @@ only the original backup path, manifest/API identifiers, schema shapes, page IDs
 values, and prepared backfill expectations; it is deleted after the version-2 manifest succeeds.
 Those expectations are validated against exact migration-owned keys and value shapes, and the
 journal's SHA-256 binding plus the backup's exact structure are verified before recovery writes.
+The v2→v3 path uses the same token-free boundary for page IDs and `First Solved` recovery values.
 
 The extension stores:
 
@@ -21,6 +22,16 @@ The extension stores:
 - Per-tab, session-scoped pending retry bodies and last-success presentation records
 
 The bridge token authorizes only the narrow bridge endpoint. It is not a Notion credential.
+
+The public dashboard HTML contains no bridge or Notion credential. Its settings form receives one
+random anti-forgery token for the lifetime of the bridge process and must echo it in the custom
+`X-LC-Dashboard-Token` header to `POST /dashboard/settings`. The route has no CORS policy, so a
+cross-origin page cannot read the token or send the custom header. CSP remains default-deny and allows
+only same-origin scripts, styles, images, fonts, and the settings connection. The route can change only
+the integer `dailyNewProblemGoal` from 1 through 100; it is not a generic file or Notion proxy.
+
+The saved dashboard preference lives in ignored `build/dashboard-settings.json`. It contains no
+token or Notion data, is replaced atomically, and is never copied into extension storage or output.
 
 ## Local-first default
 
@@ -59,6 +70,7 @@ Run `npm run notion:migrate:v2` without flags first. Inspect the reported backup
 running `npm run notion:migrate:v2 -- --apply`. Backups preserve legacy practice data and may contain
 personal notes or code-adjacent reflections, so keep `build/` local and ignored even though it is
 token-free.
+Use the same review-before-apply sequence for `npm run notion:migrate:v3`.
 
 ## Before remote deployment
 

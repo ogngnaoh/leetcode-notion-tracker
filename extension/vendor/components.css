@@ -26,3 +26,26 @@
 .badge { display: inline-flex; align-items: center; padding: 2px 7px; text-transform: uppercase; letter-spacing: var(--tracking);
   border: var(--border-width) solid var(--color-black); }
 .badge--muted   { border-color: var(--border-control); color: var(--text-secondary); }
+
+.difficulty-badge--easy {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: var(--color-success-surface);
+}
+
+.difficulty-badge--medium {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  background: var(--color-warning-surface);
+}
+
+.difficulty-badge--hard {
+  border-color: var(--color-critical);
+  color: var(--color-critical);
+  background: var(--color-critical-surface);
+}
+
+.difficulty-badge--unknown {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}

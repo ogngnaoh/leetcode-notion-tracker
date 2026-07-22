@@ -62,11 +62,12 @@ function problemRecord() {
     solvedStreak: 0,
     nextReview: null,
     lastAttempt: null,
+    firstSolved: null,
   };
 }
 
-describe('NotionCaptureRepository v2 mapping', () => {
-  it('creates a Problem with only canonical metadata and v2 review properties', async () => {
+describe('NotionCaptureRepository v3 mapping', () => {
+  it('creates a Problem with only canonical metadata and v3 review properties', async () => {
     const fake = fakeNotion();
     fake.pages.create.mockResolvedValue({ id: 'problem-1' });
 
@@ -87,6 +88,7 @@ describe('NotionCaptureRepository v2 mapping', () => {
       'Solved Streak': { number: 0 },
       'Next Review': { date: null },
       'Last Attempt': { date: null },
+      'First Solved': { date: null },
       'Extension Managed': { checkbox: true },
     });
   });
@@ -190,6 +192,7 @@ describe('NotionCaptureRepository v2 mapping', () => {
           'Solved Streak': { type: 'number', number: 3 },
           'Next Review': { type: 'date', date: { start: '2026-07-27' } },
           'Last Attempt': { type: 'date', date: { start: '2026-07-20T08:30:00-04:00' } },
+          'First Solved': { type: 'date', date: { start: '2026-07-18T08:30:00-04:00' } },
         }),
       ],
     });
@@ -207,6 +210,7 @@ describe('NotionCaptureRepository v2 mapping', () => {
       solvedStreak: 3,
       nextReview: '2026-07-27',
       lastAttempt: '2026-07-20T08:30:00-04:00',
+      firstSolved: '2026-07-18T08:30:00-04:00',
     });
   });
 
@@ -221,6 +225,7 @@ describe('NotionCaptureRepository v2 mapping', () => {
             rich_text: [{ plain_text: 'leetcode:two-sum' }],
           },
           'Attempted At': { type: 'date', date: { start: event.attempt.attemptedAt } },
+          Result: { type: 'select', select: { name: 'Solved' } },
           'Resulting State': { type: 'select', select: { name: 'Solved' } },
           'Resulting Solved Streak': { type: 'number', number: 1 },
           'Resulting Next Review': { type: 'date', date: { start: '2026-07-21' } },
@@ -233,6 +238,7 @@ describe('NotionCaptureRepository v2 mapping', () => {
       problemPageId: 'problem-1',
       problemKey: 'leetcode:two-sum',
       attemptedAt: event.attempt.attemptedAt,
+      result: 'Solved',
       review,
     });
 
@@ -267,5 +273,56 @@ describe('NotionCaptureRepository v2 mapping', () => {
         'Last Attempt': { date: { start: event.attempt.attemptedAt } },
       },
     });
+  });
+
+  it('fully paginates daily solves and due reviews with exact filters and ordering', async () => {
+    const fake = fakeNotion();
+    const duePage = (id: string, title: string, date: string) =>
+      fullPage(id, {
+        Problem: { type: 'title', title: [{ plain_text: title }] },
+        URL: { type: 'url', url: `https://leetcode.com/problems/${id}/` },
+        Difficulty: { type: 'select', select: { name: 'Medium' } },
+        'Practice State': { type: 'select', select: { name: 'Needed help' } },
+        'Solved Streak': { type: 'number', number: 0 },
+        'Next Review': { type: 'date', date: { start: date } },
+      });
+    fake.dataSources.query.mockImplementation(async (request: any) => {
+      if (request.start_cursor === 's2')
+        return { results: [{ id: 'solve-2' }], has_more: false, next_cursor: null };
+      if (request.start_cursor === 'd2')
+        return {
+          results: [duePage('alpha', 'Alpha', '2026-07-20')],
+          has_more: false,
+          next_cursor: null,
+        };
+      if (request.filter.property === 'First Solved')
+        return { results: [{ id: 'solve-1' }], has_more: true, next_cursor: 's2' };
+      return {
+        results: [duePage('zeta', 'Zeta', '2026-07-20')],
+        has_more: true,
+        next_cursor: 'd2',
+      };
+    });
+
+    await expect(repository(fake).loadDashboard('2026-07-21')).resolves.toMatchObject({
+      newSolveCount: 2,
+      due: [{ title: 'Zeta' }, { title: 'Alpha' }],
+    });
+    expect(fake.dataSources.query.mock.calls.map(([request]) => request)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filter: { property: 'First Solved', date: { equals: '2026-07-21' } },
+        }),
+        expect.objectContaining({ start_cursor: 's2' }),
+        expect.objectContaining({
+          filter: { property: 'Next Review', date: { on_or_before: '2026-07-21' } },
+          sorts: [
+            { property: 'Next Review', direction: 'ascending' },
+            { property: 'Problem', direction: 'ascending' },
+          ],
+        }),
+        expect.objectContaining({ start_cursor: 'd2' }),
+      ]),
+    );
   });
 });

@@ -3,7 +3,7 @@
 ## Runtime
 
 ```text
-deliberate Dock click → visible iTerm2 launcher → local Hono bridge
+deliberate Dock click → visible iTerm2 launcher → local Hono bridge → local daily dashboard
 
 LeetCode problem page
   → read-only content script
@@ -21,14 +21,20 @@ hidden daemon. An atomic per-repository, per-port claim in the user's temporary 
 pre-bind race between rapid clicks; dead-process claims are reclaimed, while live or malformed claims
 fail closed without killing anything.
 
+Dashboard solve counts and due rows come only from Notion. The daily new-solve target is separate,
+non-canonical presentation configuration: the bridge atomically stores
+`{ "dailyNewProblemGoal": number }` in ignored `build/dashboard-settings.json` and uses
+`DAILY_NEW_PROBLEM_GOAL` only when no valid saved preference can be loaded. Serialized saves make the
+last accepted request win, and the in-memory denominator changes only after persistence succeeds.
+
 ## Provisioning
 
 ```text
 .env + src/notion/schema.ts
   → npm run notion:setup
   → Notion REST API
-  → two databases + relation
-  → build/notion-manifest.json (version 2)
+  → two databases + relation + three managed table views
+  → build/notion-manifest.json (version 3)
 ```
 
 The setup operation remains intentionally one-time. An existing version-1 tracker uses the single
@@ -53,6 +59,14 @@ Journal recovery accepts only the exact migration-owned backfill/expected keys a
 original backup's SHA-256 plus its manifest, shape, count, page-ID, and legacy-value structure before
 any recovery mutation.
 
+```text
+exact v2 manifest + paginated Problems/Attempts inventory
+  → npm run notion:migrate:v3          (dry-run)
+  → token-free backup + earliest solved Attempt derivation
+  → npm run notion:migrate:v3 -- --apply
+  → journal → add/backfill/verify First Solved → manifest v3
+```
+
 ## Data flow for one capture
 
 1. On startup, the side panel requests the current snapshot. If an extension reload left no receiver,
@@ -69,7 +83,8 @@ any recovery mutation.
 7. It computes the calendar-date review transition.
 8. It creates one immutable Attempt containing Result, Resulting State, Resulting Solved Streak, and
    Resulting Next Review.
-9. It updates the Problem's Practice State, Solved Streak, Last Attempt, and Next Review.
+9. For a solved Attempt, it sets `First Solved` when missing or later than that Attempt.
+10. It updates the Problem's Practice State, Solved Streak, Last Attempt, and Next Review.
 
 The resulting review state is stored on the Attempt so a retry can reconcile a partially completed
 write without incrementing the solved streak twice.
@@ -80,9 +95,11 @@ with a presentation-only `lastSuccess`; outcomes remain enabled, the last result
 the bridge's returned review state is rendered until another success or fingerprint change. Version-1
 success locks are backward-read for the current Chrome session.
 
-The optional `Due now` view is a one-time UI concern: filter `Next Review on or before Today` and sort
-ascending. Public Notion API view management is unsupported, so automated setup and migration do not
-create or claim this view.
+The Notion presentation contract is defined once and shared by setup and verification. It includes
+database icons/descriptions, exact native option colors, and three managed table views: Problems
+`Review queue` and `All problems`, plus Attempts `Recent attempts`. Verification checks their filters,
+sorts, property order and visibility, widths, wrapping, date/time formats, frozen title column,
+disabled subtasks, and vertical-grid setting while allowing unrelated user-created views.
 
 ## Trust boundaries
 
@@ -92,11 +109,22 @@ Can read the currently displayed LeetCode problem page. It cannot access the Not
 
 ### Side panel
 
-Can access extension storage and call the configured bridge. It creates the capture event only after explicit submission.
+Can access extension storage and call the configured bridge. It creates the capture event only after
+explicit submission. Its dashboard shortcut derives the bridge origin’s exact `/dashboard` URL,
+focuses a matching tab and Chrome window (preferring an active match), and creates a tab only when no
+match exists. It stores no additional shortcut setting. The extension action disables Chrome’s global
+side-panel behavior and enables `sidepanel.html` only for the exact tab where the user clicked. The
+action is available on any tab, but switching tabs does not carry the panel into tabs where it was not
+opened.
 
 ### Bridge
 
-Can read and write only the Notion resources exposed by the integration. Its public surface is intentionally limited to `/health`, authenticated read-only `/api/problems/:slug/status`, and authenticated `/api/capture`.
+Can read and write only the Notion resources exposed by the integration. `/dashboard` is a local,
+secret-free HTML surface backed by an in-memory Notion snapshot plus the local goal preference.
+`POST /dashboard/settings` accepts only that bounded goal. It requires a per-process token rendered
+into the dashboard and repeated in `X-LC-Dashboard-Token`; no CORS headers are enabled for this route.
+The file write completes before the in-memory value changes. Extension capture APIs remain bearer
+authenticated.
 
 ### Notion
 

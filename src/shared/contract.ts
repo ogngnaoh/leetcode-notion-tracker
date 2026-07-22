@@ -108,7 +108,7 @@ export const ProblemStatusSchema = z.discriminatedUnion('found', [
 ]);
 
 export const NotionManifestSchema = z.object({
-  version: z.union([z.literal(1), z.literal(2)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   notionApiVersion: z.literal('2026-03-11'),
   createdAt: z.string().datetime({ offset: true }),
   parentPageId: z.string().min(1),

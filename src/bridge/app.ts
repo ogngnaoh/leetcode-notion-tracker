@@ -1,11 +1,20 @@
 import { cors } from 'hono/cors';
 import { Hono } from 'hono';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { CaptureEventSchema } from '../shared/contract.js';
 import type { CaptureService } from './capture-service.js';
+import { parseDailyNewProblemGoal } from './dashboard-settings.js';
+import { localDate, renderDashboard, type DashboardStore } from './dashboard.js';
 
 interface AppOptions {
   bridgeToken: string;
   captureService: CaptureService;
+  dashboard?: DashboardStore;
+  dashboardSettings?: {
+    antiForgeryToken: string;
+    saveGoal(goal: number): Promise<void>;
+  };
   logger?: {
     error(message: string, diagnostics: Record<string, unknown>): void;
   };
@@ -47,6 +56,115 @@ export function createApp(options: AppOptions): Hono {
       service: 'leetcode-notion-bridge',
     }),
   );
+
+  app.get('/dashboard', async (context) => {
+    const today = localDate();
+    let snapshot = options.dashboard?.current();
+    let error: string | undefined;
+    let state: 'ready' | 'loading' | 'unavailable' = snapshot ? 'ready' : 'unavailable';
+    const needsNewDate = snapshot?.date !== undefined && snapshot.date !== today;
+    const failedToday = options.dashboard?.failedFor(today) ?? false;
+    try {
+      if (options.dashboard && context.req.query('refresh') === '1') {
+        snapshot = await options.dashboard.refresh(today);
+        state = 'ready';
+      } else if (options.dashboard && (!snapshot || (needsNewDate && !failedToday))) {
+        void options.dashboard.refresh(today).catch(() => undefined);
+        snapshot = undefined;
+        state = failedToday ? 'unavailable' : 'loading';
+      }
+    } catch {
+      error = 'Notion is unavailable. Use Refresh to try again.';
+      snapshot = options.dashboard?.current();
+      state = snapshot ? 'ready' : 'unavailable';
+    }
+    context.header('Cache-Control', 'no-store');
+    context.header(
+      'Content-Security-Policy',
+      "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    );
+    context.header('X-Content-Type-Options', 'nosniff');
+    return context.html(
+      renderDashboard(
+        snapshot,
+        error,
+        state,
+        options.dashboardSettings?.antiForgeryToken,
+        options.dashboard?.currentGoal(),
+      ),
+    );
+  });
+
+  app.post('/dashboard/settings', async (context) => {
+    if (
+      !options.dashboardSettings ||
+      context.req.header('X-LC-Dashboard-Token') !== options.dashboardSettings.antiForgeryToken
+    ) {
+      return context.json({ error: 'Forbidden' }, 403);
+    }
+
+    let body: unknown;
+    try {
+      body = await context.req.json();
+    } catch {
+      return context.json({ error: 'Invalid dashboard settings' }, 400);
+    }
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return context.json({ error: 'Invalid dashboard settings' }, 400);
+    }
+    const record = body as Record<string, unknown>;
+    if (Object.keys(record).length !== 1 || !('dailyNewProblemGoal' in record)) {
+      return context.json({ error: 'Invalid dashboard settings' }, 400);
+    }
+
+    let goal: number;
+    try {
+      goal = parseDailyNewProblemGoal(record.dailyNewProblemGoal);
+    } catch {
+      return context.json({ error: 'Invalid dashboard settings' }, 400);
+    }
+
+    try {
+      await options.dashboardSettings.saveGoal(goal);
+      options.dashboard?.updateGoal(goal);
+      return context.json({ dailyNewProblemGoal: goal });
+    } catch {
+      logger.error('Dashboard settings save failed', {});
+      return context.json({ error: 'Dashboard settings could not be saved.' }, 500);
+    }
+  });
+
+  const dashboardAssets: Record<string, { path: string; type: string }> = {
+    'tokens.css': { path: 'extension/vendor/tokens.css', type: 'text/css; charset=utf-8' },
+    'components.css': { path: 'extension/vendor/components.css', type: 'text/css; charset=utf-8' },
+    'dashboard.css': {
+      path: 'src/bridge/assets/dashboard.css',
+      type: 'text/css; charset=utf-8',
+    },
+    'dashboard.js': {
+      path: 'src/bridge/assets/dashboard.js',
+      type: 'text/javascript; charset=utf-8',
+    },
+    'fonts/fonts.css': {
+      path: 'extension/vendor/fonts/fonts.css',
+      type: 'text/css; charset=utf-8',
+    },
+    'fonts/inter-400.woff2': { path: 'extension/vendor/fonts/inter-400.woff2', type: 'font/woff2' },
+    'fonts/inter-500.woff2': { path: 'extension/vendor/fonts/inter-500.woff2', type: 'font/woff2' },
+    'fonts/ibm-plex-mono-400.woff2': {
+      path: 'extension/vendor/fonts/ibm-plex-mono-400.woff2',
+      type: 'font/woff2',
+    },
+    'square-terminal.svg': { path: 'extension/square-terminal.svg', type: 'image/svg+xml' },
+  };
+  app.get('/dashboard-assets/*', async (context) => {
+    const name = context.req.path.slice('/dashboard-assets/'.length);
+    const asset = dashboardAssets[name];
+    if (!asset) return context.notFound();
+    context.header('Content-Type', asset.type);
+    context.header('Cache-Control', 'no-cache');
+    return context.body(await readFile(resolve(process.cwd(), asset.path)));
+  });
 
   app.use('/api/*', async (context, next) => {
     const expected = `Bearer ${options.bridgeToken}`;
@@ -97,6 +215,7 @@ export function createApp(options: AppOptions): Hono {
 
     try {
       const result = await options.captureService.capture(parsed.data);
+      void options.dashboard?.refresh().catch(() => undefined);
       return context.json(result, result.duplicate ? 200 : 201);
     } catch (error) {
       logger.error('Capture failed', {

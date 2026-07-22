@@ -26,7 +26,7 @@ describe('Notion schema', () => {
     expect(REQUIRED_ATTEMPTS_TYPES.Problem).toBe('relation');
   });
 
-  it('defines the exact v2 property names and types', () => {
+  it('defines the exact v3 property names and types', () => {
     expect(REQUIRED_PROBLEMS_TYPES).toEqual({
       Problem: 'title',
       'External Key': 'rich_text',
@@ -39,6 +39,7 @@ describe('Notion schema', () => {
       'Solved Streak': 'number',
       'Next Review': 'date',
       'Last Attempt': 'date',
+      'First Solved': 'date',
       'Extension Managed': 'checkbox',
       Attempts: 'relation',
     });
@@ -82,5 +83,15 @@ describe('Notion schema', () => {
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
     );
     expect(packageJson.scripts['notion:migrate:v2']).toBe('tsx src/notion/migrate-v2-cli.ts');
+  });
+
+  it('exposes v3 migration and dry-run dashboard rollback commands', async () => {
+    const packageJson = JSON.parse(
+      await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    expect(packageJson.scripts['notion:migrate:v3']).toBe('tsx src/notion/migrate-v3-cli.ts');
+    expect(packageJson.scripts['notion:dashboard:rollback']).toBe(
+      'tsx src/notion/dashboard-rollback-cli.ts',
+    );
   });
 });

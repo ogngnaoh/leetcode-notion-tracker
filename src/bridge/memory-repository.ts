@@ -36,6 +36,7 @@ export class MemoryCaptureRepository implements CaptureRepository {
       solvedStreak: 0,
       nextReview: null,
       lastAttempt: null,
+      firstSolved: null,
     };
     this.problems.set(externalKey, record);
     return record;
@@ -70,6 +71,7 @@ export class MemoryCaptureRepository implements CaptureRepository {
       problemPageId: problem.pageId,
       problemKey: externalKey,
       attemptedAt: event.attempt.attemptedAt,
+      result: event.attempt.result,
       review,
     };
     this.attempts.set(event.clientEventId, record);
@@ -92,6 +94,17 @@ export class MemoryCaptureRepository implements CaptureRepository {
           nextReview: review.nextReview,
           lastAttempt: attemptedAt,
         });
+        return;
+      }
+    }
+    throw new Error(`Unknown Problem page: ${problemPageId}`);
+  }
+
+  async applyFirstSolved(problemPageId: string, attemptedAt: string): Promise<void> {
+    this.operations.push('applyFirstSolved');
+    for (const [key, problem] of this.problems.entries()) {
+      if (problem.pageId === problemPageId) {
+        this.problems.set(key, { ...problem, firstSolved: attemptedAt });
         return;
       }
     }

@@ -48,8 +48,9 @@ Public rendered-DOM reconstruction is intentional.
 1. `NOTION_TOKEN` never enters extension source, storage, logs, build output, examples, or commits.
 2. Extension settings contain only bridge URL and bridge token; per-tab capture state lives in
    `chrome.storage.session`.
-3. The bridge binds to `127.0.0.1`, requires bearer authorization, and exposes only `/health`,
-   `/api/problems/:slug/status`, and `/api/capture`.
+3. The bridge binds to `127.0.0.1`; capture endpoints remain bearer-authenticated. The public
+   `/dashboard` and its narrow `POST /dashboard/settings` use a per-process anti-forgery token and no
+   CORS. The settings route changes only the local 1–100 goal.
 4. Problem identity is `External Key = leetcode:<slug>`; Attempt identity is a UUID
    `Client Event ID`.
 5. Attempts are immutable. A retry reuses the frozen body byte-for-byte and reapplies stored state
@@ -83,11 +84,15 @@ Do not substitute another scheduling algorithm.
   otherwise label it `visible lines X–Y`.
 - Extract title, number, difficulty, topics, and language independently. Never focus or scroll the
   page.
-- Layout A has one `LC Log` heading, a compact problem card, three equal outcomes, then an
-  expanded code disclosure.
+- Layout A has one square-terminal logo with the spaced `LC TRACK` masthead, a compact problem card,
+  three equal outcomes, then an expanded code disclosure.
 - After success, keep outcomes active, select the last result with `aria-pressed`, and retain its
   confirmation until another success or a fingerprint change.
 - During an uncertain write, retry is the sole action and must reuse the stored body exactly.
+- Keep **Dashboard ↗** visible in the masthead. Derive it from the Bridge URL, focus an existing exact
+  `/dashboard` tab and window when present, and create a tab only when none exists.
+- Allow the extension action on any tab, but open LCTrack as a tab-specific side panel only for the
+  exact tab where the action was clicked; never enable global action-click side-panel behavior.
 
 ## Notion and bridge verification
 

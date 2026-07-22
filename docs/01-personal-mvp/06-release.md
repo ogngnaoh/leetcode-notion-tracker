@@ -12,7 +12,7 @@ Chrome-to-Notion evidence, and an accurate Sustain handoff.
 
 ## Non-goals
 
-- Creating the optional Notion `Due now` view through unsupported public APIs.
+- Managing Notion views (subsequently added through the supported API in Milestone 03).
 - Adding cloud hosting, an offline queue, OAuth, or another tracker schema.
 - Performing another real capture after the accepted Valid Sudoku write.
 

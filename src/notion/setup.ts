@@ -5,6 +5,16 @@ import { z } from 'zod';
 import type { NotionManifest } from '../shared/contract.js';
 import { writeManifest } from './io.js';
 import { ATTEMPTS_PROPERTIES, NOTION_API_VERSION, PROBLEMS_PROPERTIES } from './schema.js';
+import {
+  ATTEMPTS_DATABASE_PRESENTATION,
+  ATTEMPTS_VIEW,
+  PROBLEMS_ALL_VIEW,
+  PROBLEMS_DATABASE_PRESENTATION,
+  PROBLEMS_REVIEW_VIEW,
+  propertyIds,
+  type DatabasePresentation,
+} from './presentation.js';
+import { createManagedView, listAllViews, updateManagedView } from './views.js';
 
 const SetupEnvSchema = z.object({
   NOTION_TOKEN: z.string().min(1),
@@ -26,16 +36,13 @@ async function createDatabase(
   parentPageId: string,
   title: string,
   properties: Record<string, unknown>,
+  presentation: DatabasePresentation,
 ): Promise<{ databaseId: string; dataSourceId: string }> {
   const created = await notion.databases.create({
     parent: { type: 'page_id', page_id: parentPageId },
     title: [{ type: 'text', text: { content: title } }],
-    description: [
-      {
-        type: 'text',
-        text: { content: 'Managed by the personal LeetCode tracker.' },
-      },
-    ],
+    description: [{ type: 'text', text: { content: presentation.description } }],
+    icon: presentation.icon,
     is_inline: false,
     initial_data_source: {
       properties: properties as never,
@@ -75,6 +82,7 @@ async function main(): Promise<void> {
     env.NOTION_PARENT_PAGE_ID,
     'LeetCode Problems',
     PROBLEMS_PROPERTIES,
+    PROBLEMS_DATABASE_PRESENTATION,
   );
 
   console.log('Creating LeetCode Attempts…');
@@ -83,6 +91,7 @@ async function main(): Promise<void> {
     env.NOTION_PARENT_PAGE_ID,
     'LeetCode Attempts',
     ATTEMPTS_PROPERTIES,
+    ATTEMPTS_DATABASE_PRESENTATION,
   );
 
   console.log('Adding the Attempts → Problem relation…');
@@ -100,8 +109,26 @@ async function main(): Promise<void> {
     },
   });
 
+  const [problemSource, attemptSource, problemViews, attemptViews] = await Promise.all([
+    notion.dataSources.retrieve({ data_source_id: problems.dataSourceId }),
+    notion.dataSources.retrieve({ data_source_id: attempts.dataSourceId }),
+    listAllViews(notion, problems.dataSourceId),
+    listAllViews(notion, attempts.dataSourceId),
+  ]);
+  const problemIds = propertyIds(problemSource);
+  const attemptIds = propertyIds(attemptSource);
+  const defaultProblemView = problemViews.length === 1 ? problemViews[0] : undefined;
+  const defaultAttemptView = attemptViews.length === 1 ? attemptViews[0] : undefined;
+  if (!defaultProblemView || !defaultAttemptView) {
+    throw new Error('Fresh Notion databases did not expose exactly one default view each.');
+  }
+  await Promise.all([
+    updateManagedView(notion, defaultProblemView.id, PROBLEMS_ALL_VIEW(problemIds)),
+    createManagedView(notion, problems.dataSourceId, PROBLEMS_REVIEW_VIEW(problemIds)),
+    updateManagedView(notion, defaultAttemptView.id, ATTEMPTS_VIEW(attemptIds)),
+  ]);
   const manifest: NotionManifest = {
-    version: 2,
+    version: 3,
     notionApiVersion: NOTION_API_VERSION,
     createdAt: new Date().toISOString(),
     parentPageId: env.NOTION_PARENT_PAGE_ID,

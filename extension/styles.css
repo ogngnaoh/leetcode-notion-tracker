@@ -15,14 +15,29 @@ body {
 }
 
 .masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   padding-block: var(--space-1) var(--space-3);
 }
 
 .tracker-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--font-size-xl);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
+}
+
+.dashboard-action {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+  border-color: var(--color-black);
+  background: var(--color-white);
+  font-size: var(--font-size-2xs);
 }
 
 .problem-panel {
@@ -117,23 +132,51 @@ body {
 .outcome {
   min-height: 58px;
   padding-inline: var(--space-1);
-  border-color: var(--color-black);
-  background: var(--color-white);
   white-space: normal;
 }
 
-.outcome:hover {
-  background: var(--color-black);
-  color: var(--color-white);
+.outcome[data-result='Couldn’t solve'] {
+  border-color: var(--color-critical);
+  background: var(--color-critical-surface);
+}
+
+.outcome[data-result='Needed help'] {
+  border-color: var(--color-warning);
+  background: var(--color-warning-surface);
+}
+
+.outcome[data-result='Solved'] {
+  border-color: var(--color-success);
+  background: var(--color-success-surface);
 }
 
 .outcome[aria-pressed='true'] {
-  background: var(--color-black);
+  outline: var(--border-thick) solid currentColor;
+  outline-offset: calc(-1 * var(--border-thick));
+  font-weight: var(--weight-medium);
+}
+
+.outcome[data-result='Couldn’t solve']:hover,
+.outcome[data-result='Couldn’t solve'][aria-pressed='true'] {
+  background: var(--color-critical);
+  color: var(--color-white);
+}
+
+.outcome[data-result='Needed help']:hover,
+.outcome[data-result='Needed help'][aria-pressed='true'] {
+  background: var(--color-warning-surface);
+  color: var(--color-black);
+}
+
+.outcome[data-result='Solved']:hover,
+.outcome[data-result='Solved'][aria-pressed='true'] {
+  background: var(--color-success);
   color: var(--color-white);
 }
 
 .outcome:disabled,
 .retry:disabled,
+.dashboard-action:disabled,
 .settings-action:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -149,7 +192,7 @@ body {
   margin-top: var(--space-2);
   padding: var(--space-3);
   border: var(--border-width) solid var(--color-black);
-  background: var(--color-white);
+  background: var(--color-success-surface);
   text-transform: uppercase;
 }
 

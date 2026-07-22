@@ -12,6 +12,7 @@ import { attemptTitle } from '../shared/keys.js';
 import { unicodeSafeTextChunks } from '../shared/text-chunks.js';
 import { NOTION_API_VERSION } from '../notion/schema.js';
 import type { CaptureRepository, ProblemRecord, StoredAttempt } from './repository.js';
+import type { DashboardRow } from './dashboard.js';
 
 function richText(content: string) {
   return [{ type: 'text' as const, text: { content } }];
@@ -119,7 +120,9 @@ function parseProblem(page: unknown): ProblemRecord {
     nextReview: nullableDate(properties, 'Next Review'),
   });
   const lastAttempt = nullableDate(properties, 'Last Attempt');
+  const firstSolved = nullableDate(properties, 'First Solved');
   if (lastAttempt !== null) IsoTimestampSchema.parse(lastAttempt);
+  if (firstSolved !== null) IsoTimestampSchema.parse(firstSolved);
   return {
     pageId: candidate.id,
     externalKey: requiredRichText(properties, 'External Key'),
@@ -131,6 +134,7 @@ function parseProblem(page: unknown): ProblemRecord {
     topics: requiredMultiSelect(properties, 'Topics'),
     ...review,
     lastAttempt,
+    firstSolved,
   };
 }
 
@@ -179,6 +183,47 @@ export class NotionCaptureRepository implements CaptureRepository {
     return new NotionCaptureRepository(notion, manifest);
   }
 
+  async loadDashboard(date: string): Promise<{ newSolveCount: number; due: DashboardRow[] }> {
+    const queryAll = async (request: Record<string, unknown>): Promise<any[]> => {
+      const results: any[] = [];
+      let startCursor: string | undefined;
+      do {
+        const response = await this.notion.dataSources.query({
+          data_source_id: this.manifest.problems.dataSourceId,
+          page_size: 100,
+          ...request,
+          ...(startCursor ? { start_cursor: startCursor } : {}),
+        } as never);
+        results.push(...response.results);
+        startCursor = response.next_cursor ?? undefined;
+      } while (startCursor);
+      return results;
+    };
+    const [solves, duePages] = await Promise.all([
+      queryAll({ filter: { property: 'First Solved', date: { equals: date } } }),
+      queryAll({
+        filter: { property: 'Next Review', date: { on_or_before: date } },
+        sorts: [
+          { property: 'Next Review', direction: 'ascending' },
+          { property: 'Problem', direction: 'ascending' },
+        ],
+      }),
+    ]);
+    const due = duePages.filter(isFullPage).map((page): DashboardRow => {
+      const properties = propertyMap(page);
+      const nextReview = requiredDate(properties, 'Next Review');
+      return {
+        title: requiredTitle(properties, 'Problem'),
+        url: requiredUrl(properties, 'URL'),
+        difficulty: DifficultySchema.parse(requiredSelect(properties, 'Difficulty')),
+        practiceState: PracticeStateSchema.parse(requiredSelect(properties, 'Practice State')),
+        solvedStreak: requiredNumber(properties, 'Solved Streak'),
+        nextReview: nextReview.slice(0, 10),
+      };
+    });
+    return { newSolveCount: solves.length, due };
+  }
+
   async findAttemptByEventId(clientEventId: string): Promise<StoredAttempt | null> {
     const response = await this.notion.dataSources.query({
       data_source_id: this.manifest.attempts.dataSourceId,
@@ -205,6 +250,9 @@ export class NotionCaptureRepository implements CaptureRepository {
         problemPageId: requiredRelationId(properties, 'Problem'),
         problemKey: requiredRichText(properties, 'Problem Key'),
         attemptedAt,
+        result: z
+          .enum(['Couldn’t solve', 'Needed help', 'Solved'])
+          .parse(requiredSelect(properties, 'Result')),
         review,
       };
     } catch {
@@ -250,6 +298,7 @@ export class NotionCaptureRepository implements CaptureRepository {
         'Solved Streak': { number: 0 },
         'Next Review': { date: null },
         'Last Attempt': { date: null },
+        'First Solved': { date: null },
         'Extension Managed': { checkbox: true },
       },
     });
@@ -264,6 +313,7 @@ export class NotionCaptureRepository implements CaptureRepository {
       solvedStreak: 0,
       nextReview: null,
       lastAttempt: null,
+      firstSolved: null,
     };
   }
 
@@ -316,6 +366,7 @@ export class NotionCaptureRepository implements CaptureRepository {
       problemPageId: problem.pageId,
       problemKey: externalKey,
       attemptedAt: event.attempt.attemptedAt,
+      result: event.attempt.result,
       review,
     };
   }
@@ -333,6 +384,13 @@ export class NotionCaptureRepository implements CaptureRepository {
         'Next Review': review.nextReview ? { date: { start: review.nextReview } } : { date: null },
         'Last Attempt': { date: { start: attemptedAt } },
       },
+    });
+  }
+
+  async applyFirstSolved(problemPageId: string, attemptedAt: string): Promise<void> {
+    await this.notion.pages.update({
+      page_id: problemPageId,
+      properties: { 'First Solved': { date: { start: attemptedAt } } },
     });
   }
 }

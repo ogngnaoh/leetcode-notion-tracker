@@ -103,12 +103,12 @@ describe('NotionManifestSchema', () => {
     attempts: { databaseId: 'attempts-db', dataSourceId: 'attempts-source' },
   };
 
-  it.each([1, 2])('accepts manifest version %s without weakening ID fields', (version) => {
+  it.each([1, 2, 3])('accepts manifest version %s without weakening ID fields', (version) => {
     expect(NotionManifestSchema.parse({ ...manifest, version })).toEqual({ ...manifest, version });
   });
 
   it('rejects unknown versions and missing IDs', () => {
-    expect(NotionManifestSchema.safeParse({ ...manifest, version: 3 }).success).toBe(false);
+    expect(NotionManifestSchema.safeParse({ ...manifest, version: 4 }).success).toBe(false);
     expect(
       NotionManifestSchema.safeParse({
         ...manifest,

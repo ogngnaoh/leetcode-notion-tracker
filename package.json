@@ -9,9 +9,12 @@
   },
   "scripts": {
     "dev:bridge": "tsx watch src/bridge/server.ts",
+    "dev:dashboard:fixtures": "tsx src/bridge/dashboard-fixture-server.ts",
     "start:bridge": "tsx src/bridge/server.ts",
     "notion:setup": "tsx src/notion/setup.ts",
     "notion:migrate:v2": "tsx src/notion/migrate-v2-cli.ts",
+    "notion:migrate:v3": "tsx src/notion/migrate-v3-cli.ts",
+    "notion:dashboard:rollback": "tsx src/notion/dashboard-rollback-cli.ts",
     "notion:verify": "tsx src/notion/verify.ts",
     "build:extension": "node scripts/build-extension.mjs",
     "build": "npm run typecheck && npm run build:extension",

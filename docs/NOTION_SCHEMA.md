@@ -1,6 +1,6 @@
 # Notion schema contract
 
-The bridge expects exact v2 property names and types. This is intentional: a personal tracker does
+The bridge expects exact v3 property names and types. This is intentional: a personal tracker does
 not need a generalized field-mapping engine. There are exactly two databases with reciprocal
 `Problem`/`Attempts` relations.
 
@@ -21,6 +21,7 @@ One row is one canonical LeetCode problem.
 | Solved Streak     | Number       | Consecutive solved count, capped at 5                 |
 | Next Review       | Date         | Browser-local calendar date or null                   |
 | Last Attempt      | Date         | Most recent attempt timestamp                         |
+| First Solved      | Date         | Earliest successful Attempt timestamp                 |
 | Extension Managed | Checkbox     | Created by this integration                           |
 | Attempts          | Relation     | Reciprocal relation to Attempts                       |
 
@@ -44,8 +45,9 @@ One row is one immutable attempt.
 | Extension Managed       | Checkbox     | Created by this integration            |
 | Created Time            | Created time | Native Notion timestamp                |
 
-State options use Notion native colors: gray `New`, red `Couldn’t solve`, yellow `Needed help`, green
-`Solved`, and blue `Mastered`. `Result` uses the same colors for its three values.
+Difficulty options use green `Easy`, yellow `Medium`, red `Hard`, and gray `Unknown`. State options
+use gray `New`, red `Couldn’t solve`, yellow `Needed help`, green `Solved`, and blue `Mastered`.
+`Result` uses the same colors for its three values.
 
 Captured code is written in the Attempt page body under `Captured code`.
 
@@ -73,14 +75,27 @@ The migration keeps existing database, data-source, page, relation, and unchange
 refuses unknown shapes before mutation. Exact intermediate retries do not duplicate legacy sections;
 an exact v2/version-2 rerun is a no-op.
 
-## Due now view
+## Database presentation and managed views
 
-After the real migration, create one view manually in the Notion UI:
+Problems uses the 🧩 icon and “Current practice state and review schedule. Managed by LC Log.”
+Attempts uses the 📝 icon and “Immutable history of confirmed practice attempts. Managed by LC
+Log.” Neither database has a cover or lock.
 
-1. Filter `Next Review` **on or before Today**.
-2. Sort `Next Review` ascending.
+Problems has `Review queue` (due on/before today, then review date/title ascending) and `All
+problems` (number/title ascending). Attempts has `Recent attempts` (attempt timestamp descending).
+The setup and verifier share the exact visible-property order, widths, wrapping, relative review-date
+format, 12-hour attempt timestamps, frozen title column, disabled subtasks, and hidden vertical lines.
+Technical properties remain in the schema but are hidden in these views. Unrelated views are allowed.
 
-Public Notion API view management is unsupported. The project does not claim this view exists yet.
+The former `Daily plan` was retired because it required a Notion Business plan. The local bridge
+dashboard reads these properties without adding another database, relation, or property.
+
+## v2→v3 migration contract
+
+`npm run notion:migrate:v3` is dry-run by default. It paginates every Problem and Attempt, writes a
+token-free backup, and derives `First Solved` solely from the earliest Attempt whose Result is
+`Solved`. Apply journals before mutation, backfills and verifies the property, and only then
+atomically advances the manifest to version 3.
 
 ## Compatibility rule
 

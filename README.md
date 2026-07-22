@@ -22,7 +22,7 @@ The project deliberately solves one workflow:
 
 ```text
 src/shared/       Capture contract, stable keys, review schedule
-src/notion/       One-time setup, v1→v2 migration, and exact schema verification
+src/notion/       One-time setup, migrations, safe dashboard rollback, and exact verification
 src/bridge/       Local Hono bridge and Notion repository
 extension/        Manifest V3 side-panel extension
 scripts/          Extension build script
@@ -33,7 +33,7 @@ docs/             Architecture, schema, security, and manual QA
 ## Prerequisites
 
 - Node.js 22+
-- Chrome 114+
+- Chrome 116+
 - iTerm2 installed at `/Applications/iTerm.app` for the deliberate daily launcher
 - Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
 - A Notion workspace
@@ -55,6 +55,7 @@ NOTION_PARENT_PAGE_ID=...
 NOTION_MANIFEST_PATH=build/notion-manifest.json
 BRIDGE_TOKEN=<at least 24 random characters>
 PORT=8787
+DAILY_NEW_PROBLEM_GOAL=10
 ```
 
 The parent page ID is the ID from the empty Notion page where the two databases should be created.
@@ -66,11 +67,12 @@ npm run notion:setup
 npm run notion:verify
 ```
 
-`notion:setup` creates:
+`notion:setup` creates manifest/schema version 3 directly, including:
 
 - `LeetCode Problems`
 - `LeetCode Attempts`
 - A two-way relation between them
+- LC Log presentation and the managed review/all/recent views
 - `build/notion-manifest.json` containing non-secret database and data-source IDs
 
 The command refuses to run when the manifest already exists, preventing accidental duplicate databases.
@@ -103,6 +105,26 @@ failures. It is removed only after the version-2 manifest is durable.
 Recovery also verifies the journal's SHA-256 binding to the original backup and rejects any extra or
 malformed backfill/expected fields before sending a page update.
 
+For an existing version-2 workspace, first review the v2→v3 plan:
+
+```bash
+npm run notion:migrate:v3
+```
+
+It inventories every Problem and Attempt with pagination, writes a token-free backup, derives the
+earliest solved Attempt for every Problem, and reports the `First Solved` backfill
+work without mutating Notion. Apply only after reviewing it:
+
+```bash
+npm run notion:migrate:v3 -- --apply
+npm run notion:verify
+```
+
+Apply journals before mutation and advances the manifest only after verification. Manifest version 3
+means the `First Solved` schema; the paid Notion dashboard is retired. Inventory it without mutation
+using `npm run notion:dashboard:rollback`, then apply after reviewing the token-free backup with
+`npm run notion:dashboard:rollback -- --apply`.
+
 ## 3. Configure the one-click bridge launcher
 
 The tracker deliberately does not start a hidden service at login. Configure the visible launcher
@@ -114,14 +136,28 @@ once:
 
 After each login, click that Dock item once. A titled iTerm2 window starts the local bridge and stays
 visible for its entire lifetime. Leave it open while using the extension; press Ctrl-C or close the
-window to stop the bridge. A second click reports an already-running bridge without creating another
-process. An unexpected process on the configured port is reported and never terminated automatically.
+window to stop the bridge. A second click opens the dashboard from the already-running bridge without
+creating another process. An unexpected port owner is reported and never terminated automatically.
 
 For development, the direct command remains available:
 
 ```bash
 npm run dev:bridge
 ```
+
+Notion remains the only source for solve counts and review rows. The daily new-solve target is a
+tracker-wide local bridge preference stored atomically in ignored `build/dashboard-settings.json`.
+`DAILY_NEW_PROBLEM_GOAL` supplies only the first-run fallback. Use the dashboard masthead’s
+**Settings** dialog to choose an integer from 1 through 100; a successful save updates the displayed
+target immediately without refreshing Notion.
+
+To review the dashboard’s normal, empty, stale, loading, and unavailable design states locally:
+
+```bash
+npm run dev:dashboard:fixtures
+```
+
+Open `http://127.0.0.1:8791/dashboard/normal` and replace `normal` with another state name.
 
 Verify it:
 
@@ -152,11 +188,19 @@ Then:
 7. Open a page matching `https://leetcode.com/problems/<slug>/`.
 8. Select the extension icon to open the side panel.
 
+The side-panel masthead’s **Dashboard ↗** button derives `/dashboard` from the saved Bridge URL. It
+focuses an existing exact dashboard tab and its Chrome window when possible, or opens one new tab.
+The bottom **Bridge settings** action remains the place to edit the Bridge URL and token.
+The extension icon can open LCTrack from any tab, but the panel belongs only to the tab where it was
+clicked. Moving to another tab does not carry the side panel with it; click the icon there if you also
+want LCTrack on that tab.
+
 ## Daily use
 
 1. Click the `Start LeetCode Tracker.command` item in the Dock.
-2. Wait for the visible iTerm2 window to report that the bridge is listening.
-3. Open any supported LeetCode problem and use the extension side panel.
+2. The bridge prefetches data and opens `http://127.0.0.1:8787/dashboard`; the side-panel shortcut
+   returns to the same dashboard later.
+3. Open due problems there and confirm outcomes through the extension side panel.
 
 No Notion credential enters Chrome: the launcher starts the same localhost bridge, which reads the
 ignored local `.env` from the repository.
@@ -191,9 +235,11 @@ Review scheduling is intentionally small:
 | Solved, streak 1–4 | Solved / 1–4              | 1, 3, 7, 14 days |
 | Solved, streak 5   | Mastered / 5              | None             |
 
-After migration, create a `Due now` view once in the Notion UI: filter `Next Review` **on or before
-Today**, then sort `Next Review` ascending. The public Notion API does not support managing this view,
-so the repository does not claim that the view exists yet.
+The managed Notion views are `Review queue`, `All problems`, and `Recent attempts`.
+The local dashboard shows daily counters and a review table with direct LeetCode URLs. Setup creates them
+with the intended visible columns, filters, sorts, widths, wrapping, date formatting, frozen title
+column, disabled subtasks, and hidden vertical grid lines. `notion:verify` detects presentation drift
+as well as schema drift; unrelated user-created views are allowed.
 
 ## Quality checks
 

@@ -63,6 +63,13 @@ export class MockBridge {
 
       const url = new URL(request.url ?? '/', 'http://127.0.0.1:8787');
       const authorization = request.headers.authorization ?? null;
+      if (request.method === 'GET' && url.pathname === '/dashboard') {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.end(
+          '<!doctype html><html><head><title>LC Log Daily</title></head><body><h1>LC Log dashboard fixture</h1></body></html>',
+        );
+        return;
+      }
       if (request.method === 'GET' && /^\/api\/problems\/[^/]+\/status$/.test(url.pathname)) {
         this.requests.push({ method: 'GET', path: url.pathname, authorization, body: null });
         if (authorization !== `Bearer ${TEST_BRIDGE_TOKEN}`) {
