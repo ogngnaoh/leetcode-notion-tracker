@@ -36,19 +36,11 @@ export function computeReviewState(
   if (!calendarParts(attemptedOn)) {
     throw new Error('attemptedOn must be a valid YYYY-MM-DD calendar date.');
   }
-  if (result !== 'Couldn’t solve' && result !== 'Needed help' && result !== 'Solved') {
-    throw new Error('result must be Couldn’t solve, Needed help, or Solved.');
-  }
-
-  if (result === 'Couldn’t solve') {
-    return { practiceState: result, solvedStreak: 0, nextReview: attemptedOn };
+  if (result !== 'Needed help' && result !== 'Solved') {
+    throw new Error('result must be Needed help or Solved.');
   }
   if (result === 'Needed help') {
-    return {
-      practiceState: result,
-      solvedStreak: 0,
-      nextReview: addCalendarDays(attemptedOn, 1),
-    };
+    return { practiceState: result, solvedStreak: 0, nextReview: attemptedOn };
   }
 
   const solvedStreak = Math.min(currentSolvedStreak + 1, 5);

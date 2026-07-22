@@ -3,6 +3,7 @@ import { Client, isFullPage } from '@notionhq/client';
 import { z } from 'zod';
 import type { CaptureEvent, NotionManifest, ReviewState } from '../shared/contract.js';
 import {
+  AttemptResultSchema,
   DifficultySchema,
   NotionManifestSchema,
   PracticeStateSchema,
@@ -120,9 +121,9 @@ function parseProblem(page: unknown): ProblemRecord {
     nextReview: nullableDate(properties, 'Next Review'),
   });
   const lastAttempt = nullableDate(properties, 'Last Attempt');
-  const firstSolved = nullableDate(properties, 'First Solved');
+  const firstAttempt = nullableDate(properties, 'First Attempt');
   if (lastAttempt !== null) IsoTimestampSchema.parse(lastAttempt);
-  if (firstSolved !== null) IsoTimestampSchema.parse(firstSolved);
+  if (firstAttempt !== null) IsoTimestampSchema.parse(firstAttempt);
   return {
     pageId: candidate.id,
     externalKey: requiredRichText(properties, 'External Key'),
@@ -134,7 +135,7 @@ function parseProblem(page: unknown): ProblemRecord {
     topics: requiredMultiSelect(properties, 'Topics'),
     ...review,
     lastAttempt,
-    firstSolved,
+    firstAttempt,
   };
 }
 
@@ -179,11 +180,14 @@ export class NotionCaptureRepository implements CaptureRepository {
 
   static async create(token: string, manifestPath: string): Promise<NotionCaptureRepository> {
     const manifest = await loadNotionManifest(manifestPath);
+    if (manifest.version !== 4) {
+      throw new Error('Run npm run notion:migrate:v4 before starting the bridge.');
+    }
     const notion = new Client({ auth: token, notionVersion: NOTION_API_VERSION });
     return new NotionCaptureRepository(notion, manifest);
   }
 
-  async loadDashboard(date: string): Promise<{ newSolveCount: number; due: DashboardRow[] }> {
+  async loadDashboard(date: string): Promise<{ newProblemCount: number; due: DashboardRow[] }> {
     const queryAll = async (request: Record<string, unknown>): Promise<any[]> => {
       const results: any[] = [];
       let startCursor: string | undefined;
@@ -199,8 +203,8 @@ export class NotionCaptureRepository implements CaptureRepository {
       } while (startCursor);
       return results;
     };
-    const [solves, duePages] = await Promise.all([
-      queryAll({ filter: { property: 'First Solved', date: { equals: date } } }),
+    const [newProblems, duePages] = await Promise.all([
+      queryAll({ filter: { property: 'First Attempt', date: { equals: date } } }),
       queryAll({
         filter: { property: 'Next Review', date: { on_or_before: date } },
         sorts: [
@@ -221,7 +225,7 @@ export class NotionCaptureRepository implements CaptureRepository {
         nextReview: nextReview.slice(0, 10),
       };
     });
-    return { newSolveCount: solves.length, due };
+    return { newProblemCount: newProblems.length, due };
   }
 
   async findAttemptByEventId(clientEventId: string): Promise<StoredAttempt | null> {
@@ -250,9 +254,7 @@ export class NotionCaptureRepository implements CaptureRepository {
         problemPageId: requiredRelationId(properties, 'Problem'),
         problemKey: requiredRichText(properties, 'Problem Key'),
         attemptedAt,
-        result: z
-          .enum(['Couldn’t solve', 'Needed help', 'Solved'])
-          .parse(requiredSelect(properties, 'Result')),
+        result: AttemptResultSchema.parse(requiredSelect(properties, 'Result')),
         review,
       };
     } catch {
@@ -298,7 +300,7 @@ export class NotionCaptureRepository implements CaptureRepository {
         'Solved Streak': { number: 0 },
         'Next Review': { date: null },
         'Last Attempt': { date: null },
-        'First Solved': { date: null },
+        'First Attempt': { date: null },
         'Extension Managed': { checkbox: true },
       },
     });
@@ -313,7 +315,7 @@ export class NotionCaptureRepository implements CaptureRepository {
       solvedStreak: 0,
       nextReview: null,
       lastAttempt: null,
-      firstSolved: null,
+      firstAttempt: null,
     };
   }
 
@@ -387,10 +389,10 @@ export class NotionCaptureRepository implements CaptureRepository {
     });
   }
 
-  async applyFirstSolved(problemPageId: string, attemptedAt: string): Promise<void> {
+  async applyFirstAttempt(problemPageId: string, attemptedAt: string): Promise<void> {
     await this.notion.pages.update({
       page_id: problemPageId,
-      properties: { 'First Solved': { date: { start: attemptedAt } } },
+      properties: { 'First Attempt': { date: { start: attemptedAt } } },
     });
   }
 }

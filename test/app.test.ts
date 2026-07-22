@@ -28,7 +28,7 @@ const payload = {
 function testApp(repository = new MemoryCaptureRepository()) {
   const dashboard = new DashboardStore({
     goal: 10,
-    load: async () => ({ newSolveCount: 0, due: [] }),
+    load: async () => ({ newProblemCount: 0, due: [] }),
     now: () => new Date('2026-07-21T15:00:00Z'),
   });
   const saveGoal = vi.fn(async () => undefined);
@@ -138,7 +138,7 @@ describe('bridge app', () => {
     const repository = new MemoryCaptureRepository();
     const dashboard = new DashboardStore({
       goal: 10,
-      load: async () => ({ newSolveCount: 1, due: [] }),
+      load: async () => ({ newProblemCount: 1, due: [] }),
     });
     await dashboard.refresh('2026-07-21');
     const secret = `ntn_${'S'.repeat(30)}`;
@@ -177,13 +177,13 @@ describe('bridge app', () => {
   });
 
   it('returns loading immediately before the first snapshot and refreshes an old local date', async () => {
-    let resolveLoad!: (value: { newSolveCount: number; due: [] }) => void;
+    let resolveLoad!: (value: { newProblemCount: number; due: [] }) => void;
     const load = vi
       .fn()
-      .mockResolvedValueOnce({ newSolveCount: 1, due: [] })
+      .mockResolvedValueOnce({ newProblemCount: 1, due: [] })
       .mockImplementationOnce(
         () =>
-          new Promise<{ newSolveCount: number; due: [] }>((resolve) => {
+          new Promise<{ newProblemCount: number; due: [] }>((resolve) => {
             resolveLoad = resolve;
           }),
       );
@@ -198,7 +198,7 @@ describe('bridge app', () => {
     const loading = await app.request('/dashboard');
     expect(await loading.text()).toContain('Loading today’s plan');
     expect(load).toHaveBeenLastCalledWith('2026-07-21');
-    resolveLoad({ newSolveCount: 0, due: [] });
+    resolveLoad({ newProblemCount: 0, due: [] });
     await vi.waitFor(() => expect(dashboard.current()?.date).toBe('2026-07-21'));
   });
 
@@ -207,7 +207,7 @@ describe('bridge app', () => {
     const captureService = new CaptureService(repository);
     const dashboard = new DashboardStore({
       goal: 10,
-      load: vi.fn(async () => ({ newSolveCount: 0, due: [] })),
+      load: vi.fn(async () => ({ newProblemCount: 0, due: [] })),
     });
     const refresh = vi.spyOn(dashboard, 'refresh');
     const app = createApp({ bridgeToken, captureService, dashboard });

@@ -1,14 +1,8 @@
 import { z } from 'zod';
 
 export const DifficultySchema = z.enum(['Easy', 'Medium', 'Hard', 'Unknown']);
-export const AttemptResultSchema = z.enum(['Couldn’t solve', 'Needed help', 'Solved']);
-export const PracticeStateSchema = z.enum([
-  'New',
-  'Couldn’t solve',
-  'Needed help',
-  'Solved',
-  'Mastered',
-]);
+export const AttemptResultSchema = z.enum(['Needed help', 'Solved']);
+export const PracticeStateSchema = z.enum(['New', 'Needed help', 'Solved', 'Mastered']);
 
 function isCalendarDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -108,7 +102,7 @@ export const ProblemStatusSchema = z.discriminatedUnion('found', [
 ]);
 
 export const NotionManifestSchema = z.object({
-  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   notionApiVersion: z.literal('2026-03-11'),
   createdAt: z.string().datetime({ offset: true }),
   parentPageId: z.string().min(1),

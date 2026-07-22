@@ -5,23 +5,13 @@ import { computeReviewState } from '../src/shared/review.js';
 describe('computeReviewState', () => {
   it.each([
     {
-      name: 'a failed solve',
-      streak: 4,
-      result: 'Couldn’t solve' as const,
-      expected: {
-        practiceState: 'Couldn’t solve',
-        solvedStreak: 0,
-        nextReview: '2026-07-20',
-      },
-    },
-    {
       name: 'a helped solve',
       streak: 4,
       result: 'Needed help' as const,
       expected: {
         practiceState: 'Needed help',
         solvedStreak: 0,
-        nextReview: '2026-07-21',
+        nextReview: '2026-07-20',
       },
     },
     {
@@ -73,8 +63,7 @@ describe('computeReviewState', () => {
     expect(computeReviewState(streak, 'Solved', attemptedOn).nextReview).toBe(nextReview);
   });
 
-  it('resets a solved streak after either non-solved result', () => {
-    expect(computeReviewState(3, 'Couldn’t solve', '2026-07-20').solvedStreak).toBe(0);
+  it('resets a solved streak after a helped result', () => {
     expect(computeReviewState(3, 'Needed help', '2026-07-20').solvedStreak).toBe(0);
   });
 
@@ -95,7 +84,7 @@ describe('computeReviewState', () => {
 
   it('rejects a result outside the public contract at runtime', () => {
     expect(() => computeReviewState(0, 'Green' as AttemptResult, '2026-07-20')).toThrow(
-      'result must be Couldn’t solve, Needed help, or Solved.',
+      'result must be Needed help or Solved.',
     );
   });
 });

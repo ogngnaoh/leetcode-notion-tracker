@@ -12,7 +12,7 @@ export interface DashboardRow {
 export interface DashboardSnapshot {
   date: string;
   goal: number;
-  newSolveCount: number;
+  newProblemCount: number;
   due: DashboardRow[];
   generatedAt: string;
   stale: boolean;
@@ -20,7 +20,7 @@ export interface DashboardSnapshot {
 
 interface DashboardStoreOptions {
   goal: number;
-  load(date: string): Promise<{ newSolveCount: number; due: DashboardRow[] }>;
+  load(date: string): Promise<{ newProblemCount: number; due: DashboardRow[] }>;
   now?: () => Date;
 }
 
@@ -62,7 +62,7 @@ export class DashboardStore {
         this.snapshot = {
           date,
           goal: this.goal,
-          newSolveCount: loaded.newSolveCount,
+          newProblemCount: loaded.newProblemCount,
           due: loaded.due,
           generatedAt: this.now().toISOString(),
           stale: false,
@@ -177,6 +177,6 @@ export function renderDashboard(
     ? `<meta name="dashboard-settings-token" content="${escapeHtml(antiForgeryToken)}">`
     : '';
   const goal = configuredGoal ?? snapshot?.goal;
-  const settingsDialog = `<dialog id="dashboard-settings-dialog" aria-labelledby="dashboard-settings-title"><form id="dashboard-settings-form"><div class="eyebrow">DASHBOARD SETTINGS</div><h2 id="dashboard-settings-title">Daily new-solve target</h2><p>Choose how many first-time solves you want to complete each day.</p><label for="daily-new-problem-goal">New problems per day</label><input id="daily-new-problem-goal" name="dailyNewProblemGoal" type="number" min="1" max="100" step="1" required value="${goal ?? 10}"><p id="dashboard-settings-error" class="dialog-error" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="cancel-dashboard-settings" class="dialog-button" type="button">Cancel</button><button id="save-dashboard-settings" class="dialog-button dialog-button--primary" type="submit">Save goal</button></div></form></dialog>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${tokenMeta}<title>LC Log Daily</title><link rel="stylesheet" href="/dashboard-assets/tokens.css"><link rel="stylesheet" href="/dashboard-assets/components.css"><link rel="stylesheet" href="/dashboard-assets/dashboard.css?v=3"><script src="/dashboard-assets/dashboard.js?v=3" defer></script></head><body>${snapshot?.stale ? '<div class="stale" role="status"><strong>Saved data</strong><span>Notion refresh failed. Your last successful snapshot is still shown.</span></div>' : ''}<header class="masthead"><a class="brand" href="/dashboard" aria-label="LC Log daily dashboard"><img src="/dashboard-assets/square-terminal.svg" width="20" height="20" alt=""> <span>LC LOG</span></a><time class="date" datetime="${escapeHtml(shownDate)}"><span class="date-long">${escapeHtml(dateLabel(shownDate))}</span><span class="date-short">${escapeHtml(shortDateLabel(shownDate))}</span></time><div class="meta">${updateStatus}</div><div class="header-actions"><button id="open-dashboard-settings" class="refresh" type="button">Settings</button><a class="refresh" href="/dashboard?refresh=1">Refresh<span aria-hidden="true">↻</span></a></div></header>${settingsDialog}<main><section class="summaries" aria-label="Daily summary"><article class="summary summary--solves"><div class="eyebrow">NEW SOLVES TODAY</div><div class="number"><strong>${snapshot?.newSolveCount ?? '—'}</strong><span data-dashboard-goal> / ${goal ?? '—'}</span></div><p>First-time solves toward today’s goal.</p></article><article class="summary summary--reviews"><div class="eyebrow">REVIEWS DUE</div><div class="number"><strong>${snapshot?.due.length ?? '—'}</strong></div><p>Problems ready for deliberate review.</p></article></section><div class="section-title"><div><div class="eyebrow">DAILY QUEUE</div><h1>REVIEW NOW</h1></div><span class="queue-count">${rows.length} ${rows.length === 1 ? 'problem' : 'problems'}</span></div>${status}</main></body></html>`;
+  const settingsDialog = `<dialog id="dashboard-settings-dialog" aria-labelledby="dashboard-settings-title"><form id="dashboard-settings-form"><div class="eyebrow">DASHBOARD SETTINGS</div><h2 id="dashboard-settings-title">Daily new-problem target</h2><p>Choose how many new Problems you want to practice each day.</p><label for="daily-new-problem-goal">New problems per day</label><input id="daily-new-problem-goal" name="dailyNewProblemGoal" type="number" min="1" max="100" step="1" required value="${goal ?? 10}"><p id="dashboard-settings-error" class="dialog-error" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="cancel-dashboard-settings" class="dialog-button" type="button">Cancel</button><button id="save-dashboard-settings" class="dialog-button dialog-button--primary" type="submit">Save goal</button></div></form></dialog>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${tokenMeta}<title>LC Log Daily</title><link rel="stylesheet" href="/dashboard-assets/tokens.css"><link rel="stylesheet" href="/dashboard-assets/components.css"><link rel="stylesheet" href="/dashboard-assets/dashboard.css?v=3"><script src="/dashboard-assets/dashboard.js?v=3" defer></script></head><body>${snapshot?.stale ? '<div class="stale" role="status"><strong>Saved data</strong><span>Notion refresh failed. Your last successful snapshot is still shown.</span></div>' : ''}<header class="masthead"><a class="brand" href="/dashboard" aria-label="LC Log daily dashboard"><img src="/dashboard-assets/square-terminal.svg" width="20" height="20" alt=""> <span>LC LOG</span></a><time class="date" datetime="${escapeHtml(shownDate)}"><span class="date-long">${escapeHtml(dateLabel(shownDate))}</span><span class="date-short">${escapeHtml(shortDateLabel(shownDate))}</span></time><div class="meta">${updateStatus}</div><div class="header-actions"><button id="open-dashboard-settings" class="refresh" type="button">Settings</button><a class="refresh" href="/dashboard?refresh=1">Refresh<span aria-hidden="true">↻</span></a></div></header>${settingsDialog}<main><section class="summaries" aria-label="Daily summary"><article class="summary summary--solves"><div class="eyebrow">NEW PROBLEMS TODAY</div><div class="number"><strong>${snapshot?.newProblemCount ?? '—'}</strong><span data-dashboard-goal> / ${goal ?? '—'}</span></div><p>First attempts toward today’s goal.</p></article><article class="summary summary--reviews"><div class="eyebrow">REVIEWS DUE</div><div class="number"><strong>${snapshot?.due.length ?? '—'}</strong></div><p>Problems ready for deliberate review.</p></article></section><div class="section-title"><div><div class="eyebrow">DAILY QUEUE</div><h1>REVIEW NOW</h1></div><span class="queue-count">${rows.length} ${rows.length === 1 ? 'problem' : 'problems'}</span></div>${status}</main></body></html>`;
 }

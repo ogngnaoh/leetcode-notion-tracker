@@ -75,7 +75,7 @@ describe('CaptureService', () => {
     expect(repository.operations).toEqual([
       'createProblem',
       'createAttempt',
-      'applyFirstSolved',
+      'applyFirstAttempt',
       'applyReview',
     ]);
     expect(repository.problems.get('leetcode:two-sum')).toMatchObject({
@@ -85,45 +85,29 @@ describe('CaptureService', () => {
       solvedStreak: 1,
       nextReview: '2026-07-21',
       lastAttempt: '2026-07-20T08:00:00-04:00',
-      firstSolved: '2026-07-20T08:00:00-04:00',
+      firstAttempt: '2026-07-20T08:00:00-04:00',
     });
   });
 
-  it('records only the earliest successful solve and ignores failed, helped, and later solves', async () => {
+  it('records the first Attempt once regardless of outcome and ignores later Attempts', async () => {
     const repository = new MemoryCaptureRepository();
     const service = new CaptureService(repository);
-    await service.capture(captureEvent({ result: 'Couldn’t solve' }));
+    await service.capture(captureEvent({ result: 'Needed help' }));
     await service.capture(
       captureEvent({
         clientEventId: 'd83d5722-13dd-4b2f-8d60-115613364ed4',
         attemptedAt: '2026-07-21T08:00:00-04:00',
         attemptedOn: '2026-07-21',
-        result: 'Needed help',
-      }),
-    );
-    await service.capture(
-      captureEvent({
-        clientEventId: 'fd8fa9f0-4f92-4d1b-a4ce-07f93c976a36',
-        attemptedAt: '2026-07-22T08:00:00-04:00',
-        attemptedOn: '2026-07-22',
-        result: 'Solved',
-      }),
-    );
-    await service.capture(
-      captureEvent({
-        clientEventId: '18cb731b-474c-4d4e-ac3f-aea694cb257f',
-        attemptedAt: '2026-07-23T08:00:00-04:00',
-        attemptedOn: '2026-07-23',
         result: 'Solved',
       }),
     );
 
-    expect(repository.problems.get('leetcode:two-sum')?.firstSolved).toBe(
-      '2026-07-22T08:00:00-04:00',
+    expect(repository.problems.get('leetcode:two-sum')?.firstAttempt).toBe(
+      '2026-07-20T08:00:00-04:00',
     );
   });
 
-  it('moves First Solved earlier for an older historical solved attempt', async () => {
+  it('moves First Attempt earlier for an older historical Attempt without rewinding review', async () => {
     const repository = new MemoryCaptureRepository();
     const service = new CaptureService(repository);
     await service.capture(
@@ -134,10 +118,11 @@ describe('CaptureService', () => {
         clientEventId: 'd83d5722-13dd-4b2f-8d60-115613364ed4',
         attemptedAt: '2026-07-19T08:00:00-04:00',
         attemptedOn: '2026-07-19',
+        result: 'Needed help',
       }),
     );
 
-    expect(repository.problems.get('leetcode:two-sum')?.firstSolved).toBe(
+    expect(repository.problems.get('leetcode:two-sum')?.firstAttempt).toBe(
       '2026-07-19T08:00:00-04:00',
     );
     expect(repository.problems.get('leetcode:two-sum')?.lastAttempt).toBe(
@@ -145,19 +130,19 @@ describe('CaptureService', () => {
     );
   });
 
-  it('repairs a missing First Solved on exact-ID retry without another Attempt', async () => {
+  it('repairs a missing First Attempt on exact-ID retry without another Attempt', async () => {
     const repository = new MemoryCaptureRepository();
-    vi.spyOn(repository, 'applyFirstSolved').mockRejectedValueOnce(
-      new Error('First Solved update failed'),
+    vi.spyOn(repository, 'applyFirstAttempt').mockRejectedValueOnce(
+      new Error('First Attempt update failed'),
     );
     const service = new CaptureService(repository);
     const capture = captureEvent();
 
-    await expect(service.capture(capture)).rejects.toThrow('First Solved update failed');
+    await expect(service.capture(capture)).rejects.toThrow('First Attempt update failed');
     expect(repository.attempts).toHaveLength(1);
     await expect(service.capture(capture)).resolves.toMatchObject({ duplicate: true });
     expect(repository.attempts).toHaveLength(1);
-    expect(repository.problems.get('leetcode:two-sum')?.firstSolved).toBe(
+    expect(repository.problems.get('leetcode:two-sum')?.firstAttempt).toBe(
       capture.attempt.attemptedAt,
     );
   });
@@ -242,7 +227,7 @@ describe('CaptureService', () => {
       clientEventId: 'd83d5722-13dd-4b2f-8d60-115613364ed4',
       attemptedAt: '2026-07-20T08:00:00-04:00',
       attemptedOn: '2026-07-20',
-      result: 'Couldn’t solve',
+      result: 'Needed help',
     });
     const result = await service.capture(older);
 
@@ -257,6 +242,7 @@ describe('CaptureService', () => {
       solvedStreak: 1,
       nextReview: '2026-07-22',
       lastAttempt: newer.attempt.attemptedAt,
+      firstAttempt: older.attempt.attemptedAt,
     });
   });
 

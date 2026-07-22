@@ -13,10 +13,10 @@ const rows = [row];
 
 describe('local dashboard', () => {
   it('coalesces concurrent forced refreshes and retains a visibly stale snapshot on failure', async () => {
-    let resolveLoad!: (value: { newSolveCount: number; due: typeof rows }) => void;
+    let resolveLoad!: (value: { newProblemCount: number; due: typeof rows }) => void;
     const load = vi.fn(
       () =>
-        new Promise<{ newSolveCount: number; due: typeof rows }>((resolve) => {
+        new Promise<{ newProblemCount: number; due: typeof rows }>((resolve) => {
           resolveLoad = resolve;
         }),
     );
@@ -28,16 +28,16 @@ describe('local dashboard', () => {
     const first = store.refresh('2026-07-21');
     const second = store.refresh('2026-07-21');
     expect(load).toHaveBeenCalledOnce();
-    resolveLoad({ newSolveCount: 1, due: rows });
+    resolveLoad({ newProblemCount: 1, due: rows });
     await expect(Promise.all([first, second])).resolves.toHaveLength(2);
 
     load.mockRejectedValueOnce(new Error('Notion unavailable'));
     const stale = await store.refresh('2026-07-21');
-    expect(stale).toMatchObject({ stale: true, newSolveCount: 1, due: rows });
+    expect(stale).toMatchObject({ stale: true, newProblemCount: 1, due: rows });
   });
 
   it('updates the displayed goal immediately without refreshing Notion data', async () => {
-    const load = vi.fn(async () => ({ newSolveCount: 1, due: rows }));
+    const load = vi.fn(async () => ({ newProblemCount: 1, due: rows }));
     const store = new DashboardStore({
       goal: 10,
       load,
@@ -47,7 +47,12 @@ describe('local dashboard', () => {
 
     store.updateGoal(14);
 
-    expect(store.current()).toMatchObject({ goal: 14, newSolveCount: 1, due: rows, stale: false });
+    expect(store.current()).toMatchObject({
+      goal: 14,
+      newProblemCount: 1,
+      due: rows,
+      stale: false,
+    });
     expect(load).toHaveBeenCalledOnce();
   });
 
@@ -55,7 +60,7 @@ describe('local dashboard', () => {
     const html = renderDashboard({
       date: '2026-07-21',
       goal: 10,
-      newSolveCount: 1,
+      newProblemCount: 1,
       due: [...rows, { ...row, title: 'Unsafe', url: 'javascript:alert(1)' }],
       generatedAt: '2026-07-21T15:00:00.000Z',
       stale: false,
@@ -68,6 +73,12 @@ describe('local dashboard', () => {
     expect(html).not.toContain('<script>');
     expect(html).not.toContain('<style>');
     expect(html).not.toMatch(/ntn_|secret_|Bearer|BRIDGE_TOKEN/);
+    expect(html).toContain('NEW PROBLEMS TODAY');
+    expect(html).toContain('First attempts toward today’s goal.');
+    expect(html).toContain('Daily new-problem target');
+    expect(html).toContain('Choose how many new Problems you want to practice each day.');
+    expect(html).not.toContain('NEW SOLVES TODAY');
+    expect(html).not.toContain('new-solve');
   });
 
   it('renders deliberate loading and unavailable states', () => {
@@ -81,7 +92,7 @@ describe('local dashboard', () => {
     const html = renderDashboard({
       date: '2026-07-21',
       goal: 10,
-      newSolveCount: 0,
+      newProblemCount: 0,
       generatedAt: '2026-07-21T15:00:00.000Z',
       stale: false,
       due: [{ ...row, url: 'https://leetcode.com/problems/two-sum/?env=secret#code' }],

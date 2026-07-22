@@ -1,4 +1,7 @@
 import type { Client } from '@notionhq/client';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { CaptureEvent, NotionManifest, ReviewState } from '../src/shared/contract.js';
 import { NotionCaptureRepository } from '../src/bridge/notion-repository.js';
@@ -62,12 +65,22 @@ function problemRecord() {
     solvedStreak: 0,
     nextReview: null,
     lastAttempt: null,
-    firstSolved: null,
+    firstAttempt: null,
   };
 }
 
-describe('NotionCaptureRepository v3 mapping', () => {
-  it('creates a Problem with only canonical metadata and v3 review properties', async () => {
+describe('NotionCaptureRepository v4 mapping', () => {
+  it('rejects a pre-v4 manifest before constructing the runtime repository', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'lc-repository-manifest-'));
+    const manifestPath = join(directory, 'manifest.json');
+    await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: 3 })}\n`, 'utf8');
+
+    await expect(NotionCaptureRepository.create('not-a-real-token', manifestPath)).rejects.toThrow(
+      'Run npm run notion:migrate:v4 before starting the bridge',
+    );
+  });
+
+  it('creates a Problem with only canonical metadata and v4 review properties', async () => {
     const fake = fakeNotion();
     fake.pages.create.mockResolvedValue({ id: 'problem-1' });
 
@@ -88,7 +101,7 @@ describe('NotionCaptureRepository v3 mapping', () => {
       'Solved Streak': { number: 0 },
       'Next Review': { date: null },
       'Last Attempt': { date: null },
-      'First Solved': { date: null },
+      'First Attempt': { date: null },
       'Extension Managed': { checkbox: true },
     });
   });
@@ -192,7 +205,7 @@ describe('NotionCaptureRepository v3 mapping', () => {
           'Solved Streak': { type: 'number', number: 3 },
           'Next Review': { type: 'date', date: { start: '2026-07-27' } },
           'Last Attempt': { type: 'date', date: { start: '2026-07-20T08:30:00-04:00' } },
-          'First Solved': { type: 'date', date: { start: '2026-07-18T08:30:00-04:00' } },
+          'First Attempt': { type: 'date', date: { start: '2026-07-18T08:30:00-04:00' } },
         }),
       ],
     });
@@ -210,7 +223,7 @@ describe('NotionCaptureRepository v3 mapping', () => {
       solvedStreak: 3,
       nextReview: '2026-07-27',
       lastAttempt: '2026-07-20T08:30:00-04:00',
-      firstSolved: '2026-07-18T08:30:00-04:00',
+      firstAttempt: '2026-07-18T08:30:00-04:00',
     });
   });
 
@@ -275,7 +288,7 @@ describe('NotionCaptureRepository v3 mapping', () => {
     });
   });
 
-  it('fully paginates daily solves and due reviews with exact filters and ordering', async () => {
+  it('fully paginates new Problems and due reviews with exact first-Attempt filtering', async () => {
     const fake = fakeNotion();
     const duePage = (id: string, title: string, date: string) =>
       fullPage(id, {
@@ -295,7 +308,7 @@ describe('NotionCaptureRepository v3 mapping', () => {
           has_more: false,
           next_cursor: null,
         };
-      if (request.filter.property === 'First Solved')
+      if (request.filter.property === 'First Attempt')
         return { results: [{ id: 'solve-1' }], has_more: true, next_cursor: 's2' };
       return {
         results: [duePage('zeta', 'Zeta', '2026-07-20')],
@@ -305,13 +318,13 @@ describe('NotionCaptureRepository v3 mapping', () => {
     });
 
     await expect(repository(fake).loadDashboard('2026-07-21')).resolves.toMatchObject({
-      newSolveCount: 2,
+      newProblemCount: 2,
       due: [{ title: 'Zeta' }, { title: 'Alpha' }],
     });
     expect(fake.dataSources.query.mock.calls.map(([request]) => request)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          filter: { property: 'First Solved', date: { equals: '2026-07-21' } },
+          filter: { property: 'First Attempt', date: { equals: '2026-07-21' } },
         }),
         expect.objectContaining({ start_cursor: 's2' }),
         expect.objectContaining({

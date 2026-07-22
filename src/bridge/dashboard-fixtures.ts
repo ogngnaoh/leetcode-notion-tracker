@@ -8,7 +8,7 @@ export type DashboardFixtureName = 'normal' | 'empty' | 'stale' | 'loading' | 'u
 const normal: DashboardSnapshot = {
   date: '2026-07-21',
   goal: 10,
-  newSolveCount: 1,
+  newProblemCount: 1,
   generatedAt: '2026-07-21T19:38:00-04:00',
   stale: false,
   due: [
@@ -16,7 +16,7 @@ const normal: DashboardSnapshot = {
       title: 'Encode and Decode Strings',
       url: 'https://leetcode.com/problems/encode-and-decode-strings/',
       difficulty: 'Medium',
-      practiceState: 'Couldn’t solve',
+      practiceState: 'Needed help',
       solvedStreak: 0,
       nextReview: '2026-07-21',
     },
@@ -62,7 +62,7 @@ export function dashboardFixture(name: DashboardFixtureName): {
   if (name === 'empty')
     return {
       html: renderDashboard(
-        { ...normal, newSolveCount: 0, due: [] },
+        { ...normal, newProblemCount: 0, due: [] },
         undefined,
         'ready',
         'fixture-dashboard-token',

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { CaptureEventSchema, NotionManifestSchema } from '../src/shared/contract.js';
+import {
+  AttemptResultSchema,
+  CaptureEventSchema,
+  NotionManifestSchema,
+  PracticeStateSchema,
+} from '../src/shared/contract.js';
 
 function validCapture(): unknown {
   return {
@@ -31,6 +36,20 @@ describe('CaptureEventSchema v2', () => {
 
   it('accepts the exact v2 capture contract', () => {
     expect(CaptureEventSchema.parse(validCapture())).toEqual(validCapture());
+  });
+
+  it.each(['Needed help', 'Solved'])('accepts canonical result %s', (result) => {
+    const capture = validCapture() as any;
+    capture.attempt.result = result;
+    expect(CaptureEventSchema.safeParse(capture).success).toBe(true);
+  });
+
+  it('rejects the removed Couldn’t solve result and practice state', () => {
+    const capture = validCapture() as any;
+    capture.attempt.result = 'Couldn’t solve';
+    expect(CaptureEventSchema.safeParse(capture).success).toBe(false);
+    expect(AttemptResultSchema.safeParse('Couldn’t solve').success).toBe(false);
+    expect(PracticeStateSchema.safeParse('Couldn’t solve').success).toBe(false);
   });
 
   it('rejects a title that still includes the LeetCode problem number', () => {
@@ -103,12 +122,12 @@ describe('NotionManifestSchema', () => {
     attempts: { databaseId: 'attempts-db', dataSourceId: 'attempts-source' },
   };
 
-  it.each([1, 2, 3])('accepts manifest version %s without weakening ID fields', (version) => {
+  it.each([1, 2, 3, 4])('accepts manifest version %s without weakening ID fields', (version) => {
     expect(NotionManifestSchema.parse({ ...manifest, version })).toEqual({ ...manifest, version });
   });
 
   it('rejects unknown versions and missing IDs', () => {
-    expect(NotionManifestSchema.safeParse({ ...manifest, version: 4 }).success).toBe(false);
+    expect(NotionManifestSchema.safeParse({ ...manifest, version: 5 }).success).toBe(false);
     expect(
       NotionManifestSchema.safeParse({
         ...manifest,

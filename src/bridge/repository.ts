@@ -13,7 +13,7 @@ export interface ProblemRecord {
   solvedStreak: number;
   nextReview: string | null;
   lastAttempt: string | null;
-  firstSolved: string | null;
+  firstAttempt: string | null;
 }
 
 export interface StoredAttempt {
@@ -38,5 +38,5 @@ export interface CaptureRepository {
     review: ReviewState,
   ): Promise<StoredAttempt>;
   applyReview(problemPageId: string, attemptedAt: string, review: ReviewState): Promise<void>;
-  applyFirstSolved(problemPageId: string, attemptedAt: string): Promise<void>;
+  applyFirstAttempt(problemPageId: string, attemptedAt: string): Promise<void>;
 }

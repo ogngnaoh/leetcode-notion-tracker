@@ -74,11 +74,10 @@ export class CaptureService {
         : computeReviewState(problem.solvedStreak, event.attempt.result, event.attempt.attemptedOn);
       const attempt = await this.repository.createAttempt(problem, event, externalKey, review);
       if (
-        event.attempt.result === 'Solved' &&
-        (problem.firstSolved === null ||
-          timestampValue(event.attempt.attemptedAt) < timestampValue(problem.firstSolved))
+        problem.firstAttempt === null ||
+        timestampValue(event.attempt.attemptedAt) < timestampValue(problem.firstAttempt)
       ) {
-        await this.repository.applyFirstSolved(problem.pageId, event.attempt.attemptedAt);
+        await this.repository.applyFirstAttempt(problem.pageId, event.attempt.attemptedAt);
       }
       if (!olderThanCanonical) {
         await this.repository.applyReview(problem.pageId, event.attempt.attemptedAt, review);
@@ -99,11 +98,10 @@ export class CaptureService {
       throw new Error(`Attempt ${existingAttempt.pageId} references a missing Problem.`);
     }
     if (
-      existingAttempt.result === 'Solved' &&
-      (problem.firstSolved === null ||
-        timestampValue(existingAttempt.attemptedAt) < timestampValue(problem.firstSolved))
+      problem.firstAttempt === null ||
+      timestampValue(existingAttempt.attemptedAt) < timestampValue(problem.firstAttempt)
     ) {
-      await this.repository.applyFirstSolved(
+      await this.repository.applyFirstAttempt(
         existingAttempt.problemPageId,
         existingAttempt.attemptedAt,
       );
