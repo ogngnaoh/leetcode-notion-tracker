@@ -14,9 +14,11 @@
 - One-time two-database setup command
 - Safe, dry-run-by-default in-place Notion v1→v2 migration command
 - Exact v2 schema verification command
-- Exact v3 verification and dry-run-by-default v2→v3 migration
+- Exact v4 verification and dry-run-by-default v2→v3→v4 migrations
+- Earliest first-Attempt capture convergence with duplicate repair and delayed-event correction
+- Two-outcome `Needed help` / `Solved` capture contract and same-day assisted review
 - Local daily dashboard with Notion-backed counts, in-memory refresh, stale fallback, and a locally
-  persisted 1–100 new-solve target
+  persisted 1–100 new-problem target
 - Dry-run-by-default rollback for the retired paid Notion dashboard
 - Reproducible Notion icons, descriptions, native option colors, and managed table views
 - MV3 side-panel extension
@@ -37,6 +39,9 @@
 
 ## Verified with the real workspace and Chrome
 
+The items below are pre-v4 external evidence. The live workspace remains version 3 until the v4 dry
+run is reviewed and apply is explicitly approved.
+
 - The v2 manifest targets exactly one Problems and one Attempts data source.
 - Live Valid Sudoku recognition populated number, title, Medium, Array/Hash Table/Matrix, Python, and
   rendered lines 1–9 without editor focus or page scrolling.
@@ -54,6 +59,11 @@
   fields, and ordering.
 
 ## Release evidence
+
+- Milestone 06 development evidence currently includes a clean TypeScript check, 341 Vitest tests,
+  and 21 Playwright scenarios. These changed tests are not independent verification; final stopped-
+  bridge checks and live rollout remain pending. Follow-up review found no unresolved Critical or
+  Important findings.
 
 - Milestones 01 through 05 are shipped; milestone 04’s paid Notion dashboard is retired.
 - Fresh `npm run check` passed formatting, TypeScript, all 326 Vitest tests, all 22 Playwright

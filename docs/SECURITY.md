@@ -14,6 +14,9 @@ values, and prepared backfill expectations; it is deleted after the version-2 ma
 Those expectations are validated against exact migration-owned keys and value shapes, and the
 journal's SHA-256 binding plus the backup's exact structure are verified before recovery writes.
 The v2→v3 path uses the same token-free boundary for page IDs and `First Solved` recovery values.
+The v3→v4 path also stores only schema metadata, page IDs, captured field values, and expected
+first-Attempt/reclassification values. Its SHA-256-bound backup and journal remain local under ignored
+`build/` and the journal is retained until the version-4 manifest is durable.
 
 The extension stores:
 
@@ -70,7 +73,8 @@ Run `npm run notion:migrate:v2` without flags first. Inspect the reported backup
 running `npm run notion:migrate:v2 -- --apply`. Backups preserve legacy practice data and may contain
 personal notes or code-adjacent reflections, so keep `build/` local and ignored even though it is
 token-free.
-Use the same review-before-apply sequence for `npm run notion:migrate:v3`.
+Use the same review-before-apply sequence for `npm run notion:migrate:v3` and
+`npm run notion:migrate:v4`.
 
 ## Before remote deployment
 

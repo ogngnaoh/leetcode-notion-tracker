@@ -57,7 +57,7 @@
 7. Without focusing or scrolling the editor, confirm title, difficulty, topics, language, and rendered
    code appear; a partial snapshot must say `visible lines X–Y`.
 8. Confirm the square-terminal logo and spaced `LC TRACK` masthead render above the compact problem
-   card, followed by three equal outcomes and then expanded code.
+   card, followed by exactly two equal outcomes, `Needed help` and `Solved`, and then expanded code.
 9. Confirm **Dashboard ↗** is always visible in the masthead. Open the dashboard, return to LeetCode,
    click the shortcut, and confirm it focuses that exact tab and Chrome window without duplicating it.
 10. Close the dashboard, click the shortcut again, and confirm one replacement tab opens.
@@ -65,6 +65,14 @@
 12. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
 13. Confirm the Notion Problem and immutable Attempts match both submitted events.
 14. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
+
+## First-attempt acceptance
+
+1. Capture `Needed help` for a new Problem and confirm today's dashboard count increases once, solved
+   streak is 0, and Next Review is today.
+2. Review that Problem and confirm a new Attempt is created without increasing today's count.
+3. Capture `Solved` for another new Problem and confirm the count increases once and Next Review is
+   tomorrow.
 
 ## Failure checks
 

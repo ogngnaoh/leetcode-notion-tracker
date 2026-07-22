@@ -5,3 +5,4 @@
 3. **Notion Database Aesthetic Upgrade** — shipped
 4. **Daily LeetCode Plan in Notion** — shipped (retired: required a Notion Business plan)
 5. **Local LC Log Daily Dashboard** — shipped
+6. **First-Attempt Tracking and Two-Outcome Model** — active

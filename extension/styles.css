@@ -125,7 +125,7 @@ body {
 
 .outcome-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-1);
 }
 
@@ -133,11 +133,6 @@ body {
   min-height: 58px;
   padding-inline: var(--space-1);
   white-space: normal;
-}
-
-.outcome[data-result='Couldn’t solve'] {
-  border-color: var(--color-critical);
-  background: var(--color-critical-surface);
 }
 
 .outcome[data-result='Needed help'] {
@@ -154,12 +149,6 @@ body {
   outline: var(--border-thick) solid currentColor;
   outline-offset: calc(-1 * var(--border-thick));
   font-weight: var(--weight-medium);
-}
-
-.outcome[data-result='Couldn’t solve']:hover,
-.outcome[data-result='Couldn’t solve'][aria-pressed='true'] {
-  background: var(--color-critical);
-  color: var(--color-white);
 }
 
 .outcome[data-result='Needed help']:hover,

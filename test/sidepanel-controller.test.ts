@@ -154,6 +154,34 @@ describe('CaptureSessionStore', () => {
     });
   });
 
+  it('does not restore the removed Couldn’t solve result from session storage', async () => {
+    const area = new FakeSessionArea();
+    area.values['leetcodeTracker.capture.tab.41'] = {
+      pending: {
+        version: 1,
+        clientEventId: 'eb9fdc89-8098-4f76-9a68-26e94dc75fc6',
+        result: 'Couldn’t solve',
+        fingerprint: 'fingerprint-two-sum',
+        body: JSON.stringify({
+          clientEventId: 'eb9fdc89-8098-4f76-9a68-26e94dc75fc6',
+          attempt: { result: 'Couldn’t solve' },
+        }),
+      },
+      lastSuccess: {
+        version: 2,
+        fingerprint: 'fingerprint-two-sum',
+        result: 'Couldn’t solve',
+        duplicate: false,
+        review: { practiceState: 'Couldn’t solve', solvedStreak: 0, nextReview: '2026-07-20' },
+      },
+    };
+
+    await expect(new CaptureSessionStore(area, 41).read()).resolves.toEqual({
+      pending: null,
+      lastSuccess: null,
+    });
+  });
+
   it('rejects a pending body whose duplicated ID or result does not match', async () => {
     const area = new FakeSessionArea();
     const body = JSON.stringify({
@@ -211,7 +239,7 @@ describe('SidePanelController capture flow', () => {
     expect(h.controller.view).toMatchObject({ mode: 'ready', reviewLabel: 'New' });
   });
 
-  it.each<AttemptResult>(['Couldn’t solve', 'Needed help', 'Solved'])(
+  it.each<AttemptResult>(['Needed help', 'Solved'])(
     'builds and sends the exact visible %s event after fresh revalidation',
     async (result) => {
       const h = harness();

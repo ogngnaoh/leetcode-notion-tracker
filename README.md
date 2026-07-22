@@ -6,7 +6,7 @@ The project deliberately solves one workflow:
 
 1. Open a LeetCode problem.
 2. Open the Chrome side panel.
-3. Confirm the visible attempt with one of three outcomes.
+3. Confirm the visible attempt with one of two outcomes.
 4. Send the capture to a local bridge.
 5. Upsert the canonical problem, append an immutable attempt, and update the next review date in Notion.
 
@@ -15,7 +15,7 @@ The project deliberately solves one workflow:
 - **Two Notion databases:** one current `Problem` record and many immutable `Attempt` records.
 - **Local bridge:** the Notion token never enters the extension.
 - **Exact schema:** the extension is for this personal tracker, not every arbitrary Notion database.
-- **Manual confirmation:** nothing is sent until you choose `Couldn’t solve`, `Needed help`, or `Solved`.
+- **Manual confirmation:** nothing is sent until you choose `Needed help` or `Solved`.
 - **No provisioning framework:** one setup command creates the databases once.
 
 ## Repository layout
@@ -67,7 +67,7 @@ npm run notion:setup
 npm run notion:verify
 ```
 
-`notion:setup` creates manifest/schema version 3 directly, including:
+`notion:setup` creates manifest/schema version 4 directly, including:
 
 - `LeetCode Problems`
 - `LeetCode Attempts`
@@ -90,7 +90,6 @@ the same migration explicitly:
 
 ```bash
 npm run notion:migrate:v2 -- --apply
-npm run notion:verify
 ```
 
 Apply adds and backfills v2 fields before any deletion. It preserves non-empty removed values in one
@@ -117,13 +116,36 @@ work without mutating Notion. Apply only after reviewing it:
 
 ```bash
 npm run notion:migrate:v3 -- --apply
-npm run notion:verify
 ```
 
 Apply journals before mutation and advances the manifest only after verification. Manifest version 3
 means the `First Solved` schema; the paid Notion dashboard is retired. Inventory it without mutation
 using `npm run notion:dashboard:rollback`, then apply after reviewing the token-free backup with
 `npm run notion:dashboard:rollback -- --apply`.
+
+`notion:verify` verifies only the current v4 contract. After a v1 or v2 workspace reaches v3, continue
+directly through the v4 dry-run and apply steps below, then run `notion:verify`.
+
+For an existing version-3 workspace, review the v3→v4 plan before mutation:
+
+```bash
+npm run notion:migrate:v4
+```
+
+The dry run paginates all Problems and Attempts, writes a token-free backup, derives each Problem's
+earliest Attempt, and inventories the approved `Couldn’t solve` → `Needed help` reclassification.
+After reviewing the backup path, counts, and plan, apply and verify explicitly:
+
+```bash
+npm run notion:migrate:v4 -- --apply
+npm run notion:verify
+```
+
+Apply journals before mutation, preserves the `First Solved` property ID while renaming it to
+`First Attempt`, backfills earliest timestamps, converts historical rows, removes obsolete options
+only after conversion, verifies exact v4 plus untouched row properties and Attempt code bodies, and
+then writes manifest version 4. Recovery is accepted only with a strictly validated journal bound to
+its original apply backup; an exact completed v4 rerun is a no-op.
 
 ## 3. Configure the one-click bridge launcher
 
@@ -145,7 +167,7 @@ For development, the direct command remains available:
 npm run dev:bridge
 ```
 
-Notion remains the only source for solve counts and review rows. The daily new-solve target is a
+Notion remains the only source for new-Problem counts and review rows. The daily new-problem target is a
 tracker-wide local bridge preference stored atomically in ignored `build/dashboard-settings.json`.
 `DAILY_NEW_PROBLEM_GOAL` supplies only the first-run fallback. Use the dashboard masthead’s
 **Settings** dialog to choose an integer from 1 through 100; a successful save updates the displayed
@@ -230,13 +252,12 @@ Review scheduling is intentionally small:
 
 | Result             | New state / solved streak | Next review      |
 | ------------------ | ------------------------- | ---------------- |
-| Couldn’t solve     | Couldn’t solve / 0        | Same day         |
-| Needed help        | Needed help / 0           | 1 day            |
+| Needed help        | Needed help / 0           | Same day         |
 | Solved, streak 1–4 | Solved / 1–4              | 1, 3, 7, 14 days |
 | Solved, streak 5   | Mastered / 5              | None             |
 
 The managed Notion views are `Review queue`, `All problems`, and `Recent attempts`.
-The local dashboard shows daily counters and a review table with direct LeetCode URLs. Setup creates them
+The local dashboard counts each Problem once on `First Attempt = today` and shows a review table with direct LeetCode URLs. Setup creates them
 with the intended visible columns, filters, sorts, widths, wrapping, date formatting, frozen title
 column, disabled subtasks, and hidden vertical grid lines. `notion:verify` detects presentation drift
 as well as schema drift; unrelated user-created views are allowed.

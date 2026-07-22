@@ -21,7 +21,7 @@ hidden daemon. An atomic per-repository, per-port claim in the user's temporary 
 pre-bind race between rapid clicks; dead-process claims are reclaimed, while live or malformed claims
 fail closed without killing anything.
 
-Dashboard solve counts and due rows come only from Notion. The daily new-solve target is separate,
+Dashboard first-Attempt counts and due rows come only from Notion. The daily new-problem target is separate,
 non-canonical presentation configuration: the bridge atomically stores
 `{ "dailyNewProblemGoal": number }` in ignored `build/dashboard-settings.json` and uses
 `DAILY_NEW_PROBLEM_GOAL` only when no valid saved preference can be loaded. Serialized saves make the
@@ -34,7 +34,7 @@ last accepted request win, and the in-memory denominator changes only after pers
   → npm run notion:setup
   → Notion REST API
   → two databases + relation + three managed table views
-  → build/notion-manifest.json (version 3)
+  → build/notion-manifest.json (version 4)
 ```
 
 The setup operation remains intentionally one-time. An existing version-1 tracker uses the single
@@ -67,6 +67,15 @@ exact v2 manifest + paginated Problems/Attempts inventory
   → journal → add/backfill/verify First Solved → manifest v3
 ```
 
+```text
+exact v3 manifest + paginated Problems/Attempts inventory
+  → npm run notion:migrate:v4          (dry-run)
+  → token-free backup + earliest Attempt derivation + reclassification plan
+  → npm run notion:migrate:v4 -- --apply
+  → journal → property rename/backfill → row conversion → option removal
+  → exact v4 verification → atomic manifest v4 rewrite
+```
+
 ## Data flow for one capture
 
 1. On startup, the side panel requests the current snapshot. If an extension reload left no receiver,
@@ -75,7 +84,7 @@ exact v2 manifest + paginated Problems/Attempts inventory
    positions, normalizes nonbreaking spaces, joins soft wraps, and rejects ambiguous mappings. It
    reports complete code only from line 1 when the public scrollbar shows the whole file; otherwise it
    reports `visible lines X–Y`. A visible non-Monaco textarea is the only fallback.
-3. The user confirms one of three outcomes. The extension creates a new UUID `Client Event ID` for
+3. The user confirms `Needed help` or `Solved`. The extension creates a new UUID `Client Event ID` for
    every deliberate click, including unchanged code.
 4. The bridge checks Attempts for that event ID.
 5. When already present, the bridge returns the existing attempt and reapplies its stored review state.
@@ -83,7 +92,7 @@ exact v2 manifest + paginated Problems/Attempts inventory
 7. It computes the calendar-date review transition.
 8. It creates one immutable Attempt containing Result, Resulting State, Resulting Solved Streak, and
    Resulting Next Review.
-9. For a solved Attempt, it sets `First Solved` when missing or later than that Attempt.
+9. After Attempt creation, it sets `First Attempt` when missing or later than that Attempt timestamp.
 10. It updates the Problem's Practice State, Solved Streak, Last Attempt, and Next Review.
 
 The resulting review state is stored on the Attempt so a retry can reconcile a partially completed

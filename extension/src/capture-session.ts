@@ -1,7 +1,7 @@
 import type { AttemptResult, CaptureResult } from '../../src/shared/contract.js';
 
 const SESSION_KEY_PREFIX = 'leetcodeTracker.capture.tab.';
-const RESULTS = new Set<AttemptResult>(['Couldn’t solve', 'Needed help', 'Solved']);
+const RESULTS = new Set<AttemptResult>(['Needed help', 'Solved']);
 
 export interface PendingCaptureRecord {
   version: 1;
@@ -70,7 +70,7 @@ function isReview(value: unknown): value is CaptureResult['review'] {
   if (!isRecord(value)) return false;
   return (
     typeof value.practiceState === 'string' &&
-    ['New', 'Couldn’t solve', 'Needed help', 'Solved', 'Mastered'].includes(value.practiceState) &&
+    ['New', 'Needed help', 'Solved', 'Mastered'].includes(value.practiceState) &&
     typeof value.solvedStreak === 'number' &&
     Number.isInteger(value.solvedStreak) &&
     value.solvedStreak >= 0 &&

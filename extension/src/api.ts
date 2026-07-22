@@ -7,13 +7,7 @@ import type {
 import { CaptureRequestError } from './capture-submission.js';
 import type { ExtensionSettings } from './types.js';
 
-const PRACTICE_STATES = new Set<PracticeState>([
-  'New',
-  'Couldn’t solve',
-  'Needed help',
-  'Solved',
-  'Mastered',
-]);
+const PRACTICE_STATES = new Set<PracticeState>(['New', 'Needed help', 'Solved', 'Mastered']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

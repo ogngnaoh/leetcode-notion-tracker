@@ -1,6 +1,6 @@
 # Notion schema contract
 
-The bridge expects exact v3 property names and types. This is intentional: a personal tracker does
+The bridge expects exact v4 property names and types. This is intentional: a personal tracker does
 not need a generalized field-mapping engine. There are exactly two databases with reciprocal
 `Problem`/`Attempts` relations.
 
@@ -8,46 +8,46 @@ not need a generalized field-mapping engine. There are exactly two databases wit
 
 One row is one canonical LeetCode problem.
 
-| Property          | Type         | Meaning                                               |
-| ----------------- | ------------ | ----------------------------------------------------- |
-| Problem           | Title        | Display title                                         |
-| External Key      | Rich text    | Stable `leetcode:<slug>` idempotency key              |
-| Slug              | Rich text    | LeetCode slug                                         |
-| Number            | Number       | Problem number when available                         |
-| URL               | URL          | Canonical problem URL                                 |
-| Difficulty        | Select       | Easy, Medium, Hard, or Unknown                        |
-| Topics            | Multi-select | Visible LeetCode topic labels                         |
-| Practice State    | Select       | New, Couldn’t solve, Needed help, Solved, or Mastered |
-| Solved Streak     | Number       | Consecutive solved count, capped at 5                 |
-| Next Review       | Date         | Browser-local calendar date or null                   |
-| Last Attempt      | Date         | Most recent attempt timestamp                         |
-| First Solved      | Date         | Earliest successful Attempt timestamp                 |
-| Extension Managed | Checkbox     | Created by this integration                           |
-| Attempts          | Relation     | Reciprocal relation to Attempts                       |
+| Property          | Type         | Meaning                                  |
+| ----------------- | ------------ | ---------------------------------------- |
+| Problem           | Title        | Display title                            |
+| External Key      | Rich text    | Stable `leetcode:<slug>` idempotency key |
+| Slug              | Rich text    | LeetCode slug                            |
+| Number            | Number       | Problem number when available            |
+| URL               | URL          | Canonical problem URL                    |
+| Difficulty        | Select       | Easy, Medium, Hard, or Unknown           |
+| Topics            | Multi-select | Visible LeetCode topic labels            |
+| Practice State    | Select       | New, Needed help, Solved, or Mastered    |
+| Solved Streak     | Number       | Consecutive solved count, capped at 5    |
+| Next Review       | Date         | Browser-local calendar date or null      |
+| Last Attempt      | Date         | Most recent attempt timestamp            |
+| First Attempt     | Date         | Earliest related Attempt timestamp       |
+| Extension Managed | Checkbox     | Created by this integration              |
+| Attempts          | Relation     | Reciprocal relation to Attempts          |
 
 ## LeetCode Attempts
 
 One row is one immutable attempt.
 
-| Property                | Type         | Meaning                                |
-| ----------------------- | ------------ | -------------------------------------- |
-| Attempt                 | Title        | Problem plus attempt timestamp         |
-| Client Event ID         | Rich text    | UUID used for idempotency              |
-| Problem                 | Relation     | Canonical Problem row                  |
-| Problem Key             | Rich text    | Redundant `leetcode:<slug>` key        |
-| Attempted At            | Date         | Exact attempt timestamp                |
-| Source URL              | URL          | LeetCode problem URL                   |
-| Language                | Rich text    | Visible implementation language        |
-| Result                  | Select       | Couldn’t solve, Needed help, or Solved |
-| Resulting State         | Select       | State applied to the Problem           |
-| Resulting Solved Streak | Number       | Solved streak applied to the Problem   |
-| Resulting Next Review   | Date         | Calendar date applied to the Problem   |
-| Extension Managed       | Checkbox     | Created by this integration            |
-| Created Time            | Created time | Native Notion timestamp                |
+| Property                | Type         | Meaning                              |
+| ----------------------- | ------------ | ------------------------------------ |
+| Attempt                 | Title        | Problem plus attempt timestamp       |
+| Client Event ID         | Rich text    | UUID used for idempotency            |
+| Problem                 | Relation     | Canonical Problem row                |
+| Problem Key             | Rich text    | Redundant `leetcode:<slug>` key      |
+| Attempted At            | Date         | Exact attempt timestamp              |
+| Source URL              | URL          | LeetCode problem URL                 |
+| Language                | Rich text    | Visible implementation language      |
+| Result                  | Select       | Needed help or Solved                |
+| Resulting State         | Select       | State applied to the Problem         |
+| Resulting Solved Streak | Number       | Solved streak applied to the Problem |
+| Resulting Next Review   | Date         | Calendar date applied to the Problem |
+| Extension Managed       | Checkbox     | Created by this integration          |
+| Created Time            | Created time | Native Notion timestamp              |
 
 Difficulty options use green `Easy`, yellow `Medium`, red `Hard`, and gray `Unknown`. State options
-use gray `New`, red `Couldn’t solve`, yellow `Needed help`, green `Solved`, and blue `Mastered`.
-`Result` uses the same colors for its three values.
+use gray `New`, yellow `Needed help`, green `Solved`, and blue `Mastered`.
+`Result` uses yellow `Needed help` and green `Solved`.
 
 Captured code is written in the Attempt page body under `Captured code`.
 
@@ -96,6 +96,16 @@ dashboard reads these properties without adding another database, relation, or p
 token-free backup, and derives `First Solved` solely from the earliest Attempt whose Result is
 `Solved`. Apply journals before mutation, backfills and verifies the property, and only then
 atomically advances the manifest to version 3.
+
+## v3→v4 migration contract
+
+`npm run notion:migrate:v4` is dry-run by default. It paginates every Problem and Attempt, writes a
+token-free backup, and derives `First Attempt` from the earliest related `Attempted At` timestamp.
+Apply journals before mutation, renames `First Solved` in place, backfills earliest timestamps,
+reclassifies historical `Couldn’t solve` Problem and Attempt values to `Needed help`, and removes the
+obsolete options only after every row is converted. It preserves review dates, streaks, IDs,
+relations, timestamps, code bodies, and Client Event IDs, verifies exact v4, and only then atomically
+advances the manifest to version 4. A completed exact-v4 rerun is a no-op.
 
 ## Compatibility rule
 

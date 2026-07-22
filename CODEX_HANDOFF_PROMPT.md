@@ -10,7 +10,7 @@ Make this workflow reliable for one user:
 1. The user opens an English desktop `leetcode.com/problems/*` page.
 2. A Manifest V3 side panel reads public rendered metadata and Monaco code without focusing or
    scrolling the page.
-3. The user confirms one outcome: `Couldn’t solve`, `Needed help`, or `Solved`.
+3. The user confirms one outcome: `Needed help` or `Solved`.
 4. The authenticated localhost bridge writes one canonical Problem and one immutable Attempt to
    Notion.
 5. Every deliberate click is a new Attempt, even for unchanged code. Only an uncertain retry reuses
@@ -65,8 +65,7 @@ All dates use the browser-local attempt calendar date:
 
 | Result             | Resulting state/streak      | Next review             |
 | ------------------ | --------------------------- | ----------------------- |
-| Couldn’t solve     | Couldn’t solve / 0          | Same day                |
-| Needed help        | Needed help / 0             | +1 day                  |
+| Needed help        | Needed help / 0             | Same day                |
 | Solved, streak 1–4 | Solved / incremented streak | +1, +3, +7, or +14 days |
 | Solved, streak 5   | Mastered / 5                | null                    |
 
@@ -85,7 +84,7 @@ Do not substitute another scheduling algorithm.
 - Extract title, number, difficulty, topics, and language independently. Never focus or scroll the
   page.
 - Layout A has one square-terminal logo with the spaced `LC TRACK` masthead, a compact problem card,
-  three equal outcomes, then an expanded code disclosure.
+  two equal outcomes, then an expanded code disclosure.
 - After success, keep outcomes active, select the last result with `aria-pressed`, and retain its
   confirmation until another success or a fingerprint change.
 - During an uncertain write, retry is the sole action and must reuse the stored body exactly.
@@ -96,14 +95,14 @@ Do not substitute another scheduling algorithm.
 
 ## Notion and bridge verification
 
-With the user’s `.env` and existing v2 manifest:
+With the user’s `.env` and exact v4 manifest:
 
 ```bash
 npm run notion:verify
 npm run dev:bridge
 ```
 
-Verify exactly two databases with reciprocal relations and exact v2 types/options. A capture should
+Verify exactly two databases with reciprocal relations and exact v4 types/options. A capture should
 create one Attempt, update the canonical Problem, and return the stored review state. Replaying the
 same `Client Event ID` must return `duplicate: true` without another Attempt.
 

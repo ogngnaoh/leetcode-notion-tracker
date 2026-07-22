@@ -30,11 +30,11 @@ describe('one-click side panel artifact', () => {
     expect(options).toMatch(/<h1>LCTrack<\/h1>/);
   });
 
-  it('contains exactly three symmetrical outcome controls and no form or reload control', async () => {
+  it('contains exactly two compact outcome controls and no form or reload control', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     const outcomes = [...html.matchAll(/data-result="([^"]+)"/g)].map((match) => match[1]);
-    expect(outcomes).toEqual(['Couldn’t solve', 'Needed help', 'Solved']);
+    expect(outcomes).toEqual(['Needed help', 'Solved']);
     expect(html).not.toMatch(/<form\b/i);
     expect(html).not.toMatch(/id="reload"/i);
     expect(html).not.toMatch(/<input\b|<select\b|<textarea\b/i);
@@ -50,9 +50,9 @@ describe('one-click side panel artifact', () => {
       readFile(resolve(root, 'extension/src/sidepanel.ts'), 'utf8'),
     ]);
 
-    expect(styles).toContain(".outcome[data-result='Couldn’t solve']");
     expect(styles).toContain(".outcome[data-result='Needed help']");
     expect(styles).toContain(".outcome[data-result='Solved']");
+    expect(styles).not.toContain(".outcome[data-result='Couldn’t solve']");
     expect(runtime).toContain("view.loggedResult ? 'Attempt logged.' : ''");
     expect(runtime).not.toContain('logged for this exact code');
   });
@@ -70,7 +70,7 @@ describe('one-click side panel artifact', () => {
       html.indexOf('id="code-disclosure"'),
     );
     expect(html).toMatch(/<details[^>]*id="code-disclosure"[^>]*\bopen\b/);
-    expect([...html.matchAll(/aria-pressed="false"/g)]).toHaveLength(3);
+    expect([...html.matchAll(/aria-pressed="false"/g)]).toHaveLength(2);
   });
 
   it('pairs the decorative square-terminal mark with the spaced LC TRACK wordmark', async () => {
@@ -107,7 +107,7 @@ describe('one-click side panel artifact', () => {
       readFile(resolve(root, 'extension/vendor/fonts/fonts.css'), 'utf8'),
     ]);
 
-    expect(styles).toMatch(/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+    expect(styles).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
     expect(styles).toMatch(/background:\s*var\(--color-pink\)/);
     expect(styles).not.toMatch(/box-shadow|linear-gradient|radial-gradient/);
     expect(tokens).toContain('--radius:');

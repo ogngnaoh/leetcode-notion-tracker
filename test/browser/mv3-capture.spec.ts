@@ -384,6 +384,7 @@ test('extracts and renders visible public-DOM problem, topics, language, and exa
   await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
   await expect(panel.locator('#code-disclosure')).toHaveAttribute('open', '');
   await expect(panel.locator('#review-state')).toHaveText('Review on 2999-07-24');
+  await expect(panel.locator('#outcome-actions button')).toHaveText(['Needed help', 'Solved']);
   const verticalOrder = await panel
     .locator('.problem-panel, .capture-section, #code-disclosure')
     .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
@@ -475,7 +476,7 @@ test('does not POST for loading, status checks, content updates, or SPA navigati
   await expectOnlyStatusPathSince(requestMark, `/api/problems/${secondProblem.slug}/status`);
 });
 
-for (const result of ['Couldn’t solve', 'Needed help', 'Solved'] as const) {
+for (const result of ['Needed help', 'Solved'] as const) {
   test(`${result} sends one exact v2 event after the click`, async () => {
     const { panel } = await setupCase();
     await choose(panel, result);
