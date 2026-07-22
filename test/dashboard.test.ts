@@ -61,7 +61,23 @@ describe('local dashboard', () => {
       date: '2026-07-21',
       goal: 10,
       newProblemCount: 1,
-      due: [...rows, { ...row, title: 'Unsafe', url: 'javascript:alert(1)' }],
+      due: [
+        {
+          ...row,
+          difficulty: 'Medium',
+          practiceState: 'Needed help',
+          nextReview: '2026-07-20',
+        },
+        row,
+        {
+          ...row,
+          title: 'Unsafe',
+          url: 'javascript:alert(1)',
+          difficulty: 'Hard',
+          practiceState: 'Needed help',
+          nextReview: '2026-07-19',
+        },
+      ],
       generatedAt: '2026-07-21T15:00:00.000Z',
       stale: false,
     });
@@ -79,6 +95,20 @@ describe('local dashboard', () => {
     expect(html).toContain('Choose how many new Problems you want to practice each day.');
     expect(html).not.toContain('NEW SOLVES TODAY');
     expect(html).not.toContain('new-solve');
+    expect(html).toContain('data-review-queue');
+    expect(html).toContain('data-review-search');
+    expect(html).toContain('data-review-filter="all"');
+    expect(html).toContain('data-review-filter="today"');
+    expect(html).toContain('data-review-filter="overdue"');
+    expect(html).toContain('data-review-filter="needed-help"');
+    expect(html).toContain('data-review-filter="hard"');
+    expect(html).toContain('data-filter-count="all">3</span>');
+    expect(html).toContain('data-filter-count="today">1</span>');
+    expect(html).toContain('data-filter-count="overdue">2</span>');
+    expect(html).toContain('data-filter-count="needed-help">2</span>');
+    expect(html).toContain('data-filter-count="hard">1</span>');
+    expect(html).not.toContain('<table>');
+    expect(html).not.toContain('class="cards"');
   });
 
   it('renders deliberate loading and unavailable states', () => {

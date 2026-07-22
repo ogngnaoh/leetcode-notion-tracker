@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Hono } from 'hono';
-import { renderDashboard, type DashboardSnapshot } from './dashboard.js';
+import { renderDashboard, type DashboardRow, type DashboardSnapshot } from './dashboard.js';
 
-export type DashboardFixtureName = 'normal' | 'empty' | 'stale' | 'loading' | 'unavailable';
+export type DashboardFixtureName =
+  'normal' | 'empty' | 'stale' | 'loading' | 'unavailable' | 'large';
 
 const normal: DashboardSnapshot = {
   date: '2026-07-21',
@@ -18,7 +19,7 @@ const normal: DashboardSnapshot = {
       difficulty: 'Medium',
       practiceState: 'Needed help',
       solvedStreak: 0,
-      nextReview: '2026-07-21',
+      nextReview: '2026-07-20',
     },
     {
       title: 'Two Sum',
@@ -34,9 +35,23 @@ const normal: DashboardSnapshot = {
       difficulty: 'Hard',
       practiceState: 'Needed help',
       solvedStreak: 0,
-      nextReview: '2026-07-22',
+      nextReview: '2026-07-19',
     },
   ],
+};
+
+const largeRows: DashboardRow[] = Array.from({ length: 123 }, (_, index) => ({
+  title: `Review Problem ${String(index + 1).padStart(3, '0')}`,
+  url: `https://leetcode.com/problems/review-problem-${index + 1}/`,
+  difficulty: index % 5 === 0 ? 'Hard' : index % 2 === 0 ? 'Medium' : 'Easy',
+  practiceState: index % 3 === 0 ? 'Needed help' : 'Solved',
+  solvedStreak: index % 5,
+  nextReview: index % 4 === 0 ? '2026-07-21' : '2026-07-20',
+}));
+
+const large: DashboardSnapshot = {
+  ...normal,
+  due: largeRows,
 };
 
 export function dashboardFixture(name: DashboardFixtureName): {
@@ -81,6 +96,11 @@ export function dashboardFixture(name: DashboardFixtureName): {
       ),
       expectedText: 'Saved data',
     };
+  if (name === 'large')
+    return {
+      html: renderDashboard(large, undefined, 'ready', 'fixture-dashboard-token', 10),
+      expectedText: 'Review Problem 001',
+    };
   return {
     html: renderDashboard(normal, undefined, 'ready', 'fixture-dashboard-token', 10),
     expectedText: 'Encode and Decode Strings',
@@ -109,7 +129,7 @@ export function createDashboardFixtureApp(): Hono {
   const app = new Hono();
   app.get('/dashboard/:state', (context) => {
     const state = context.req.param('state') as DashboardFixtureName;
-    if (!['normal', 'empty', 'stale', 'loading', 'unavailable'].includes(state))
+    if (!['normal', 'empty', 'stale', 'loading', 'unavailable', 'large'].includes(state))
       return context.notFound();
     context.header(
       'Content-Security-Policy',

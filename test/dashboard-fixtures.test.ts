@@ -13,6 +13,9 @@ describe('dashboard design fixtures', () => {
       expect(fixture.html).toContain('id="daily-new-problem-goal"');
       expect(fixture.html).toContain('NEW PROBLEMS TODAY');
       expect(fixture.html).not.toContain('NEW SOLVES TODAY');
+      if (state === 'normal' || state === 'stale') {
+        expect(fixture.html).toContain('data-review-queue');
+      }
     },
   );
 });

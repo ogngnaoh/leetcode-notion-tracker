@@ -137,6 +137,40 @@ function updatedLabel(timestamp: string): string {
   );
 }
 
+function dueLabel(reviewDate: string, snapshotDate: string): string {
+  const review = Date.parse(`${reviewDate}T00:00:00Z`);
+  const snapshot = Date.parse(`${snapshotDate}T00:00:00Z`);
+  const days = Math.round((snapshot - review) / 86_400_000);
+  return days === 0 ? 'Today' : `${days}d overdue`;
+}
+
+function renderReviewQueue(rows: DashboardRow[], snapshotDate: string): string {
+  const counts = {
+    all: rows.length,
+    today: rows.filter((row) => row.nextReview === snapshotDate).length,
+    overdue: rows.filter((row) => row.nextReview < snapshotDate).length,
+    neededHelp: rows.filter((row) => row.practiceState === 'Needed help').length,
+    hard: rows.filter((row) => row.difficulty === 'Hard').length,
+  };
+  const filterButton = (
+    value: 'all' | 'today' | 'overdue' | 'needed-help' | 'hard',
+    label: string,
+    count: number,
+    pressed = false,
+  ): string =>
+    `<button type="button" data-review-filter="${value}" aria-pressed="${pressed}" aria-controls="review-results">${label}<span data-filter-count="${value}">${count}</span></button>`;
+  const rowMarkup = rows
+    .map((row) => {
+      const href = safeLeetCodeUrl(row.url);
+      const action = href
+        ? `<a class="review" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">Review<span aria-hidden="true"> ↗</span></a>`
+        : '<span class="link-unavailable">Link unavailable</span>';
+      return `<li class="review-row" data-review-row data-title="${escapeHtml(row.title.trim().toLowerCase())}" data-review-date="${escapeHtml(row.nextReview)}" data-practice-state="${escapeHtml(row.practiceState)}" data-difficulty="${escapeHtml(row.difficulty)}"><div class="review-row__content"><h2>${escapeHtml(row.title)}</h2><div class="review-row__meta"><span class="badge badge--${badgeClass(row.difficulty)}">${escapeHtml(row.difficulty)}</span><span class="badge badge--${badgeClass(row.practiceState)}">${escapeHtml(row.practiceState)}</span><span>${row.solvedStreak} streak</span><span><strong>${escapeHtml(dueLabel(row.nextReview, snapshotDate))}</strong> · <time datetime="${escapeHtml(row.nextReview)}">${escapeHtml(row.nextReview)}</time></span></div></div>${action}</li>`;
+    })
+    .join('');
+  return `<section class="review-queue" data-review-queue><div class="review-filters" role="group" aria-label="Review filters">${filterButton('all', 'All due', counts.all, true)}${filterButton('today', 'Today', counts.today)}${filterButton('overdue', 'Overdue', counts.overdue)}${filterButton('needed-help', 'Needed help', counts.neededHelp)}${filterButton('hard', 'Hard', counts.hard)}</div><div class="review-results"><label for="review-search">Search by title</label><input id="review-search" type="search" autocomplete="off" data-review-search aria-controls="review-results"><p data-review-results role="status" aria-live="polite">Showing ${rows.length} of ${rows.length} matching reviews</p><ol id="review-results" class="review-list">${rowMarkup}</ol><div class="review-filter-empty" data-review-empty hidden><h2>No matching reviews</h2><p>Try another saved view or title search.</p></div><button class="review-more" type="button" data-review-more hidden>Load 50 more</button></div></section>`;
+}
+
 export function renderDashboard(
   snapshot?: DashboardSnapshot,
   error?: string,
@@ -146,21 +180,6 @@ export function renderDashboard(
 ): string {
   const unavailable = !snapshot;
   const rows = snapshot?.due ?? [];
-  const rowMarkup = rows
-    .map((row) => {
-      const href = safeLeetCodeUrl(row.url);
-      const action = href
-        ? `<a class="review" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">Review</a>`
-        : '<span>Unavailable</span>';
-      return `<tr><td class="problem-title">${escapeHtml(row.title)}</td><td><span class="badge badge--${badgeClass(row.difficulty)}">${escapeHtml(row.difficulty)}</span></td><td><span class="badge badge--${badgeClass(row.practiceState)}">${escapeHtml(row.practiceState)}</span></td><td>${row.solvedStreak}</td><td><time datetime="${escapeHtml(row.nextReview)}">${escapeHtml(row.nextReview)}</time></td><td>${action}</td></tr>`;
-    })
-    .join('');
-  const cards = rows
-    .map((row) => {
-      const href = safeLeetCodeUrl(row.url);
-      return `<article class="card"><h2>${escapeHtml(row.title)}</h2><div class="card-badges"><span class="badge badge--${badgeClass(row.difficulty)}">${escapeHtml(row.difficulty)}</span><span class="badge badge--${badgeClass(row.practiceState)}">${escapeHtml(row.practiceState)}</span></div><dl><div><dt>Streak</dt><dd>${row.solvedStreak}</dd></div><div><dt>Due</dt><dd><time datetime="${escapeHtml(row.nextReview)}">${escapeHtml(row.nextReview)}</time></dd></div></dl>${href ? `<a class="review" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">Review problem<span aria-hidden="true"> ↗</span></a>` : '<span class="link-unavailable">Link unavailable</span>'}</article>`;
-    })
-    .join('');
   const status =
     state === 'loading'
       ? '<div class="empty loading" role="status" data-dashboard-loading><div class="loading-mark" aria-hidden="true"></div><h2>Loading today’s plan</h2><p>Fetching fresh solve and review data from Notion.</p></div>'
@@ -168,7 +187,7 @@ export function renderDashboard(
         ? `<div class="empty" role="alert"><h2>Dashboard unavailable</h2><p>${escapeHtml(error ?? 'Notion data could not be loaded.')}</p></div>`
         : rows.length === 0
           ? '<div class="empty"><h2>All caught up</h2><p>No reviews are due today.</p></div>'
-          : `<table><thead><tr><th>Problem</th><th>Difficulty</th><th>State</th><th>Streak</th><th>Next review</th><th>Action</th></tr></thead><tbody>${rowMarkup}</tbody></table><div class="cards">${cards}</div>`;
+          : renderReviewQueue(rows, snapshot.date);
   const shownDate = snapshot?.date ?? localDate();
   const updateStatus = snapshot
     ? `<span>Updated <time datetime="${escapeHtml(snapshot.generatedAt)}">${escapeHtml(updatedLabel(snapshot.generatedAt))}</time></span>`
