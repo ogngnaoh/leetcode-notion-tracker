@@ -32,7 +32,7 @@
 - Tab-scoped extension action available on any tab without carrying the panel into other Chrome tabs
 - Explicit click-only capture controls
 - Extension production build
-- Version 0.1.3 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
+- Version 0.1.4 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
   and Chrome-supported Lucide SquareTerminal PNG icons
 - Unit and route tests
 - Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery
@@ -43,7 +43,7 @@
   verifies 14 Problems properties, 13 Attempts properties, option colors, presentation, and views.
 - The approved v4 apply preserved the `First Attempt` property ID, eliminated all obsolete row values,
   matched every Problem to its earliest Attempt, retained its recovery backup, and replays as a no-op.
-- LCTrack `0.1.3` is loaded in actual Chrome with exactly `Needed help` and `Solved` and captured the
+- LCTrack `0.1.3` was observed in actual Chrome with exactly `Needed help` and `Solved` and captured the
   exact visible Monaco code through the v4-gated bridge.
 - On 2026-07-22, Longest Consecutive Sequence `Needed help` changed the dashboard count from 0 to 1,
   stored streak 0, and remained due 2026-07-22. A second Attempt used a distinct Client Event ID while
@@ -56,7 +56,7 @@
 ## Release evidence
 
 - Milestones 01 through 06 are shipped; milestone 04’s paid Notion dashboard remains retired.
-- Fresh LCTrack `0.1.3` `npm run check` passed formatting, TypeScript, 341 Vitest tests, 21 Playwright
+- Fresh LCTrack `0.1.4` `npm run check` passes formatting, TypeScript, 341 Vitest tests, 21 Playwright
   scenarios, the extension build, and the security scan.
 - The standalone security scan and `git diff --check` passed. Follow-up review found no unresolved
   Critical or Important findings after all migration/runtime safety fixes.

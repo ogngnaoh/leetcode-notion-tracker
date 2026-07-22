@@ -32,8 +32,8 @@ so every newly practiced Problem counts once and assisted work remains due today
   their first execution; they are not independent verification.
 - The approved live migration used a reviewed dry-run, a journaled apply backup, exact v4 verification,
   and a mutation-free no-op replay before Chrome acceptance.
-- LCTrack `0.1.3` establishes synchronized package/lockfile/extension versions and the project release
-  convention in `AGENTS.md`.
+- LCTrack `0.1.4` continues the synchronized package/lockfile/extension version convention established
+  in `AGENTS.md`.
 
 ## Exit criteria
 

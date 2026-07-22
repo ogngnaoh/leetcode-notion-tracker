@@ -193,6 +193,7 @@ describe('bridge app', () => {
       bridgeToken,
       captureService: new CaptureService(new MemoryCaptureRepository()),
       dashboard,
+      now: () => new Date('2026-07-21T15:00:00Z'),
     });
 
     const loading = await app.request('/dashboard');

@@ -10,6 +10,7 @@ import { localDate, renderDashboard, type DashboardStore } from './dashboard.js'
 interface AppOptions {
   bridgeToken: string;
   captureService: CaptureService;
+  now?: () => Date;
   dashboard?: DashboardStore;
   dashboardSettings?: {
     antiForgeryToken: string;
@@ -58,7 +59,7 @@ export function createApp(options: AppOptions): Hono {
   );
 
   app.get('/dashboard', async (context) => {
-    const today = localDate();
+    const today = localDate(options.now?.());
     let snapshot = options.dashboard?.current();
     let error: string | undefined;
     let state: 'ready' | 'loading' | 'unavailable' = snapshot ? 'ready' : 'unavailable';

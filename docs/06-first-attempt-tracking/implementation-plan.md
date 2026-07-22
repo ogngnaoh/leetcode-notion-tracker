@@ -30,6 +30,8 @@ verification to v4, then integrate the extension and dashboard copy/query change
 - [x] Complete follow-up code review after resolving all six Important migration/runtime findings.
       (no remaining Critical or Important issues)
 - [x] Define the release versioning convention and synchronize the milestone 06 release as `0.1.3`.
+- [x] Inject the dashboard route clock after the midnight rollover regression and release the fix as
+      `0.1.4`.
 - [x] Stop the bridge and run `npm run check`, `npm run security:scan`, and `git diff --check`.
 - [x] Review live dry-run output with the user before any apply; after approved rollout, verify Notion and
       Chrome acceptance scenarios, ship the slice, rewrite handoff, stop processes, and commit docs.
