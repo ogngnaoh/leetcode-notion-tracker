@@ -213,18 +213,21 @@ export class NotionCaptureRepository implements CaptureRepository {
         ],
       }),
     ]);
-    const due = duePages.filter(isFullPage).map((page): DashboardRow => {
-      const properties = propertyMap(page);
-      const nextReview = requiredDate(properties, 'Next Review');
-      return {
-        title: requiredTitle(properties, 'Problem'),
-        url: requiredUrl(properties, 'URL'),
-        difficulty: DifficultySchema.parse(requiredSelect(properties, 'Difficulty')),
-        practiceState: PracticeStateSchema.parse(requiredSelect(properties, 'Practice State')),
-        solvedStreak: requiredNumber(properties, 'Solved Streak'),
-        nextReview: nextReview.slice(0, 10),
-      };
-    });
+    const due = duePages
+      .filter(isFullPage)
+      .map((page): DashboardRow => {
+        const properties = propertyMap(page);
+        const nextReview = requiredDate(properties, 'Next Review');
+        return {
+          title: requiredTitle(properties, 'Problem'),
+          url: requiredUrl(properties, 'URL'),
+          difficulty: DifficultySchema.parse(requiredSelect(properties, 'Difficulty')),
+          practiceState: PracticeStateSchema.parse(requiredSelect(properties, 'Practice State')),
+          solvedStreak: requiredNumber(properties, 'Solved Streak'),
+          nextReview: nextReview.slice(0, 10),
+        };
+      })
+      .filter((row) => row.nextReview <= date);
     return { newProblemCount: newProblems.length, due };
   }
 

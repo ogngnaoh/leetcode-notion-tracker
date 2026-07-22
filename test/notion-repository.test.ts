@@ -304,7 +304,10 @@ describe('NotionCaptureRepository v4 mapping', () => {
         return { results: [{ id: 'solve-2' }], has_more: false, next_cursor: null };
       if (request.start_cursor === 'd2')
         return {
-          results: [duePage('alpha', 'Alpha', '2026-07-20')],
+          results: [
+            duePage('alpha', 'Alpha', '2026-07-21'),
+            duePage('future', 'Future', '2026-07-22'),
+          ],
           has_more: false,
           next_cursor: null,
         };
