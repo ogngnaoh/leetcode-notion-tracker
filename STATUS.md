@@ -32,7 +32,7 @@
 - Tab-scoped extension action available on any tab without carrying the panel into other Chrome tabs
 - Explicit click-only capture controls
 - Extension production build
-- Version 0.1.2 LCTrack personal-use branding with the `leetcode tracker (notion-powered)` description
+- Version 0.1.3 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
   and Chrome-supported Lucide SquareTerminal PNG icons
 - Unit and route tests
 - Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery

@@ -21,3 +21,11 @@ Before changing code, read:
 - Preserve `External Key` and `Client Event ID` idempotency.
 - Write a failing test before changing behavior.
 - Run `npm run check` before claiming completion.
+
+## Release versioning
+
+- Increment the patch version for every shipped code change unless the release intentionally warrants
+  a minor or major increment.
+- Keep `package.json`, the root package entry in `package-lock.json`, and
+  `extension/manifest.json` synchronized.
+- Documentation-only commits do not require a version bump.
