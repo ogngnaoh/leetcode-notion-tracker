@@ -20,7 +20,7 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.1.4',
+      version: '0.1.5',
       description: 'leetcode tracker (notion-powered)',
     });
     expect(manifest.action?.default_title).toBe('Open LCTrack');

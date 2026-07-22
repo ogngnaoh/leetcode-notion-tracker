@@ -26,6 +26,11 @@ non-canonical presentation configuration: the bridge atomically stores
 `{ "dailyNewProblemGoal": number }` in ignored `build/dashboard-settings.json` and uses
 `DAILY_NEW_PROBLEM_GOAL` only when no valid saved preference can be loaded. Serialized saves make the
 last accepted request win, and the in-memory denominator changes only after persistence succeeds.
+The repository requests `Next Review` on or before the browser-local snapshot date, then applies the
+same inclusive cutoff locally so a future row in an unexpected upstream response cannot enter the
+queue. The rendered snapshot exposes compact `All due`, `Today`, `Overdue`, `Needed help`, and `Hard`
+views plus normalized title search. Browser-side filtering combines the selected view and search,
+reveals matching rows in batches of 50, and never sends a Notion mutation.
 
 ## Provisioning
 

@@ -257,10 +257,15 @@ Review scheduling is intentionally small:
 | Solved, streak 5   | Mastered / 5              | None             |
 
 The managed Notion views are `Review queue`, `All problems`, and `Recent attempts`.
-The local dashboard counts each Problem once on `First Attempt = today` and shows a review table with direct LeetCode URLs. Setup creates them
-with the intended visible columns, filters, sorts, widths, wrapping, date formatting, frozen title
-column, disabled subtasks, and hidden vertical grid lines. `notion:verify` detects presentation drift
-as well as schema drift; unrelated user-created views are allowed.
+The local dashboard counts each Problem once on `First Attempt = today` and shows a compact review
+queue with direct LeetCode URLs. The queue includes every Problem whose `Next Review` is today or
+earlier and defensively excludes future-dated rows even if an upstream response contains one. Use
+the `All due`, `Today`, `Overdue`, `Needed help`, and `Hard` local views with title search; matching
+rows appear in batches of 50. These controls filter the in-memory snapshot only and never mutate
+Notion. Setup creates the managed Notion views with the intended visible columns, filters, sorts,
+widths, wrapping, date formatting, frozen title column, disabled subtasks, and hidden vertical grid
+lines. `notion:verify` detects presentation drift as well as schema drift; unrelated user-created
+views are allowed.
 
 ## Quality checks
 

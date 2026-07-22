@@ -21,7 +21,7 @@ of due Problems remains easy to scan, filter, and open.
 
 ## Slices
 
-1. **Compact review queue** — active — enforce the inclusive due cutoff and ship the dense,
+1. **Compact review queue** — shipped — enforce the inclusive due cutoff and ship the dense,
    searchable, progressively disclosed dashboard view.
 
 ## Integration notes
@@ -31,6 +31,7 @@ of due Problems remains easy to scan, filter, and open.
   second boundary check, not a scheduling change.
 - Tests added or changed in this milestone are development evidence and require user review before
   their first execution; they are not independent verification.
+- LCTrack `0.1.5` ships the compact queue with synchronized package, lockfile, and extension versions.
 
 ## Exit criteria
 

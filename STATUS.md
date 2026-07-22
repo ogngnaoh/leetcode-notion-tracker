@@ -19,6 +19,8 @@
 - Two-outcome `Needed help` / `Solved` capture contract and same-day assisted review
 - Local daily dashboard with Notion-backed counts, in-memory refresh, stale fallback, and a locally
   persisted 1–100 new-problem target
+- Compact local review queue with an inclusive `Next Review <= today` cutoff, defensive future-row
+  exclusion, five saved views, title search, and 50-row progressive disclosure without Notion writes
 - Dry-run-by-default rollback for the retired paid Notion dashboard
 - Reproducible Notion icons, descriptions, native option colors, and managed table views
 - MV3 side-panel extension
@@ -32,7 +34,7 @@
 - Tab-scoped extension action available on any tab without carrying the panel into other Chrome tabs
 - Explicit click-only capture controls
 - Extension production build
-- Version 0.1.4 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
+- Version 0.1.5 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
   and Chrome-supported Lucide SquareTerminal PNG icons
 - Unit and route tests
 - Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery
@@ -56,13 +58,13 @@
 
 ## Release evidence
 
-- Milestones 01 through 06 are shipped; milestone 04’s paid Notion dashboard remains retired.
-- Fresh LCTrack `0.1.4` `npm run check` passes formatting, TypeScript, 341 Vitest tests, 21 Playwright
+- Milestones 01 through 07 are shipped; milestone 04’s paid Notion dashboard remains retired.
+- Fresh LCTrack `0.1.5` `npm run check` passes formatting, TypeScript, 341 Vitest tests, 24 Playwright
   scenarios, the extension build, and the security scan.
 - The standalone security scan and `git diff --check` passed. Follow-up review found no unresolved
   Critical or Important findings after all migration/runtime safety fixes.
-- Tests changed during milestone 06 are development evidence; the live Notion and actual Chrome checks
-  above are independent rollout observations.
+- Tests changed during milestones 06 and 07 are development evidence; the live Notion and actual
+  Chrome checks above are independent rollout observations for milestone 06, not the compact queue.
 
 ## Intentionally deferred
 
