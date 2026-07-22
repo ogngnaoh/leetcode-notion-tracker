@@ -43,8 +43,9 @@
   verifies 14 Problems properties, 13 Attempts properties, option colors, presentation, and views.
 - The approved v4 apply preserved the `First Attempt` property ID, eliminated all obsolete row values,
   matched every Problem to its earliest Attempt, retained its recovery backup, and replays as a no-op.
-- LCTrack `0.1.3` was observed in actual Chrome with exactly `Needed help` and `Solved` and captured the
-  exact visible Monaco code through the v4-gated bridge.
+- LCTrack `0.1.4` is loaded and enabled in actual Chrome with exactly `Needed help` and `Solved`; the
+  equivalent `0.1.3` build captured exact visible Monaco code through the v4-gated bridge before the
+  date-rollover-only patch.
 - On 2026-07-22, Longest Consecutive Sequence `Needed help` changed the dashboard count from 0 to 1,
   stored streak 0, and remained due 2026-07-22. A second Attempt used a distinct Client Event ID while
   the count stayed 1 and the original First Attempt timestamp remained unchanged.

@@ -7,8 +7,8 @@ current release baseline.
 # Current state
 
 The live workspace is exact schema/manifest v4 and `npm run notion:verify` passes. LCTrack `0.1.4` is
-built with exactly `Needed help` and `Solved`; reload it once in Chrome after this patch release. The
-localhost bridge is running on port 8787.
+loaded and enabled in Chrome with exactly `Needed help` and `Solved`. The localhost bridge is running
+on port 8787.
 Final local evidence is 341 Vitest tests, 21 Playwright scenarios, formatting, TypeScript, build, secret
 scan, and diff checks. On 2026-07-22, actual Chrome plus independent Notion/dashboard reads confirmed a
 new assisted Problem counted once and stayed due today, its review did not recount, and a new solved
