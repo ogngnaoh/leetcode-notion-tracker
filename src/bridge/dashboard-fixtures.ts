@@ -14,6 +14,14 @@ const normal: DashboardSnapshot = {
   stale: false,
   due: [
     {
+      title: 'Median of Two Sorted Arrays',
+      url: 'https://leetcode.com/problems/median-of-two-sorted-arrays/',
+      difficulty: 'Hard',
+      practiceState: 'Needed help',
+      solvedStreak: 0,
+      nextReview: '2026-07-19',
+    },
+    {
       title: 'Encode and Decode Strings',
       url: 'https://leetcode.com/problems/encode-and-decode-strings/',
       difficulty: 'Medium',
@@ -28,14 +36,6 @@ const normal: DashboardSnapshot = {
       practiceState: 'Solved',
       solvedStreak: 2,
       nextReview: '2026-07-21',
-    },
-    {
-      title: 'Median of Two Sorted Arrays',
-      url: 'https://leetcode.com/problems/median-of-two-sorted-arrays/',
-      difficulty: 'Hard',
-      practiceState: 'Needed help',
-      solvedStreak: 0,
-      nextReview: '2026-07-19',
     },
   ],
 };

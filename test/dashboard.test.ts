@@ -107,6 +107,24 @@ describe('local dashboard', () => {
     expect(html).toContain('data-filter-count="overdue">2</span>');
     expect(html).toContain('data-filter-count="needed-help">2</span>');
     expect(html).toContain('data-filter-count="hard">1</span>');
+    expect(html).toContain(
+      'data-review-row data-title="&lt;two sum&gt;" data-review-date="2026-07-20" data-practice-state="Needed help" data-difficulty="Medium"',
+    );
+    expect(html).toContain(
+      'data-review-row data-title="&lt;two sum&gt;" data-review-date="2026-07-21" data-practice-state="Solved" data-difficulty="Easy"',
+    );
+    expect(html).toContain(
+      'data-review-row data-title="unsafe" data-review-date="2026-07-19" data-practice-state="Needed help" data-difficulty="Hard"',
+    );
+    expect(html).toContain(
+      '<strong>1d overdue</strong> · <time datetime="2026-07-20">2026-07-20</time>',
+    );
+    expect(html).toContain(
+      '<strong>Today</strong> · <time datetime="2026-07-21">2026-07-21</time>',
+    );
+    expect(html).toContain(
+      '<strong>2d overdue</strong> · <time datetime="2026-07-19">2026-07-19</time>',
+    );
     expect(html).not.toContain('<table>');
     expect(html).not.toContain('class="cards"');
   });

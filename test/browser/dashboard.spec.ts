@@ -23,9 +23,9 @@ test('filters the normal review queue and combines the active view with title se
 
   const visibleTitles = page.locator('[data-review-row]:visible h2');
   await expect(visibleTitles).toHaveText([
+    'Median of Two Sorted Arrays',
     'Encode and Decode Strings',
     'Two Sum',
-    'Median of Two Sorted Arrays',
   ]);
 
   const today = page.getByRole('button', { name: /Today/ });
