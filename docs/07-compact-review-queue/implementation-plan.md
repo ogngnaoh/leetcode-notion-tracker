@@ -23,10 +23,12 @@
 ### Task 1: Enforce the inclusive due boundary
 
 **Files:**
+
 - Modify: `test/notion-repository.test.ts`
 - Modify: `src/bridge/notion-repository.ts`
 
 **Interfaces:**
+
 - Consumes: `loadDashboard(date: string)` and mapped `DashboardRow.nextReview` values.
 - Produces: snapshots whose `due` rows all satisfy `nextReview <= date`.
 
@@ -63,12 +65,14 @@ Run the same command; expect one pass. Commit the two files as `fix: enforce das
 ### Task 2: Render compact queue structure and counts
 
 **Files:**
+
 - Modify: `test/dashboard.test.ts`
 - Modify: `test/dashboard-fixtures.test.ts`
 - Modify: `src/bridge/dashboard.ts`
 - Modify: `src/bridge/dashboard-fixtures.ts`
 
 **Interfaces:**
+
 - Consumes: boundary-checked `DashboardSnapshot.date` and `due`.
 - Produces: `data-review-queue`, `data-review-search`, `data-review-filter`, `data-review-row`, `data-review-results`, `data-review-empty`, and `data-review-more` elements.
 
@@ -116,11 +120,8 @@ function dueLabel(reviewDate: string, snapshotDate: string): string {
 Compute counts from the complete `rows` collection for all, exact today, overdue, Needed help, and Hard. Render native filter buttons with counts and `aria-pressed`, a labeled title search, dense list rows, polite status, filter-empty state, and load button. Each row keeps escaped display values, validated link behavior, and these attributes:
 
 ```html
-data-review-row
-data-title="normalized title"
-data-review-date="YYYY-MM-DD"
-data-practice-state="Needed help"
-data-difficulty="Hard"
+data-review-row data-title="normalized title" data-review-date="YYYY-MM-DD"
+data-practice-state="Needed help" data-difficulty="Hard"
 ```
 
 - [ ] **Step 4: Add complete fixtures**
@@ -136,11 +137,13 @@ Run the same Vitest command; expect all passes. Commit the four files as `feat: 
 ### Task 3: Add filtering, search, batches, and responsive layout
 
 **Files:**
+
 - Modify: `test/browser/dashboard.spec.ts`
 - Modify: `src/bridge/assets/dashboard.js`
 - Modify: `src/bridge/assets/dashboard.css`
 
 **Interfaces:**
+
 - Consumes: Task 2's compact data attributes.
 - Produces: one active view, combined search, and a visible limit that advances by 50.
 
@@ -191,6 +194,7 @@ Expect all passes. Commit the three task files as `feat: filter compact review b
 ### Task 4: Release, verify, and ship milestone 07
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `extension/manifest.json`
@@ -202,6 +206,7 @@ Expect all passes. Commit the three task files as `feat: filter compact review b
 - Rewrite: `docs/07-compact-review-queue/handoff.md`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–3 and the unchanged completion check.
 - Produces: synchronized LCTrack `0.1.5` and shipped milestone records.
 
