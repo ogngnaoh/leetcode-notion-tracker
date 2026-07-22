@@ -119,7 +119,7 @@ node -e "const p=require('./package.json');const l=require('./package-lock.json'
 
 Expected: `0.1.3 0.1.3 0.1.3 0.1.3 0.1.3`.
 
-- [ ] **Step 6: Commit the release update**
+- [x] **Step 6: Commit the release update** (`739b32c`)
 
 ```bash
 git add AGENTS.md STATUS.md package.json package-lock.json extension/manifest.json \
@@ -141,17 +141,17 @@ git commit -m "chore: release LCTrack 0.1.3"
 - Consumes: built extension version `0.1.3`, exact Notion v4, and the running localhost bridge.
 - Produces: final local verification, observed Chrome/Notion acceptance evidence, and shipped milestone 06.
 
-- [ ] **Step 1: Run the final local gates**
+- [x] **Step 1: Run the final local gates**
 
 Stop the bridge, run `npm run check`, `npm run security:scan`, and `git diff --check`, then restart the
 bridge. Expected: every command exits successfully and the bridge listens on `127.0.0.1:8787`.
 
-- [ ] **Step 2: Reload and verify Chrome**
+- [x] **Step 2: Reload and verify Chrome**
 
 Reload LCTrack from `chrome://extensions`, reopen the existing LeetCode tab and side panel, and confirm
 the extension details show version `0.1.3` with exactly `Needed help` and `Solved` controls.
 
-- [ ] **Step 3: Complete live acceptance captures**
+- [x] **Step 3: Complete live acceptance captures**
 
 Using two previously untracked Problems, confirm:
 
@@ -161,7 +161,7 @@ Using two previously untracked Problems, confirm:
 
 Verify each outcome independently through Notion queries and the refreshed dashboard.
 
-- [ ] **Step 4: Ship milestone 06**
+- [x] **Step 4: Ship milestone 06**
 
 Mark the slice and milestone shipped, rewrite the three-section handoff, stop temporary processes,
 commit the documentation evidence, and confirm a clean worktree.

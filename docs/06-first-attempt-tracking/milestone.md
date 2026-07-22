@@ -20,7 +20,7 @@ so every newly practiced Problem counts once and assisted work remains due today
 
 ## Slices
 
-1. **First-attempt tracking and two-outcome model** — active — update contracts, capture/repository
+1. **First-attempt tracking and two-outcome model** — shipped — update contracts, capture/repository
    behavior, exact v4 setup/migration/verification, the extension, dashboard, browser acceptance,
    rollout documentation, and live verification.
 
@@ -30,7 +30,10 @@ so every newly practiced Problem counts once and assisted work remains due today
 - Historical `Couldn’t solve` Attempt values may be rewritten only by the approved v4 migration.
 - Tests added or changed in this milestone are development evidence and require user review before
   their first execution; they are not independent verification.
-- The live migration remains dry-run first and apply requires separate user approval after output review.
+- The approved live migration used a reviewed dry-run, a journaled apply backup, exact v4 verification,
+  and a mutation-free no-op replay before Chrome acceptance.
+- LCTrack `0.1.3` establishes synchronized package/lockfile/extension versions and the project release
+  convention in `AGENTS.md`.
 
 ## Exit criteria
 

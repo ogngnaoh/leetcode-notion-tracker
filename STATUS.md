@@ -39,40 +39,29 @@
 
 ## Verified with the real workspace and Chrome
 
-The items below are pre-v4 external evidence. The live workspace remains version 3 until the v4 dry
-run is reviewed and apply is explicitly approved.
-
-- The v2 manifest targets exactly one Problems and one Attempts data source.
-- Live Valid Sudoku recognition populated number, title, Medium, Array/Hash Table/Matrix, Python, and
-  rendered lines 1–9 without editor focus or page scrolling.
-- A user-confirmed `Couldn’t solve` capture created Attempt
-  `8318f850-d922-49a3-9e6a-37af14d9c492`, stored the exact rendered code, and set state/streak/date to
-  `Couldn’t solve` / `0` / `2026-07-20`.
-- Replaying that Client Event ID returned `duplicate: true` and kept the Valid Sudoku Attempt count at
-  one.
+- The live manifest and both reciprocal Notion data sources are exact v4; `npm run notion:verify`
+  verifies 14 Problems properties, 13 Attempts properties, option colors, presentation, and views.
+- The approved v4 apply preserved the `First Attempt` property ID, eliminated all obsolete row values,
+  matched every Problem to its earliest Attempt, retained its recovery backup, and replays as a no-op.
+- LCTrack `0.1.3` is loaded in actual Chrome with exactly `Needed help` and `Solved` and captured the
+  exact visible Monaco code through the v4-gated bridge.
+- On 2026-07-22, Longest Consecutive Sequence `Needed help` changed the dashboard count from 0 to 1,
+  stored streak 0, and remained due 2026-07-22. A second Attempt used a distinct Client Event ID while
+  the count stayed 1 and the original First Attempt timestamp remained unchanged.
+- On 2026-07-22, Valid Parentheses `Solved` changed the count from 1 to 2, stored streak 1, scheduled
+  2026-07-23, and preserved the exact independently inspected 12-line Python body.
 - The tracked Dock launcher opens through Finder in iTerm2, starts the exact expected localhost bridge,
   refuses duplicates and unknown port owners, stops with Ctrl-C, and restarts cleanly.
-- The live Problems and Attempts databases have the LC Log presentation contract; API read-back
-  confirmed the original Problem page ID and null Difficulty, zero Attempts, and zero pending changes.
-- The live manifest is version 3 with `First Solved` backfilled from paginated Attempts.
-- Independent 2026-07-21 queries confirmed 1 new solve and 5 due-review rows with exact direct URLs,
-  fields, and ordering.
 
 ## Release evidence
 
-- Milestone 06 development evidence currently includes a clean TypeScript check, 341 Vitest tests,
-  and 21 Playwright scenarios. These changed tests are not independent verification; final stopped-
-  bridge checks and live rollout remain pending. Follow-up review found no unresolved Critical or
-  Important findings.
-
-- Milestones 01 through 05 are shipped; milestone 04’s paid Notion dashboard is retired.
-- Fresh `npm run check` passed formatting, TypeScript, all 326 Vitest tests, all 22 Playwright
-  scenarios, the extension build, and the security scan after the label-clearance, tab-scoping, and
-  direct-user-gesture side-panel opening follow-ups.
-- The latest external `npm run notion:verify` evidence verified 14 Problems and 13 Attempts properties
-  plus icons, descriptions, option colors, and managed views in the real v3 workspace.
-- The standalone security scan and `git diff --check` passed; final review reported no unresolved
-  Critical or Important findings.
+- Milestones 01 through 06 are shipped; milestone 04’s paid Notion dashboard remains retired.
+- Fresh LCTrack `0.1.3` `npm run check` passed formatting, TypeScript, 341 Vitest tests, 21 Playwright
+  scenarios, the extension build, and the security scan.
+- The standalone security scan and `git diff --check` passed. Follow-up review found no unresolved
+  Critical or Important findings after all migration/runtime safety fixes.
+- Tests changed during milestone 06 are development evidence; the live Notion and actual Chrome checks
+  above are independent rollout observations.
 
 ## Intentionally deferred
 

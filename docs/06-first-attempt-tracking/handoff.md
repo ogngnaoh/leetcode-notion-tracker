@@ -1,20 +1,20 @@
 # Start here next session
 
-Run and review the live `npm run notion:migrate:v4` dry-run. Apply only after explicit approval, then
-run `npm run notion:verify`, rebuild/reload Chrome, and complete the three live acceptance scenarios in
-`implementation-plan.md`. Finish by shipping milestone 06 and rewriting this handoff.
+Milestone 06 is shipped. Start any new Sustain work by creating the next numbered milestone and read
+the project release-versioning convention in `AGENTS.md`. LCTrack `0.1.3` and the v4 bridge are the
+current release baseline.
 
 # Current state
 
-Baseline `f0bbb49` is followed by core commit `427e8c7` and migration commit `1f0ec7d`; the extension,
-dashboard copy, and docs integration commit is next. Local evidence is clean: TypeScript, 341 Vitest
-tests, and 21 Playwright scenarios pass. Follow-up review found no Critical or Important issues after
-all six migration/runtime safety findings were resolved. The real Notion workspace and loaded Chrome
-extension remain on v3 behavior pending the approved rollout.
+The live workspace is exact schema/manifest v4 and `npm run notion:verify` passes. LCTrack `0.1.3` is
+loaded in Chrome with exactly `Needed help` and `Solved`; the localhost bridge is running on port 8787.
+Final local evidence is 341 Vitest tests, 21 Playwright scenarios, formatting, TypeScript, build, secret
+scan, and diff checks. On 2026-07-22, actual Chrome plus independent Notion/dashboard reads confirmed a
+new assisted Problem counted once and stayed due today, its review did not recount, and a new solved
+Problem counted once and scheduled 2026-07-23.
 
 # Open concerns
 
-Changed tests are development evidence, not independent verification. The v4 apply remains gated on
-review of its token-free dry-run backup and operation counts. Any uncertain pending capture must be
-resolved before cutover; live Notion/Chrome observations, final checks, process shutdown, and milestone
-shipment are still required.
+Tests changed during milestone 06 remain development evidence rather than independent verification.
+The blank, unrelated Notion Problem approved for cleanup is recoverable in Notion trash. No milestone
+06 implementation or rollout work remains.
