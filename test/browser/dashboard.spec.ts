@@ -16,6 +16,69 @@ test.afterAll(async () => {
   );
 });
 
+test('filters the normal review queue and combines the active view with title search', async ({
+  page,
+}) => {
+  await page.goto('http://127.0.0.1:8791/dashboard/normal');
+
+  const visibleTitles = page.locator('[data-review-row]:visible h2');
+  await expect(visibleTitles).toHaveText([
+    'Encode and Decode Strings',
+    'Two Sum',
+    'Median of Two Sorted Arrays',
+  ]);
+
+  const today = page.getByRole('button', { name: /Today/ });
+  await today.focus();
+  await page.keyboard.press('Enter');
+  await expect(today).toHaveAttribute('aria-pressed', 'true');
+  await expect(visibleTitles).toHaveText(['Two Sum']);
+
+  const neededHelp = page.getByRole('button', { name: /Needed help/ });
+  await neededHelp.focus();
+  await page.keyboard.press('Space');
+  await page.getByRole('searchbox', { name: 'Search by title' }).fill('median');
+  await expect(neededHelp).toHaveAttribute('aria-pressed', 'true');
+  await expect(visibleTitles).toHaveText(['Median of Two Sorted Arrays']);
+});
+
+test('reveals large review queues in batches of 50 and resets disclosure on filter changes', async ({
+  page,
+}) => {
+  await page.goto('http://127.0.0.1:8791/dashboard/large');
+
+  const visibleRows = page.locator('[data-review-row]:visible');
+  const loadMore = page.getByRole('button', { name: 'Load 50 more' });
+  await expect(visibleRows).toHaveCount(50);
+  await expect(loadMore).toBeVisible();
+
+  await loadMore.click();
+  await expect(visibleRows).toHaveCount(100);
+
+  await loadMore.click();
+  await expect(visibleRows).toHaveCount(123);
+  await expect(loadMore).toBeHidden();
+
+  await page.getByRole('button', { name: /Overdue/ }).click();
+  await expect(visibleRows).toHaveCount(50);
+  await expect(loadMore).toBeVisible();
+});
+
+test('keeps review filters reachable without page overflow at mobile width', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('http://127.0.0.1:8791/dashboard/normal');
+
+  const filters = page.getByRole('group', { name: 'Review filters' }).getByRole('button');
+  await expect(filters).toHaveCount(5);
+  for (const filter of await filters.all()) {
+    await filter.scrollIntoViewIfNeeded();
+    await expect(filter).toBeInViewport();
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
 test('saves the daily goal, closes the dialog, and updates the denominator immediately', async ({
   page,
 }) => {
