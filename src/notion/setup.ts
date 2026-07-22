@@ -128,7 +128,7 @@ async function main(): Promise<void> {
     updateManagedView(notion, defaultAttemptView.id, ATTEMPTS_VIEW(attemptIds)),
   ]);
   const manifest: NotionManifest = {
-    version: 3,
+    version: 4,
     notionApiVersion: NOTION_API_VERSION,
     createdAt: new Date().toISOString(),
     parentPageId: env.NOTION_PARENT_PAGE_ID,

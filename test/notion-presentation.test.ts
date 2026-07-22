@@ -21,7 +21,7 @@ const propertyIds = Object.fromEntries(
     'Next Review',
     'Topics',
     'URL',
-    'First Solved',
+    'First Attempt',
     'Attempt',
     'Result',
     'Language',

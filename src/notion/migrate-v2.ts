@@ -34,8 +34,8 @@ import {
   PROBLEMS_PROPERTIES,
   V2_REQUIRED_ATTEMPTS_TYPES as REQUIRED_ATTEMPTS_TYPES,
   V2_REQUIRED_PROBLEMS_TYPES as REQUIRED_PROBLEMS_TYPES,
-  RESULT_OPTIONS,
-  STATE_OPTIONS,
+  LEGACY_RESULT_OPTIONS as RESULT_OPTIONS,
+  LEGACY_STATE_OPTIONS as STATE_OPTIONS,
   V1_ATTEMPTS_TYPES,
   V1_PROBLEMS_TYPES,
 } from './schema.js';
@@ -591,11 +591,20 @@ export async function migrateNotionV2(options: MigrationOptions) {
     'Practice State',
     'Solved Streak',
   ]);
+  if (newProblemProperties['Practice State']) {
+    newProblemProperties['Practice State'] = { select: { options: STATE_OPTIONS } };
+  }
   const newAttemptProperties = addedProperties(sources.shapes.attempts, ATTEMPTS_PROPERTIES, [
     'Result',
     'Resulting State',
     'Resulting Solved Streak',
   ]);
+  if (newAttemptProperties.Result) {
+    newAttemptProperties.Result = { select: { options: RESULT_OPTIONS } };
+  }
+  if (newAttemptProperties['Resulting State']) {
+    newAttemptProperties['Resulting State'] = { select: { options: STATE_OPTIONS } };
+  }
   if (Object.keys(newProblemProperties).length > 0) {
     await notion.dataSources.update({
       data_source_id: manifest.problems.dataSourceId,

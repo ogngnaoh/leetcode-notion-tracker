@@ -4,10 +4,9 @@ import { join, resolve, sep } from 'node:path';
 import type { NotionManifest } from '../shared/contract.js';
 import { writeJsonAtomic, writeManifestAtomic } from './io.js';
 import {
-  PROBLEMS_PROPERTIES,
   REQUIRED_ATTEMPTS_TYPES,
-  REQUIRED_PROBLEMS_TYPES,
   V2_REQUIRED_PROBLEMS_TYPES,
+  V3_REQUIRED_PROBLEMS_TYPES,
 } from './schema.js';
 
 type Page = { id: string; properties: Record<string, any> };
@@ -204,7 +203,7 @@ export async function migrateNotionV3(options: V3MigrationOptions) {
   ]);
   const problemTypes = schemaTypes(problemSource);
   const v2Shape = sameTypes(problemTypes, V2_REQUIRED_PROBLEMS_TYPES);
-  const v3Shape = sameTypes(problemTypes, REQUIRED_PROBLEMS_TYPES);
+  const v3Shape = sameTypes(problemTypes, V3_REQUIRED_PROBLEMS_TYPES);
   if (!v2Shape && !v3Shape) throw new Error('Refusing migration: unknown Problems schema shape.');
   if (!sameTypes(schemaTypes(attemptSource), REQUIRED_ATTEMPTS_TYPES)) {
     throw new Error('Refusing migration: unknown Attempts schema shape.');
@@ -267,7 +266,7 @@ export async function migrateNotionV3(options: V3MigrationOptions) {
   if (v2Shape) {
     await options.notion.dataSources.update({
       data_source_id: options.manifest.problems.dataSourceId,
-      properties: { 'First Solved': PROBLEMS_PROPERTIES['First Solved'] },
+      properties: { 'First Solved': { date: {} } },
     });
   }
   for (const page of pages) {
@@ -284,7 +283,7 @@ export async function migrateNotionV3(options: V3MigrationOptions) {
   const refreshedSource = await options.notion.dataSources.retrieve({
     data_source_id: options.manifest.problems.dataSourceId,
   });
-  if (!sameTypes(schemaTypes(refreshedSource), REQUIRED_PROBLEMS_TYPES)) {
+  if (!sameTypes(schemaTypes(refreshedSource), V3_REQUIRED_PROBLEMS_TYPES)) {
     throw new Error('V3 Problems schema verification failed.');
   }
   const verified = preparedProblems(

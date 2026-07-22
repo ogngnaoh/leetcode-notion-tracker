@@ -26,7 +26,7 @@ describe('Notion schema', () => {
     expect(REQUIRED_ATTEMPTS_TYPES.Problem).toBe('relation');
   });
 
-  it('defines the exact v3 property names and types', () => {
+  it('defines the exact v4 property names and types', () => {
     expect(REQUIRED_PROBLEMS_TYPES).toEqual({
       Problem: 'title',
       'External Key': 'rich_text',
@@ -39,7 +39,7 @@ describe('Notion schema', () => {
       'Solved Streak': 'number',
       'Next Review': 'date',
       'Last Attempt': 'date',
-      'First Solved': 'date',
+      'First Attempt': 'date',
       'Extension Managed': 'checkbox',
       Attempts: 'relation',
     });
@@ -60,16 +60,14 @@ describe('Notion schema', () => {
     });
   });
 
-  it('uses the required native colors for every v2 state and result option', () => {
+  it('uses the required native colors for every v4 state and result option', () => {
     expect(PROBLEMS_PROPERTIES['Practice State'].select.options).toEqual([
       { name: 'New', color: 'gray' },
-      { name: 'Couldn’t solve', color: 'red' },
       { name: 'Needed help', color: 'yellow' },
       { name: 'Solved', color: 'green' },
       { name: 'Mastered', color: 'blue' },
     ]);
     expect(ATTEMPTS_PROPERTIES.Result.select.options).toEqual([
-      { name: 'Couldn’t solve', color: 'red' },
       { name: 'Needed help', color: 'yellow' },
       { name: 'Solved', color: 'green' },
     ]);
@@ -85,11 +83,12 @@ describe('Notion schema', () => {
     expect(packageJson.scripts['notion:migrate:v2']).toBe('tsx src/notion/migrate-v2-cli.ts');
   });
 
-  it('exposes v3 migration and dry-run dashboard rollback commands', async () => {
+  it('exposes v3, v4, and dry-run dashboard rollback commands', async () => {
     const packageJson = JSON.parse(
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
     );
     expect(packageJson.scripts['notion:migrate:v3']).toBe('tsx src/notion/migrate-v3-cli.ts');
+    expect(packageJson.scripts['notion:migrate:v4']).toBe('tsx src/notion/migrate-v4-cli.ts');
     expect(packageJson.scripts['notion:dashboard:rollback']).toBe(
       'tsx src/notion/dashboard-rollback-cli.ts',
     );

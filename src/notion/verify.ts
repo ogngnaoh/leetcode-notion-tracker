@@ -33,11 +33,13 @@ const VerifyEnvSchema = z.object({
 async function main(): Promise<void> {
   const env = VerifyEnvSchema.parse(process.env);
   const manifest = await readManifest(env.NOTION_MANIFEST_PATH);
-  if (manifest.version !== 3) {
+  if (manifest.version !== 4) {
     throw new Error(
       manifest.version === 1
-        ? 'Notion manifest is version 1. Run npm run notion:migrate:v2 first, then npm run notion:migrate:v3.'
-        : 'Notion manifest is version 2. Run npm run notion:migrate:v3 first.',
+        ? 'Notion manifest is version 1. Run migrations v2, v3, then v4.'
+        : manifest.version === 2
+          ? 'Notion manifest is version 2. Run npm run notion:migrate:v3, then npm run notion:migrate:v4.'
+          : 'Notion manifest is version 3. Run npm run notion:migrate:v4 first.',
     );
   }
   const notion = new Client({ auth: env.NOTION_TOKEN, notionVersion: NOTION_API_VERSION });

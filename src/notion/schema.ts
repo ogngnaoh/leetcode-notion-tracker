@@ -4,7 +4,7 @@ export const NOTION_API_VERSION = '2026-03-11' as const;
 
 export const DIFFICULTY_OPTION_NAMES = DIFFICULTY_OPTIONS.map(({ name }) => name);
 
-export const STATE_OPTIONS = [
+export const LEGACY_STATE_OPTIONS = [
   { name: 'New', color: 'gray' },
   { name: 'Couldn’t solve', color: 'red' },
   { name: 'Needed help', color: 'yellow' },
@@ -12,7 +12,16 @@ export const STATE_OPTIONS = [
   { name: 'Mastered', color: 'blue' },
 ] as const;
 
-export const RESULT_OPTIONS = STATE_OPTIONS.slice(1, 4);
+export const LEGACY_RESULT_OPTIONS = LEGACY_STATE_OPTIONS.slice(1, 4);
+
+export const STATE_OPTIONS = [
+  { name: 'New', color: 'gray' },
+  { name: 'Needed help', color: 'yellow' },
+  { name: 'Solved', color: 'green' },
+  { name: 'Mastered', color: 'blue' },
+] as const;
+
+export const RESULT_OPTIONS = STATE_OPTIONS.slice(1, 3);
 
 export const PROBLEMS_PROPERTIES = {
   Problem: { title: {} },
@@ -28,7 +37,7 @@ export const PROBLEMS_PROPERTIES = {
   'Solved Streak': { number: { format: 'number' as const } },
   'Next Review': { date: {} },
   'Last Attempt': { date: {} },
-  'First Solved': { date: {} },
+  'First Attempt': { date: {} },
   'Extension Managed': { checkbox: {} },
 } as const;
 
@@ -102,9 +111,14 @@ export const V2_REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
   Attempts: 'relation',
 };
 
-export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
+export const V3_REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
   ...V2_REQUIRED_PROBLEMS_TYPES,
   'First Solved': 'date',
+};
+
+export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
+  ...V2_REQUIRED_PROBLEMS_TYPES,
+  'First Attempt': 'date',
 };
 
 export const V2_REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
