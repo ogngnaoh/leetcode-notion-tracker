@@ -187,7 +187,10 @@ export class NotionCaptureRepository implements CaptureRepository {
     return new NotionCaptureRepository(notion, manifest);
   }
 
-  async loadDashboard(date: string): Promise<{ newProblemCount: number; due: DashboardRow[] }> {
+  async loadDashboard(
+    date: string,
+    newProblemSessionStartedAt?: string,
+  ): Promise<{ newProblemCount: number; due: DashboardRow[] }> {
     const queryAll = async (request: Record<string, unknown>): Promise<any[]> => {
       const results: any[] = [];
       let startCursor: string | undefined;
@@ -204,7 +207,14 @@ export class NotionCaptureRepository implements CaptureRepository {
       return results;
     };
     const [newProblems, duePages] = await Promise.all([
-      queryAll({ filter: { property: 'First Attempt', date: { equals: date } } }),
+      queryAll({
+        filter: {
+          property: 'First Attempt',
+          date: newProblemSessionStartedAt
+            ? { after: newProblemSessionStartedAt }
+            : { equals: date },
+        },
+      }),
       queryAll({
         filter: { property: 'Next Review', date: { on_or_before: date } },
         sorts: [

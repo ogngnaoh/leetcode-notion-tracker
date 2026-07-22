@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 
 export interface DashboardSettings {
   dailyNewProblemGoal: number;
+  newProblemSessionStartedAt?: string;
 }
 
 interface DashboardSettingsStoreOptions {
@@ -25,10 +26,28 @@ function parseSettings(value: unknown): DashboardSettings {
     throw new Error('Dashboard settings must be an object.');
   }
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).length !== 1 || !('dailyNewProblemGoal' in record)) {
+  const keys = Object.keys(record);
+  if (
+    !('dailyNewProblemGoal' in record) ||
+    keys.some((key) => key !== 'dailyNewProblemGoal' && key !== 'newProblemSessionStartedAt')
+  ) {
     throw new Error('Dashboard settings have an unexpected shape.');
   }
-  return { dailyNewProblemGoal: parseDailyNewProblemGoal(record.dailyNewProblemGoal) };
+  const settings: DashboardSettings = {
+    dailyNewProblemGoal: parseDailyNewProblemGoal(record.dailyNewProblemGoal),
+  };
+  if ('newProblemSessionStartedAt' in record) {
+    const timestamp = record.newProblemSessionStartedAt;
+    if (
+      typeof timestamp !== 'string' ||
+      Number.isNaN(Date.parse(timestamp)) ||
+      new Date(timestamp).toISOString() !== timestamp
+    ) {
+      throw new Error('newProblemSessionStartedAt must be a canonical ISO timestamp.');
+    }
+    settings.newProblemSessionStartedAt = timestamp;
+  }
+  return settings;
 }
 
 export class DashboardSettingsStore {
@@ -54,19 +73,21 @@ export class DashboardSettingsStore {
     }
   }
 
-  save(goal: number): Promise<void> {
-    const acceptedGoal = parseDailyNewProblemGoal(goal);
-    const operation = this.saveQueue.catch(() => undefined).then(() => this.persist(acceptedGoal));
+  save(settings: DashboardSettings): Promise<void> {
+    const acceptedSettings = parseSettings(settings);
+    const operation = this.saveQueue
+      .catch(() => undefined)
+      .then(() => this.persist(acceptedSettings));
     this.saveQueue = operation;
     return operation;
   }
 
-  private async persist(goal: number): Promise<void> {
+  private async persist(settings: DashboardSettings): Promise<void> {
     const directory = dirname(this.options.path);
     const temporaryPath = `${this.options.path}.${process.pid}.${temporaryFileCounter++}.tmp`;
     await mkdir(directory, { recursive: true });
     try {
-      await writeFile(temporaryPath, `${JSON.stringify({ dailyNewProblemGoal: goal })}\n`, {
+      await writeFile(temporaryPath, `${JSON.stringify(settings)}\n`, {
         encoding: 'utf8',
         flag: 'wx',
       });

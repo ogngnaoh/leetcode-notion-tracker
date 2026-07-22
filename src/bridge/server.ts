@@ -20,9 +20,29 @@ async function main(): Promise<void> {
     fallbackGoal: env.DAILY_NEW_PROBLEM_GOAL,
   });
   const savedSettings = await dashboardSettings.load();
+  let currentSettings = savedSettings;
+  let settingsQueue = Promise.resolve(savedSettings);
+  const updateSettings = (
+    transform: (settings: typeof savedSettings) => typeof savedSettings,
+  ): Promise<typeof savedSettings> => {
+    const operation = settingsQueue
+      .catch(() => currentSettings)
+      .then(async (settings) => {
+        const next = transform(settings);
+        await dashboardSettings.save(next);
+        currentSettings = next;
+        return next;
+      });
+    settingsQueue = operation;
+    return operation;
+  };
   const dashboard = new DashboardStore({
     goal: savedSettings.dailyNewProblemGoal,
-    load: (date) => repository.loadDashboard(date),
+    ...(savedSettings.newProblemSessionStartedAt
+      ? { newProblemSessionStartedAt: savedSettings.newProblemSessionStartedAt }
+      : {}),
+    load: (date, newProblemSessionStartedAt) =>
+      repository.loadDashboard(date, newProblemSessionStartedAt),
   });
   void dashboard.refresh().catch(() => {
     console.error('Dashboard prefetch failed. The dashboard will retry when opened.');
@@ -33,7 +53,13 @@ async function main(): Promise<void> {
     dashboard,
     dashboardSettings: {
       antiForgeryToken: randomUUID(),
-      saveGoal: (goal) => dashboardSettings.save(goal),
+      saveGoal: (goal) =>
+        updateSettings((settings) => ({ ...settings, dailyNewProblemGoal: goal })),
+      resetSession: (timestamp) =>
+        updateSettings((settings) => ({
+          ...settings,
+          newProblemSessionStartedAt: timestamp,
+        })),
     },
   });
 

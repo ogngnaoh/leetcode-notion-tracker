@@ -31,16 +31,22 @@ function testApp(repository = new MemoryCaptureRepository()) {
     load: async () => ({ newProblemCount: 0, due: [] }),
     now: () => new Date('2026-07-21T15:00:00Z'),
   });
-  const saveGoal = vi.fn(async () => undefined);
+  const saveGoal = vi.fn(async (dailyNewProblemGoal: number) => ({ dailyNewProblemGoal }));
+  const resetSession = vi.fn(async (newProblemSessionStartedAt: string) => ({
+    dailyNewProblemGoal: dashboard.currentGoal(),
+    newProblemSessionStartedAt,
+  }));
   return {
     repository,
     dashboard,
     saveGoal,
+    resetSession,
     app: createApp({
       bridgeToken,
       captureService: new CaptureService(repository),
       dashboard,
-      dashboardSettings: { antiForgeryToken: dashboardToken, saveGoal },
+      now: () => new Date('2026-07-21T15:00:00.000Z'),
+      dashboardSettings: { antiForgeryToken: dashboardToken, saveGoal, resetSession },
     }),
   };
 }
@@ -97,6 +103,30 @@ describe('bridge app', () => {
     );
   });
 
+  it('persists a bridge-timestamped session reset before zeroing only the dashboard count', async () => {
+    const { app, dashboard, resetSession } = testApp();
+    await dashboard.refresh('2026-07-21');
+
+    const response = await app.request('/dashboard/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LC-Dashboard-Token': dashboardToken,
+      },
+      body: JSON.stringify({ resetNewProblemSession: true }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(resetSession).toHaveBeenCalledWith('2026-07-21T15:00:00.000Z');
+    expect(await response.json()).toEqual({
+      dailyNewProblemGoal: 10,
+      newProblemCount: 0,
+      newProblemSessionStartedAt: '2026-07-21T15:00:00.000Z',
+    });
+    expect(dashboard.current()).toMatchObject({ newProblemCount: 0, goal: 10, due: [] });
+    expect(dashboard.currentSessionStartedAt()).toBe('2026-07-21T15:00:00.000Z');
+  });
+
   it.each([
     ['malformed JSON', '{'],
     ['missing value', '{}'],
@@ -105,6 +135,12 @@ describe('bridge app', () => {
     ['fraction', '{"dailyNewProblemGoal":1.5}'],
     ['string', '{"dailyNewProblemGoal":"10"}'],
     ['extra field', '{"dailyNewProblemGoal":10,"other":true}'],
+    ['false reset', '{"resetNewProblemSession":false}'],
+    [
+      'browser timestamp',
+      '{"resetNewProblemSession":true,"newProblemSessionStartedAt":"2026-07-21T15:00:00.000Z"}',
+    ],
+    ['mixed operations', '{"dailyNewProblemGoal":10,"resetNewProblemSession":true}'],
   ])('rejects dashboard settings with %s', async (_description, body) => {
     const { app, saveGoal } = testApp();
     const response = await app.request('/dashboard/settings', {
@@ -150,6 +186,7 @@ describe('bridge app', () => {
       dashboardSettings: {
         antiForgeryToken: dashboardToken,
         saveGoal: vi.fn().mockRejectedValue(new Error(`disk failed ${secret}`)),
+        resetSession: vi.fn(),
       },
       logger,
     });
@@ -164,6 +201,37 @@ describe('bridge app', () => {
     expect(await response.json()).toEqual({ error: 'Dashboard settings could not be saved.' });
     expect(dashboard.current()?.goal).toBe(10);
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain(secret);
+  });
+
+  it('preserves the previous count and boundary when reset persistence fails', async () => {
+    const repository = new MemoryCaptureRepository();
+    const dashboard = new DashboardStore({
+      goal: 10,
+      newProblemSessionStartedAt: '2026-07-20T12:00:00.000Z',
+      load: async () => ({ newProblemCount: 2, due: [] }),
+    });
+    await dashboard.refresh('2026-07-21');
+    const app = createApp({
+      bridgeToken,
+      captureService: new CaptureService(repository),
+      dashboard,
+      now: () => new Date('2026-07-21T15:00:00.000Z'),
+      dashboardSettings: {
+        antiForgeryToken: dashboardToken,
+        saveGoal: vi.fn(),
+        resetSession: vi.fn().mockRejectedValue(new Error('disk failed')),
+      },
+    });
+
+    const response = await app.request('/dashboard/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-LC-Dashboard-Token': dashboardToken },
+      body: JSON.stringify({ resetNewProblemSession: true }),
+    });
+
+    expect(response.status).toBe(500);
+    expect(dashboard.current()).toMatchObject({ newProblemCount: 2, goal: 10 });
+    expect(dashboard.currentSessionStartedAt()).toBe('2026-07-20T12:00:00.000Z');
   });
 
   it('revalidates dashboard assets and serves shared nested font paths', async () => {

@@ -340,5 +340,18 @@ describe('NotionCaptureRepository v4 mapping', () => {
         expect.objectContaining({ start_cursor: 'd2' }),
       ]),
     );
+
+    fake.dataSources.query.mockClear();
+    await repository(fake).loadDashboard('2026-07-21', '2026-07-21T18:30:00.000Z');
+    expect(fake.dataSources.query.mock.calls.map(([request]) => request)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filter: {
+            property: 'First Attempt',
+            date: { after: '2026-07-21T18:30:00.000Z' },
+          },
+        }),
+      ]),
+    );
   });
 });

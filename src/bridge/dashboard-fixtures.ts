@@ -137,6 +137,26 @@ export function createDashboardFixtureApp(): Hono {
     );
     return context.html(dashboardFixture(state).html);
   });
+  app.post('/dashboard/settings', async (context) => {
+    if (context.req.header('X-LC-Dashboard-Token') !== 'fixture-dashboard-token') {
+      return context.json({ error: 'Forbidden' }, 403);
+    }
+    const body = await context.req.json().catch(() => null);
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      Array.isArray(body) ||
+      Object.keys(body).length !== 1 ||
+      (body as Record<string, unknown>).resetNewProblemSession !== true
+    ) {
+      return context.json({ error: 'Invalid dashboard settings' }, 400);
+    }
+    return context.json({
+      dailyNewProblemGoal: 10,
+      newProblemCount: 0,
+      newProblemSessionStartedAt: '2026-07-22T15:00:00.000Z',
+    });
+  });
   app.get('/dashboard-assets/*', async (context) => {
     const asset = assets[context.req.path.slice('/dashboard-assets/'.length)];
     if (!asset) return context.notFound();

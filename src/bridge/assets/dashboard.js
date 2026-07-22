@@ -5,6 +5,11 @@ const opener = document.querySelector('#open-dashboard-settings');
 const cancel = document.querySelector('#cancel-dashboard-settings');
 const input = document.querySelector('#daily-new-problem-goal');
 const error = document.querySelector('#dashboard-settings-error');
+const resetOpener = document.querySelector('#reset-new-problem-session');
+const resetDialog = document.querySelector('#reset-new-problem-session-dialog');
+const resetCancel = document.querySelector('#cancel-new-problem-session-reset');
+const resetConfirm = document.querySelector('#confirm-new-problem-session-reset');
+const resetError = document.querySelector('#reset-new-problem-session-error');
 const token = document.querySelector('meta[name="dashboard-settings-token"]')?.content;
 
 if (
@@ -13,8 +18,33 @@ if (
   opener instanceof HTMLButtonElement &&
   cancel instanceof HTMLButtonElement &&
   input instanceof HTMLInputElement &&
-  error instanceof HTMLElement
+  error instanceof HTMLElement &&
+  resetOpener instanceof HTMLButtonElement &&
+  resetDialog instanceof HTMLDialogElement &&
+  resetCancel instanceof HTMLButtonElement &&
+  resetConfirm instanceof HTMLButtonElement &&
+  resetError instanceof HTMLElement
 ) {
+  const saveSettings = async (body) => {
+    if (!token) throw new Error('Reload the dashboard and try again.');
+    const response = await fetch('/dashboard/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LC-Dashboard-Token': token,
+      },
+      body: JSON.stringify(body),
+    });
+    const responseBody = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(
+        typeof responseBody?.error === 'string'
+          ? responseBody.error
+          : 'The local bridge rejected the change.',
+      );
+    }
+    return responseBody;
+  };
   opener.addEventListener('click', () => {
     error.textContent = '';
     dialog.showModal();
@@ -23,6 +53,15 @@ if (
   });
   cancel.addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => opener.focus());
+  resetOpener.addEventListener('click', () => {
+    resetError.textContent = '';
+    resetDialog.showModal();
+    resetCancel.focus();
+  });
+  resetCancel.addEventListener('click', () => resetDialog.close());
+  resetDialog.addEventListener('close', () => {
+    if (dialog.open) resetOpener.focus();
+  });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -31,21 +70,7 @@ if (
     for (const control of controls) control.disabled = true;
     error.textContent = '';
     try {
-      if (!token) throw new Error('Reload the dashboard and try again.');
-      const response = await fetch('/dashboard/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-LC-Dashboard-Token': token,
-        },
-        body: JSON.stringify({ dailyNewProblemGoal: goal }),
-      });
-      const body = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(
-          typeof body?.error === 'string' ? body.error : 'The local bridge rejected the change.',
-        );
-      }
+      const body = await saveSettings({ dailyNewProblemGoal: goal });
       if (!Number.isInteger(body?.dailyNewProblemGoal)) {
         throw new Error('The local bridge returned an invalid response.');
       }
@@ -60,6 +85,36 @@ if (
           : 'Could not save the goal. Check the local bridge and try again.';
     } finally {
       for (const control of controls) control.disabled = false;
+    }
+  });
+  resetConfirm.addEventListener('click', async () => {
+    resetConfirm.disabled = true;
+    resetCancel.disabled = true;
+    resetError.textContent = '';
+    try {
+      const body = await saveSettings({ resetNewProblemSession: true });
+      if (
+        body?.newProblemCount !== 0 ||
+        !Number.isInteger(body?.dailyNewProblemGoal) ||
+        typeof body?.newProblemSessionStartedAt !== 'string'
+      ) {
+        throw new Error('The local bridge returned an invalid response.');
+      }
+      const count = document.querySelector('[data-dashboard-new-problem-count]');
+      const denominator = document.querySelector('[data-dashboard-goal]');
+      if (count) count.textContent = '0';
+      if (denominator) denominator.textContent = ` / ${body.dailyNewProblemGoal}`;
+      input.value = String(body.dailyNewProblemGoal);
+      resetDialog.close();
+      dialog.close();
+    } catch (caught) {
+      resetError.textContent =
+        caught instanceof Error
+          ? caught.message
+          : 'Could not reset the count. Check the local bridge and try again.';
+    } finally {
+      resetConfirm.disabled = false;
+      resetCancel.disabled = false;
     }
   });
 }
@@ -93,7 +148,6 @@ if (
     if (activeFilter === 'today') return row.dataset.reviewDate === snapshotDate;
     if (activeFilter === 'overdue') return row.dataset.reviewDate < snapshotDate;
     if (activeFilter === 'needed-help') return row.dataset.practiceState === 'Needed help';
-    if (activeFilter === 'hard') return row.dataset.difficulty === 'Hard';
     return true;
   };
 

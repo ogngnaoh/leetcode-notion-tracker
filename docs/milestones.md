@@ -7,4 +7,3 @@
 5. **Local LC Log Daily Dashboard** — shipped
 6. **First-Attempt Tracking and Two-Outcome Model** — shipped
 7. **Compact Review Queue** — shipped
-8. **Review Filter Alignment** — active

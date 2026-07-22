@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { CaptureEventSchema } from '../shared/contract.js';
 import type { CaptureService } from './capture-service.js';
-import { parseDailyNewProblemGoal } from './dashboard-settings.js';
+import { parseDailyNewProblemGoal, type DashboardSettings } from './dashboard-settings.js';
 import { localDate, renderDashboard, type DashboardStore } from './dashboard.js';
 
 interface AppOptions {
@@ -14,7 +14,8 @@ interface AppOptions {
   dashboard?: DashboardStore;
   dashboardSettings?: {
     antiForgeryToken: string;
-    saveGoal(goal: number): Promise<void>;
+    saveGoal(goal: number): Promise<DashboardSettings>;
+    resetSession(timestamp: string): Promise<DashboardSettings>;
   };
   logger?: {
     error(message: string, diagnostics: Record<string, unknown>): void;
@@ -114,21 +115,40 @@ export function createApp(options: AppOptions): Hono {
       return context.json({ error: 'Invalid dashboard settings' }, 400);
     }
     const record = body as Record<string, unknown>;
-    if (Object.keys(record).length !== 1 || !('dailyNewProblemGoal' in record)) {
+    const keys = Object.keys(record);
+    const updatesGoal = keys.length === 1 && keys[0] === 'dailyNewProblemGoal';
+    const resetsSession =
+      keys.length === 1 &&
+      keys[0] === 'resetNewProblemSession' &&
+      record.resetNewProblemSession === true;
+    if (!updatesGoal && !resetsSession) {
       return context.json({ error: 'Invalid dashboard settings' }, 400);
     }
-
-    let goal: number;
-    try {
-      goal = parseDailyNewProblemGoal(record.dailyNewProblemGoal);
-    } catch {
-      return context.json({ error: 'Invalid dashboard settings' }, 400);
+    let goal: number | undefined;
+    if (updatesGoal) {
+      try {
+        goal = parseDailyNewProblemGoal(record.dailyNewProblemGoal);
+      } catch {
+        return context.json({ error: 'Invalid dashboard settings' }, 400);
+      }
     }
 
     try {
-      await options.dashboardSettings.saveGoal(goal);
-      options.dashboard?.updateGoal(goal);
-      return context.json({ dailyNewProblemGoal: goal });
+      if (updatesGoal) {
+        const settings = await options.dashboardSettings.saveGoal(goal as number);
+        options.dashboard?.updateGoal(settings.dailyNewProblemGoal);
+        return context.json({ dailyNewProblemGoal: settings.dailyNewProblemGoal });
+      }
+
+      const timestamp = (options.now?.() ?? new Date()).toISOString();
+      const settings = await options.dashboardSettings.resetSession(timestamp);
+      options.dashboard?.updateGoal(settings.dailyNewProblemGoal);
+      options.dashboard?.updateSessionStartedAt(timestamp);
+      return context.json({
+        dailyNewProblemGoal: settings.dailyNewProblemGoal,
+        newProblemCount: 0,
+        newProblemSessionStartedAt: timestamp,
+      });
     } catch {
       logger.error('Dashboard settings save failed', {});
       return context.json({ error: 'Dashboard settings could not be saved.' }, 500);

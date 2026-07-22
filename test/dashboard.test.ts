@@ -56,6 +56,24 @@ describe('local dashboard', () => {
     expect(load).toHaveBeenCalledOnce();
   });
 
+  it('resets only the in-memory session count and passes the boundary to later refreshes', async () => {
+    const load = vi.fn(async () => ({ newProblemCount: 3, due: rows }));
+    const store = new DashboardStore({
+      goal: 10,
+      load,
+      newProblemSessionStartedAt: '2026-07-21T12:00:00.000Z',
+      now: () => new Date('2026-07-22T15:00:00.000Z'),
+    });
+    await store.refresh('2026-07-22');
+
+    store.updateSessionStartedAt('2026-07-22T15:00:00.000Z');
+
+    expect(store.currentSessionStartedAt()).toBe('2026-07-22T15:00:00.000Z');
+    expect(store.current()).toMatchObject({ newProblemCount: 0, due: rows, goal: 10 });
+    await store.refresh('2026-07-22');
+    expect(load).toHaveBeenLastCalledWith('2026-07-22', '2026-07-22T15:00:00.000Z');
+  });
+
   it('escapes content, rejects unsafe links, omits secrets, and includes focus refresh behavior', () => {
     const html = renderDashboard({
       date: '2026-07-21',
@@ -89,10 +107,14 @@ describe('local dashboard', () => {
     expect(html).not.toContain('<script>');
     expect(html).not.toContain('<style>');
     expect(html).not.toMatch(/ntn_|secret_|Bearer|BRIDGE_TOKEN/);
-    expect(html).toContain('NEW PROBLEMS TODAY');
-    expect(html).toContain('First attempts toward today’s goal.');
-    expect(html).toContain('Daily new-problem target');
-    expect(html).toContain('Choose how many new Problems you want to practice each day.');
+    expect(html).toContain('NEW PROBLEMS THIS SESSION');
+    expect(html).toContain('First attempts since your last reset.');
+    expect(html).toContain('New-problem session');
+    expect(html).toContain('Set your maximum or start a fresh counting session.');
+    expect(html).toContain('data-dashboard-new-problem-count>1</strong>');
+    expect(html).toContain('id="reset-new-problem-session"');
+    expect(html).toContain('id="reset-new-problem-session-dialog"');
+    expect(html).toContain('Reset the new-problems count to zero?');
     expect(html).not.toContain('NEW SOLVES TODAY');
     expect(html).not.toContain('new-solve');
     expect(html).toContain('data-review-queue');
@@ -101,12 +123,12 @@ describe('local dashboard', () => {
     expect(html).toContain('data-review-filter="today"');
     expect(html).toContain('data-review-filter="overdue"');
     expect(html).toContain('data-review-filter="needed-help"');
-    expect(html).toContain('data-review-filter="hard"');
+    expect(html).not.toContain('data-review-filter="hard"');
     expect(html).toContain('data-filter-count="all">3</span>');
     expect(html).toContain('data-filter-count="today">1</span>');
     expect(html).toContain('data-filter-count="overdue">2</span>');
     expect(html).toContain('data-filter-count="needed-help">2</span>');
-    expect(html).toContain('data-filter-count="hard">1</span>');
+    expect(html).not.toContain('data-filter-count="hard"');
     expect(html).toContain(
       'data-review-row data-title="&lt;two sum&gt;" data-review-date="2026-07-20" data-practice-state="Needed help" data-difficulty="Medium"',
     );
@@ -116,6 +138,7 @@ describe('local dashboard', () => {
     expect(html).toContain(
       'data-review-row data-title="unsafe" data-review-date="2026-07-19" data-practice-state="Needed help" data-difficulty="Hard"',
     );
+    expect(html).toContain('badge badge--hard">Hard</span>');
     expect(html).toContain(
       '<strong>1d overdue</strong> · <time datetime="2026-07-20">2026-07-20</time>',
     );

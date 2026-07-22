@@ -20,7 +20,11 @@ export interface DashboardSnapshot {
 
 interface DashboardStoreOptions {
   goal: number;
-  load(date: string): Promise<{ newProblemCount: number; due: DashboardRow[] }>;
+  load(
+    date: string,
+    newProblemSessionStartedAt?: string,
+  ): Promise<{ newProblemCount: number; due: DashboardRow[] }>;
+  newProblemSessionStartedAt?: string;
   now?: () => Date;
 }
 
@@ -30,10 +34,12 @@ export class DashboardStore {
   private failedDate: string | undefined;
   private readonly now: () => Date;
   private goal: number;
+  private newProblemSessionStartedAt: string | undefined;
 
   constructor(private readonly options: DashboardStoreOptions) {
     this.now = options.now ?? (() => new Date());
     this.goal = options.goal;
+    this.newProblemSessionStartedAt = options.newProblemSessionStartedAt;
   }
 
   current(): DashboardSnapshot | undefined {
@@ -42,6 +48,10 @@ export class DashboardStore {
 
   currentGoal(): number {
     return this.goal;
+  }
+
+  currentSessionStartedAt(): string | undefined {
+    return this.newProblemSessionStartedAt;
   }
 
   failedFor(date: string): boolean {
@@ -53,10 +63,17 @@ export class DashboardStore {
     if (this.snapshot) this.snapshot = { ...this.snapshot, goal };
   }
 
+  updateSessionStartedAt(timestamp: string): void {
+    this.newProblemSessionStartedAt = timestamp;
+    if (this.snapshot) this.snapshot = { ...this.snapshot, newProblemCount: 0 };
+  }
+
   refresh(date = localDate(this.now())): Promise<DashboardSnapshot> {
     if (this.inFlight) return this.inFlight;
-    this.inFlight = this.options
-      .load(date)
+    const load = this.newProblemSessionStartedAt
+      ? this.options.load(date, this.newProblemSessionStartedAt)
+      : this.options.load(date);
+    this.inFlight = load
       .then((loaded) => {
         this.failedDate = undefined;
         this.snapshot = {
@@ -150,10 +167,9 @@ function renderReviewQueue(rows: DashboardRow[], snapshotDate: string): string {
     today: rows.filter((row) => row.nextReview === snapshotDate).length,
     overdue: rows.filter((row) => row.nextReview < snapshotDate).length,
     neededHelp: rows.filter((row) => row.practiceState === 'Needed help').length,
-    hard: rows.filter((row) => row.difficulty === 'Hard').length,
   };
   const filterButton = (
-    value: 'all' | 'today' | 'overdue' | 'needed-help' | 'hard',
+    value: 'all' | 'today' | 'overdue' | 'needed-help',
     label: string,
     count: number,
     pressed = false,
@@ -168,7 +184,7 @@ function renderReviewQueue(rows: DashboardRow[], snapshotDate: string): string {
       return `<li class="review-row" data-review-row data-title="${escapeHtml(row.title.trim().toLowerCase())}" data-review-date="${escapeHtml(row.nextReview)}" data-practice-state="${escapeHtml(row.practiceState)}" data-difficulty="${escapeHtml(row.difficulty)}"><div class="review-row__content"><h2>${escapeHtml(row.title)}</h2><div class="review-row__meta"><span class="badge badge--${badgeClass(row.difficulty)}">${escapeHtml(row.difficulty)}</span><span class="badge badge--${badgeClass(row.practiceState)}">${escapeHtml(row.practiceState)}</span><span>${row.solvedStreak} streak</span><span><strong>${escapeHtml(dueLabel(row.nextReview, snapshotDate))}</strong> · <time datetime="${escapeHtml(row.nextReview)}">${escapeHtml(row.nextReview)}</time></span></div></div>${action}</li>`;
     })
     .join('');
-  return `<section class="review-queue" data-review-queue><div class="review-filters" role="group" aria-label="Review filters">${filterButton('all', 'All due', counts.all, true)}${filterButton('today', 'Today', counts.today)}${filterButton('overdue', 'Overdue', counts.overdue)}${filterButton('needed-help', 'Needed help', counts.neededHelp)}${filterButton('hard', 'Hard', counts.hard)}</div><div class="review-results"><label for="review-search">Search by title</label><input id="review-search" type="search" autocomplete="off" data-review-search aria-controls="review-results"><p data-review-results role="status" aria-live="polite">Showing ${rows.length} of ${rows.length} matching reviews</p><ol id="review-results" class="review-list">${rowMarkup}</ol><div class="review-filter-empty" data-review-empty hidden><h2>No matching reviews</h2><p>Try another saved view or title search.</p></div><button class="review-more" type="button" data-review-more hidden>Load 50 more</button></div></section>`;
+  return `<section class="review-queue" data-review-queue><div class="review-filters" role="group" aria-label="Review filters">${filterButton('all', 'All due', counts.all, true)}${filterButton('today', 'Today', counts.today)}${filterButton('overdue', 'Overdue', counts.overdue)}${filterButton('needed-help', 'Needed help', counts.neededHelp)}</div><div class="review-results"><label for="review-search">Search by title</label><input id="review-search" type="search" autocomplete="off" data-review-search aria-controls="review-results"><p data-review-results role="status" aria-live="polite">Showing ${rows.length} of ${rows.length} matching reviews</p><ol id="review-results" class="review-list">${rowMarkup}</ol><div class="review-filter-empty" data-review-empty hidden><h2>No matching reviews</h2><p>Try another saved view or title search.</p></div><button class="review-more" type="button" data-review-more hidden>Load 50 more</button></div></section>`;
 }
 
 export function renderDashboard(
@@ -196,6 +212,6 @@ export function renderDashboard(
     ? `<meta name="dashboard-settings-token" content="${escapeHtml(antiForgeryToken)}">`
     : '';
   const goal = configuredGoal ?? snapshot?.goal;
-  const settingsDialog = `<dialog id="dashboard-settings-dialog" aria-labelledby="dashboard-settings-title"><form id="dashboard-settings-form"><div class="eyebrow">DASHBOARD SETTINGS</div><h2 id="dashboard-settings-title">Daily new-problem target</h2><p>Choose how many new Problems you want to practice each day.</p><label for="daily-new-problem-goal">New problems per day</label><input id="daily-new-problem-goal" name="dailyNewProblemGoal" type="number" min="1" max="100" step="1" required value="${goal ?? 10}"><p id="dashboard-settings-error" class="dialog-error" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="cancel-dashboard-settings" class="dialog-button" type="button">Cancel</button><button id="save-dashboard-settings" class="dialog-button dialog-button--primary" type="submit">Save goal</button></div></form></dialog>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${tokenMeta}<title>LC Log Daily</title><link rel="stylesheet" href="/dashboard-assets/tokens.css"><link rel="stylesheet" href="/dashboard-assets/components.css"><link rel="stylesheet" href="/dashboard-assets/dashboard.css?v=3"><script src="/dashboard-assets/dashboard.js?v=3" defer></script></head><body>${snapshot?.stale ? '<div class="stale" role="status"><strong>Saved data</strong><span>Notion refresh failed. Your last successful snapshot is still shown.</span></div>' : ''}<header class="masthead"><a class="brand" href="/dashboard" aria-label="LC Log daily dashboard"><img src="/dashboard-assets/square-terminal.svg" width="20" height="20" alt=""> <span>LC LOG</span></a><time class="date" datetime="${escapeHtml(shownDate)}"><span class="date-long">${escapeHtml(dateLabel(shownDate))}</span><span class="date-short">${escapeHtml(shortDateLabel(shownDate))}</span></time><div class="meta">${updateStatus}</div><div class="header-actions"><button id="open-dashboard-settings" class="refresh" type="button">Settings</button><a class="refresh" href="/dashboard?refresh=1">Refresh<span aria-hidden="true">↻</span></a></div></header>${settingsDialog}<main><section class="summaries" aria-label="Daily summary"><article class="summary summary--solves"><div class="eyebrow">NEW PROBLEMS TODAY</div><div class="number"><strong>${snapshot?.newProblemCount ?? '—'}</strong><span data-dashboard-goal> / ${goal ?? '—'}</span></div><p>First attempts toward today’s goal.</p></article><article class="summary summary--reviews"><div class="eyebrow">REVIEWS DUE</div><div class="number"><strong>${snapshot?.due.length ?? '—'}</strong></div><p>Problems ready for deliberate review.</p></article></section><div class="section-title"><div><div class="eyebrow">DAILY QUEUE</div><h1>REVIEW NOW</h1></div><span class="queue-count">${rows.length} ${rows.length === 1 ? 'problem' : 'problems'}</span></div>${status}</main></body></html>`;
+  const settingsDialog = `<dialog id="dashboard-settings-dialog" aria-labelledby="dashboard-settings-title"><form id="dashboard-settings-form"><div class="eyebrow">DASHBOARD SETTINGS</div><h2 id="dashboard-settings-title">New-problem session</h2><p>Set your maximum or start a fresh counting session.</p><label for="daily-new-problem-goal">Maximum new problems</label><input id="daily-new-problem-goal" name="dailyNewProblemGoal" type="number" min="1" max="100" step="1" required value="${goal ?? 10}"><p id="dashboard-settings-error" class="dialog-error" role="status" aria-live="polite"></p><div class="dialog-actions dialog-actions--split"><button id="reset-new-problem-session" class="dialog-button" type="button">Reset current count</button><span class="dialog-actions__end"><button id="cancel-dashboard-settings" class="dialog-button" type="button">Cancel</button><button id="save-dashboard-settings" class="dialog-button dialog-button--primary" type="submit">Save maximum</button></span></div></form></dialog><dialog id="reset-new-problem-session-dialog" aria-labelledby="reset-new-problem-session-title"><div class="dialog-panel"><div class="eyebrow">CONFIRM RESET</div><h2 id="reset-new-problem-session-title">Reset the new-problems count to zero?</h2><p>Previous Problems and Attempts stay unchanged. Only this local session count restarts.</p><p id="reset-new-problem-session-error" class="dialog-error" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="cancel-new-problem-session-reset" class="dialog-button" type="button">Keep current count</button><button id="confirm-new-problem-session-reset" class="dialog-button dialog-button--primary" type="button">Yes, reset count</button></div></div></dialog>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${tokenMeta}<title>LC Log Daily</title><link rel="stylesheet" href="/dashboard-assets/tokens.css"><link rel="stylesheet" href="/dashboard-assets/components.css"><link rel="stylesheet" href="/dashboard-assets/dashboard.css?v=4"><script src="/dashboard-assets/dashboard.js?v=4" defer></script></head><body>${snapshot?.stale ? '<div class="stale" role="status"><strong>Saved data</strong><span>Notion refresh failed. Your last successful snapshot is still shown.</span></div>' : ''}<header class="masthead"><a class="brand" href="/dashboard" aria-label="LC Log daily dashboard"><img src="/dashboard-assets/square-terminal.svg" width="20" height="20" alt=""> <span>LC LOG</span></a><time class="date" datetime="${escapeHtml(shownDate)}"><span class="date-long">${escapeHtml(dateLabel(shownDate))}</span><span class="date-short">${escapeHtml(shortDateLabel(shownDate))}</span></time><div class="meta">${updateStatus}</div><div class="header-actions"><button id="open-dashboard-settings" class="refresh" type="button">Settings</button><a class="refresh" href="/dashboard?refresh=1">Refresh<span aria-hidden="true">↻</span></a></div></header>${settingsDialog}<main><section class="summaries" aria-label="Daily summary"><article class="summary summary--solves"><div class="eyebrow">NEW PROBLEMS THIS SESSION</div><div class="number"><strong data-dashboard-new-problem-count>${snapshot?.newProblemCount ?? '—'}</strong><span data-dashboard-goal> / ${goal ?? '—'}</span></div><p>First attempts since your last reset.</p></article><article class="summary summary--reviews"><div class="eyebrow">REVIEWS DUE</div><div class="number"><strong>${snapshot?.due.length ?? '—'}</strong></div><p>Problems ready for deliberate review.</p></article></section><div class="section-title"><div><div class="eyebrow">DAILY QUEUE</div><h1>REVIEW NOW</h1></div><span class="queue-count">${rows.length} ${rows.length === 1 ? 'problem' : 'problems'}</span></div>${status}</main></body></html>`;
 }

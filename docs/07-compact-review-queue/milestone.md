@@ -8,7 +8,8 @@ of due Problems remains easy to scan, filter, and open.
 - Keep every Problem whose `Next Review` is today or earlier in the local dashboard queue.
 - Defensively exclude future review dates even if an upstream response contains one.
 - Replace the large summary and table presentation with a compact filter rail and dense review list.
-- Support text search plus the `All due`, `Today`, `Overdue`, `Needed help`, and `Hard` views.
+- Support text search plus the `All due`, `Today`, `Overdue`, and `Needed help` views.
+- Preserve Easy, Medium, and Hard difficulty badges on review rows.
 - Show 50 matching rows initially and reveal additional rows in batches of 50.
 - Preserve responsive use, keyboard access, stale-data behavior, safe LeetCode links, and manual review.
 
@@ -29,9 +30,11 @@ of due Problems remains easy to scan, filter, and open.
 - Milestone 06 and LCTrack `0.1.4` are the release baseline.
 - The Notion query already requests `Next Review on_or_before` the local date; local filtering is a
   second boundary check, not a scheduling change.
-- Tests added or changed in this milestone are development evidence and require user review before
-  their first execution; they are not independent verification.
-- LCTrack `0.1.5` ships the compact queue with synchronized package, lockfile, and extension versions.
+- Tests added or changed in this milestone are development evidence rather than independent verification.
+- LCTrack `0.1.5` shipped the compact queue; the `0.1.6` follow-up removes the misleading Hard filter
+  while retaining difficulty badges and synchronized package, lockfile, and extension versions.
+- The `0.1.7` follow-up keeps automatic first-Problem counting but makes its session boundary a
+  confirmed local manual reset, without changing Notion history or review behavior.
 
 ## Exit criteria
 
@@ -39,5 +42,5 @@ of due Problems remains easy to scan, filter, and open.
 - The selected saved view and search term combine predictably, counts reflect the full due snapshot,
   and rows reveal in batches of 50.
 - Desktop and narrow layouts remain usable with keyboard-visible controls and safe outbound links.
-- Synchronized version `0.1.5`, reviewed development tests, `npm run check`, and `git diff --check`
+- Synchronized version `0.1.7`, development tests, `npm run check`, and `git diff --check`
   pass freshly.

@@ -167,11 +167,12 @@ For development, the direct command remains available:
 npm run dev:bridge
 ```
 
-Notion remains the only source for new-Problem counts and review rows. The daily new-problem target is a
-tracker-wide local bridge preference stored atomically in ignored `build/dashboard-settings.json`.
-`DAILY_NEW_PROBLEM_GOAL` supplies only the first-run fallback. Use the dashboard masthead’s
-**Settings** dialog to choose an integer from 1 through 100; a successful save updates the displayed
-target immediately without refreshing Notion.
+Notion remains the only source for new-Problem counts and review rows. The new-problem maximum and
+optional session boundary are tracker-wide local bridge preferences stored atomically in ignored
+`build/dashboard-settings.json`. `DAILY_NEW_PROBLEM_GOAL` supplies only the first-run maximum. Use
+the dashboard masthead’s **Settings** dialog to choose an integer from 1 through 100 or deliberately
+reset the current count after confirmation. Resetting records only a local timestamp; it never
+changes Problems, Attempts, solved state, streaks, or review dates in Notion.
 
 To review the dashboard’s normal, empty, stale, loading, and unavailable design states locally:
 
@@ -257,12 +258,15 @@ Review scheduling is intentionally small:
 | Solved, streak 5   | Mastered / 5              | None             |
 
 The managed Notion views are `Review queue`, `All problems`, and `Recent attempts`.
-The local dashboard counts each Problem once on `First Attempt = today` and shows a compact review
-queue with direct LeetCode URLs. The queue includes every Problem whose `Next Review` is today or
+Before the first manual reset, the local dashboard counts each Problem once on
+`First Attempt = today` for backward compatibility. After reset, it counts immutable First Attempts
+strictly after the saved session boundary and shows `NEW PROBLEMS THIS SESSION`; the configurable
+maximum is unchanged. The compact review queue uses direct LeetCode URLs and includes every Problem whose `Next Review` is today or
 earlier and defensively excludes future-dated rows even if an upstream response contains one. Use
-the `All due`, `Today`, `Overdue`, `Needed help`, and `Hard` local views with title search; matching
+the `All due`, `Today`, `Overdue`, and `Needed help` local views with title search; matching
 rows appear in batches of 50. These controls filter the in-memory snapshot only and never mutate
-Notion. Setup creates the managed Notion views with the intended visible columns, filters, sorts,
+Notion. Difficulty remains visible on each row, including Hard badges. Setup creates the managed
+Notion views with the intended visible columns, filters, sorts,
 widths, wrapping, date formatting, frozen title column, disabled subtasks, and hidden vertical grid
 lines. `notion:verify` detects presentation drift as well as schema drift; unrelated user-created
 views are allowed.

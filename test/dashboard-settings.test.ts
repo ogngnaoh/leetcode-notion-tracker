@@ -39,6 +39,36 @@ describe('dashboard settings', () => {
     await expect(store.load()).resolves.toEqual({ dailyNewProblemGoal: 12 });
   });
 
+  it('reloads a valid saved goal and session boundary', async () => {
+    const path = await temporarySettingsPath();
+    await writeFile(
+      path,
+      '{"dailyNewProblemGoal":12,"newProblemSessionStartedAt":"2026-07-22T14:30:00.000Z"}\n',
+      'utf8',
+    );
+
+    const store = new DashboardSettingsStore({ path, fallbackGoal: 7 });
+    await expect(store.load()).resolves.toEqual({
+      dailyNewProblemGoal: 12,
+      newProblemSessionStartedAt: '2026-07-22T14:30:00.000Z',
+    });
+  });
+
+  it('rejects a non-canonical saved session boundary', async () => {
+    const path = await temporarySettingsPath();
+    await writeFile(
+      path,
+      '{"dailyNewProblemGoal":12,"newProblemSessionStartedAt":"2026-07-22"}\n',
+      'utf8',
+    );
+    const logger = { warn: vi.fn() };
+
+    const store = new DashboardSettingsStore({ path, fallbackGoal: 7, logger });
+
+    await expect(store.load()).resolves.toEqual({ dailyNewProblemGoal: 7 });
+    expect(logger.warn).toHaveBeenCalledOnce();
+  });
+
   it('falls back with one bounded warning when the saved file is malformed', async () => {
     const path = await temporarySettingsPath();
     await writeFile(path, `{"dailyNewProblemGoal":"${'secret'.repeat(100)}"}`, 'utf8');
@@ -64,9 +94,14 @@ describe('dashboard settings', () => {
     const path = await temporarySettingsPath();
     const store = new DashboardSettingsStore({ path, fallbackGoal: 10 });
 
-    await store.save(18);
+    await store.save({
+      dailyNewProblemGoal: 18,
+      newProblemSessionStartedAt: '2026-07-22T14:30:00.000Z',
+    });
 
-    await expect(readFile(path, 'utf8')).resolves.toBe('{"dailyNewProblemGoal":18}\n');
+    await expect(readFile(path, 'utf8')).resolves.toBe(
+      '{"dailyNewProblemGoal":18,"newProblemSessionStartedAt":"2026-07-22T14:30:00.000Z"}\n',
+    );
     await expect(readdir(join(path, '..'))).resolves.toEqual(['dashboard-settings.json']);
   });
 
@@ -74,8 +109,21 @@ describe('dashboard settings', () => {
     const path = await temporarySettingsPath();
     const store = new DashboardSettingsStore({ path, fallbackGoal: 10 });
 
-    await Promise.all([store.save(4), store.save(19), store.save(31)]);
+    await Promise.all([
+      store.save({ dailyNewProblemGoal: 4 }),
+      store.save({
+        dailyNewProblemGoal: 19,
+        newProblemSessionStartedAt: '2026-07-22T14:30:00.000Z',
+      }),
+      store.save({
+        dailyNewProblemGoal: 31,
+        newProblemSessionStartedAt: '2026-07-22T15:45:00.000Z',
+      }),
+    ]);
 
-    await expect(store.load()).resolves.toEqual({ dailyNewProblemGoal: 31 });
+    await expect(store.load()).resolves.toEqual({
+      dailyNewProblemGoal: 31,
+      newProblemSessionStartedAt: '2026-07-22T15:45:00.000Z',
+    });
   });
 });

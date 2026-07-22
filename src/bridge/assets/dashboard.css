@@ -90,6 +90,7 @@ button.refresh {
 .review:focus-visible,
 .brand:focus-visible,
 .dialog-button:focus-visible,
+#reset-new-problem-session:focus-visible,
 #daily-new-problem-goal:focus-visible,
 [data-review-filter]:focus-visible,
 [data-review-search]:focus-visible,
@@ -107,15 +108,18 @@ dialog {
 dialog::backdrop {
   background: rgb(0 0 0 / 45%);
 }
-#dashboard-settings-form {
+#dashboard-settings-form,
+.dialog-panel {
   padding: 24px;
 }
-#dashboard-settings-form h2 {
+#dashboard-settings-form h2,
+.dialog-panel h2 {
   margin: 10px 0 8px;
   font-size: 24px;
   font-weight: 500;
 }
-#dashboard-settings-form > p {
+#dashboard-settings-form > p,
+.dialog-panel > p {
   margin: 0 0 22px;
   color: #555;
 }
@@ -135,7 +139,7 @@ dialog::backdrop {
   color: var(--color-black);
   font: 18px/1.2 var(--font-mono);
 }
-#dashboard-settings-form .dialog-error {
+.dialog-error {
   min-height: 21px;
   margin: 10px 0 0;
   color: var(--color-critical);
@@ -146,6 +150,14 @@ dialog::backdrop {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
+}
+.dialog-actions--split {
+  justify-content: space-between;
+  align-items: center;
+}
+.dialog-actions__end {
+  display: flex;
+  gap: 8px;
 }
 .dialog-button {
   border: 1px solid var(--color-black);

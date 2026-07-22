@@ -69,7 +69,8 @@ test('keeps review filters reachable without page overflow at mobile width', asy
   await page.goto('http://127.0.0.1:8791/dashboard/normal');
 
   const filters = page.getByRole('group', { name: 'Review filters' }).getByRole('button');
-  await expect(filters).toHaveCount(5);
+  await expect(filters).toHaveCount(4);
+  await expect(page.locator('[data-review-filter="hard"]')).toHaveCount(0);
   for (const filter of await filters.all()) {
     await filter.scrollIntoViewIfNeeded();
     await expect(filter).toBeInViewport();
@@ -97,17 +98,76 @@ test('saves the daily goal, closes the dialog, and updates the denominator immed
   await opener.click();
   await expect(page.locator('#dashboard-settings-dialog')).toBeVisible();
   await expect(page.locator('#daily-new-problem-goal')).toHaveValue('10');
-  const labelBox = await page.getByText('New problems per day', { exact: true }).boundingBox();
+  const labelBox = await page.getByText('Maximum new problems', { exact: true }).boundingBox();
   const inputBox = await page.locator('#daily-new-problem-goal').boundingBox();
   expect(labelBox).not.toBeNull();
   expect(inputBox).not.toBeNull();
   expect(inputBox!.y - (labelBox!.y + labelBox!.height)).toBeGreaterThanOrEqual(10);
   await page.locator('#daily-new-problem-goal').fill('14');
-  await page.getByRole('button', { name: 'Save goal' }).click();
+  await page.getByRole('button', { name: 'Save maximum' }).click();
 
   await expect(page.locator('#dashboard-settings-dialog')).toBeHidden();
   await expect(page.locator('[data-dashboard-goal]')).toHaveText(' / 14');
   await expect(opener).toBeFocused();
+});
+
+test('cancels or confirms a deliberate new-problem session reset', async ({ page }) => {
+  let resetRequests = 0;
+  await page.route('**/dashboard/settings', async (route) => {
+    resetRequests += 1;
+    expect(route.request().headers()['x-lc-dashboard-token']).toBe('fixture-dashboard-token');
+    expect(route.request().postDataJSON()).toEqual({ resetNewProblemSession: true });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        dailyNewProblemGoal: 10,
+        newProblemCount: 0,
+        newProblemSessionStartedAt: '2026-07-22T15:00:00.000Z',
+      }),
+    });
+  });
+  await page.goto('http://127.0.0.1:8791/dashboard/normal');
+
+  await page.locator('#open-dashboard-settings').click();
+  await page.getByRole('button', { name: 'Reset current count' }).click();
+  await expect(page.locator('#reset-new-problem-session-dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Keep current count' }).click();
+  await expect(page.locator('#reset-new-problem-session-dialog')).toBeHidden();
+  await expect(page.locator('#dashboard-settings-dialog')).toBeVisible();
+  await expect(page.locator('[data-dashboard-new-problem-count]')).toHaveText('1');
+  expect(resetRequests).toBe(0);
+
+  await page.getByRole('button', { name: 'Reset current count' }).click();
+  await page.getByRole('button', { name: 'Yes, reset count' }).click();
+  await expect(page.locator('#reset-new-problem-session-dialog')).toBeHidden();
+  await expect(page.locator('#dashboard-settings-dialog')).toBeHidden();
+  await expect(page.locator('[data-dashboard-new-problem-count]')).toHaveText('0');
+  await expect(page.locator('[data-dashboard-goal]')).toHaveText(' / 10');
+  expect(resetRequests).toBe(1);
+});
+
+test('keeps reset confirmation open with unchanged count when persistence fails', async ({
+  page,
+}) => {
+  await page.route('**/dashboard/settings', (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Dashboard settings could not be saved.' }),
+    }),
+  );
+  await page.goto('http://127.0.0.1:8791/dashboard/normal');
+  await page.locator('#open-dashboard-settings').click();
+  await page.getByRole('button', { name: 'Reset current count' }).click();
+  await page.getByRole('button', { name: 'Yes, reset count' }).click();
+
+  await expect(page.locator('#reset-new-problem-session-dialog')).toBeVisible();
+  await expect(page.locator('#reset-new-problem-session-error')).toContainText(
+    'Dashboard settings could not be saved.',
+  );
+  await expect(page.locator('[data-dashboard-new-problem-count]')).toHaveText('1');
+  await expect(page.getByRole('button', { name: 'Yes, reset count' })).toBeEnabled();
 });
 
 test('supports Cancel and Escape with focus restoration', async ({ page }) => {
@@ -136,13 +196,13 @@ test('keeps the dialog open and shows a live error after a failed save', async (
   await page.goto('http://127.0.0.1:8791/dashboard/stale');
   await page.locator('#open-dashboard-settings').click();
   await page.locator('#daily-new-problem-goal').fill('15');
-  await page.getByRole('button', { name: 'Save goal' }).click();
+  await page.getByRole('button', { name: 'Save maximum' }).click();
 
   await expect(page.locator('#dashboard-settings-dialog')).toBeVisible();
   await expect(page.locator('#dashboard-settings-error')).toContainText(
     'Dashboard settings could not be saved.',
   );
-  await expect(page.getByRole('button', { name: 'Save goal' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Save maximum' })).toBeEnabled();
 });
 
 test('keeps Settings usable in every dashboard state and at mobile width', async ({ page }) => {
@@ -156,4 +216,9 @@ test('keeps Settings usable in every dashboard state and at mobile width', async
   expect(bounds).not.toBeNull();
   expect(bounds!.x).toBeGreaterThanOrEqual(0);
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
+  await page.getByRole('button', { name: 'Reset current count' }).click();
+  const resetBounds = await page.locator('#reset-new-problem-session-dialog').boundingBox();
+  expect(resetBounds).not.toBeNull();
+  expect(resetBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(resetBounds!.x + resetBounds!.width).toBeLessThanOrEqual(375);
 });
