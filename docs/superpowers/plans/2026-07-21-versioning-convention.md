@@ -27,9 +27,11 @@ Chrome extension manifest, and built extension manifest. Put the future-agent ru
 ### Task 1: Establish the `0.1.3` release contract
 
 **Files:**
+
 - Modify: `test/extension-sidepanel-static.test.ts`
 
 **Interfaces:**
+
 - Consumes: the parsed `extension/manifest.json` object and side-panel HTML.
 - Produces: a reviewed failing assertion that the source extension version is `0.1.3`.
 
@@ -61,6 +63,7 @@ Expected: FAIL because `extension/manifest.json` still reports `0.1.2`.
 ### Task 2: Synchronize version metadata and record the convention
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Modify: `extension/manifest.json`
@@ -69,6 +72,7 @@ Expected: FAIL because `extension/manifest.json` still reports `0.1.2`.
 - Modify: `docs/06-first-attempt-tracking/implementation-plan.md`
 
 **Interfaces:**
+
 - Consumes: the `0.1.3` assertion from Task 1.
 - Produces: synchronized source metadata, a persistent agent convention, and accurate milestone status.
 
@@ -127,11 +131,13 @@ git commit -m "chore: release LCTrack 0.1.3"
 ### Task 3: Verify and resume live rollout
 
 **Files:**
+
 - Modify after live evidence: `docs/06-first-attempt-tracking/handoff.md`
 - Modify after live evidence: `docs/06-first-attempt-tracking/milestone.md`
 - Modify after live evidence: `docs/milestones.md`
 
 **Interfaces:**
+
 - Consumes: built extension version `0.1.3`, exact Notion v4, and the running localhost bridge.
 - Produces: final local verification, observed Chrome/Notion acceptance evidence, and shipped milestone 06.
 
