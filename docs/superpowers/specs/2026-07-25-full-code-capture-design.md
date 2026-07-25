@@ -55,7 +55,12 @@ document_idle`. No new permissions; `minimum_chrome_version` is already 116. It:
   `model.onDidChangeContent()` and `editor.onDidChangeModelLanguage()`;
 - rediscovers editors on a 250ms interval, matching the cadence already used for location polling.
   Re-attachment is idempotent through a `WeakSet`, so the same loop covers both a late-arriving
-  `window.monaco` and the new model Monaco creates when the user switches language.
+  `window.monaco` and the new model Monaco creates when the user switches language;
+- announces every transition between readable and unreadable on that same interval. This is what
+  makes a timed-out first request recoverable. LeetCode hydrates the editor after the content
+  scripts run, so the first read can legitimately find no reachable model; without this signal
+  nothing would ask again and the panel would stay blocked until the user happened to edit the
+  code. A browser test installs `window.monaco` after the timeout and asserts recovery.
 
 **`content.ts` (ISOLATED, unchanged role).** Continues to own title, difficulty, and topics, which
 are ordinary DOM and unaffected. It requests code and language from the bridge and treats a
@@ -97,12 +102,12 @@ source-switching that this design exists to remove.
 
 ## Failure modes
 
-| Condition                         | Behavior                                                       |
-| --------------------------------- | -------------------------------------------------------------- |
-| `window.monaco` absent            | `codeAvailable: false`, capture blocked, bridge keeps polling  |
-| Only a `plaintext` editor present | `codeAvailable: false`, capture blocked                        |
-| Bridge silent for 500ms           | `codeAvailable: false`, retried on the next change signal      |
-| Model present but empty           | `codeAvailable: true`, blocked by the existing non-blank check |
+| Condition                         | Behavior                                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| `window.monaco` absent            | `codeAvailable: false`, capture blocked, bridge keeps polling                |
+| Only a `plaintext` editor present | `codeAvailable: false`, capture blocked                                      |
+| Bridge silent for 500ms           | `codeAvailable: false`, retried when the bridge announces the model readable |
+| Model present but empty           | `codeAvailable: true`, blocked by the existing non-blank check               |
 
 ## Risks
 

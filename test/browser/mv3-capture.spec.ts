@@ -17,6 +17,8 @@ interface ProblemFixture {
   code: string | null;
   /** How many logical lines the fake view renders. Omit to render all of them. */
   renderedLines?: number;
+  /** Installs `window.monaco` well after the model request timeout, mimicking slow hydration. */
+  lateModel?: boolean;
 }
 
 const twoSum: ProblemFixture = {
@@ -94,7 +96,10 @@ function fixtureHtml(fixture: ProblemFixture): string {
             return { dispose: () => languageListeners.delete(listener) };
           },
         };
-        window.monaco = { editor: { getEditors: () => [editorInstance] } };
+        const install = () => {
+          window.monaco = { editor: { getEditors: () => [editorInstance] } };
+        };
+        if (${fixture.lateModel === true}) setTimeout(install, 900); else install();
         window.__setModel = (code, languageId, rendered) => {
           state.code = code;
           if (languageId !== undefined) state.languageId = languageId;
@@ -411,6 +416,14 @@ test('shows an actionable shortcut error for an invalid Bridge URL', async () =>
 
   await expect(panel.locator('#status')).toContainText('valid HTTP or HTTPS Bridge URL');
   await expect(panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
+});
+
+test('recovers when the model becomes readable after the request timed out', async () => {
+  const { panel } = await setupCase({ ...twoSum, lateModel: true });
+
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  await expect(panel.locator('#code-language')).toHaveText('Python');
+  await expect(panel.locator('#outcome-actions')).toBeVisible();
 });
 
 test('captures the whole model when the view renders only part of it', async () => {

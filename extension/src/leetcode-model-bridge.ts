@@ -23,11 +23,17 @@ createModelResponder(channelWindow, origin, () => readEditorModel(namespace()));
 
 const observedModels = new WeakSet<object>();
 const observedEditors = new WeakSet<object>();
+let announcedReadable = false;
 
 /**
  * Monaco replaces the model when the user switches language, so discovery repeats on an
  * interval and the WeakSets keep re-attachment idempotent. The same loop covers a
  * `window.monaco` that only appears after this script runs.
+ *
+ * Announcing readability transitions is what makes a timed-out first request recoverable.
+ * LeetCode hydrates the editor after the content scripts run, so the first read can find
+ * no reachable model; without this signal nothing would ever ask again, and the panel
+ * would stay blocked until the user happened to edit the code.
  */
 function observeEditors(): void {
   const editors = namespace()?.editor?.getEditors?.();
@@ -43,6 +49,11 @@ function observeEditors(): void {
     observedModels.add(model);
     model.onDidChangeContent?.(() => publishModelChanged(channelWindow, origin));
   }
+
+  const readable = readEditorModel(namespace()) !== null;
+  if (readable === announcedReadable) return;
+  announcedReadable = readable;
+  publishModelChanged(channelWindow, origin);
 }
 
 observeEditors();
