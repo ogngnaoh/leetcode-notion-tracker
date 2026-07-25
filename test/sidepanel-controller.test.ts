@@ -298,7 +298,7 @@ describe('SidePanelController capture flow', () => {
       codeAvailable: false,
       problem: snapshot().problem,
       language: 'Python',
-      codeUnavailable: { reason: 'NO_VISIBLE_CODE_EDITOR' },
+      codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
       fingerprint: null,
     };
     const h = harness({ fresh: unavailable });
@@ -325,7 +325,7 @@ describe('SidePanelController capture flow', () => {
       codeAvailable: false,
       problem: snapshot().problem,
       language: 'Unknown',
-      codeUnavailable: { reason: 'NO_VISIBLE_CODE_EDITOR' },
+      codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
       fingerprint: null,
     },
   ])('blocks blank or unreadable code without posting', async (unreadable) => {
@@ -669,7 +669,7 @@ describe('SidePanelController retry and lock state', () => {
       codeAvailable: false,
       problem: snapshot().problem,
       language: 'Python',
-      codeUnavailable: { reason: 'NO_VISIBLE_CODE_EDITOR' },
+      codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
       fingerprint: null,
     });
 

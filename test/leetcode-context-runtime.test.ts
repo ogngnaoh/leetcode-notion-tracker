@@ -21,7 +21,7 @@ function unavailable(slug: string): LeetCodeSnapshot {
       topics: [],
     },
     language: 'Unknown',
-    codeUnavailable: { reason: 'NO_VISIBLE_CODE_EDITOR' },
+    codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
     fingerprint: null,
   };
 }
@@ -104,7 +104,7 @@ describe('content-script context runtime', () => {
     expect(published.map((item) => item.fingerprint)).toEqual(['first', 'second']);
   });
 
-  it('publishes metadata and rendered-range changes even when the code fingerprint is unchanged', async () => {
+  it('publishes metadata changes alongside an edited code fingerprint', async () => {
     vi.useFakeTimers();
     let current = available('two-sum', 'same') as AvailableLeetCodeSnapshot;
     const published: LeetCodeSnapshot[] = [];
@@ -121,7 +121,8 @@ describe('content-script context runtime', () => {
     current = {
       ...current,
       problem: { ...current.problem, topics: ['Array', 'Hash Table'] },
-      codeRange: { startLine: 12, endLine: 12, complete: false },
+      code: 'edited = True',
+      fingerprint: 'edited-fingerprint',
     };
     publisher.notifyChange();
     await vi.advanceTimersByTimeAsync(10);
@@ -129,7 +130,8 @@ describe('content-script context runtime', () => {
     expect(published).toHaveLength(2);
     expect(published[1]).toMatchObject({
       problem: { topics: ['Array', 'Hash Table'] },
-      codeRange: { startLine: 12, endLine: 12, complete: false },
+      code: 'edited = True',
+      fingerprint: 'edited-fingerprint',
     });
   });
 

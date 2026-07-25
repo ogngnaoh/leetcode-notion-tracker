@@ -1,4 +1,5 @@
 import type { Difficulty, ProblemSnapshot } from '../../src/shared/contract.js';
+import type { EditorModelReading } from './leetcode-model-reader.js';
 
 export interface VisibleTextCandidate {
   text: string;
@@ -9,39 +10,13 @@ export interface TopicCandidate extends VisibleTextCandidate {
   href: string;
 }
 
-export interface CodeCandidate {
-  visible: boolean;
-  readable: boolean;
-  value: string;
-}
-
-export interface MonacoGutterCandidate {
-  lineNumber: number;
-  top: number;
-}
-
-export interface MonacoRenderedLineCandidate {
-  text: string;
-  top: number;
-}
-
-export interface RenderedCodeCandidate {
-  code: string;
-  startLine: number;
-  endLine: number;
-  complete: boolean;
-}
-
 export interface ExtractionCandidates {
   locationUrl: string;
   documentTitle: string;
   titleCandidates: VisibleTextCandidate[];
   difficultyCandidates: VisibleTextCandidate[];
   topicCandidates: TopicCandidate[];
-  renderedCodeCandidates: RenderedCodeCandidate[];
-  codeCandidates: CodeCandidate[];
-  nearbyLanguageCandidates: VisibleTextCandidate[];
-  languageCandidates: VisibleTextCandidate[];
+  model: EditorModelReading | null;
 }
 
 export interface AvailableLeetCodeSnapshot {
@@ -62,65 +37,12 @@ export interface UnavailableLeetCodeSnapshot {
   problem: ProblemSnapshot;
   language: string;
   codeUnavailable: {
-    reason: 'NO_VISIBLE_CODE_EDITOR';
+    reason: 'NO_READABLE_EDITOR_MODEL';
   };
   fingerprint: null;
 }
 
 export type LeetCodeSnapshot = AvailableLeetCodeSnapshot | UnavailableLeetCodeSnapshot;
-
-export function reconstructMonacoCode(
-  gutterCandidates: MonacoGutterCandidate[],
-  renderedCandidates: MonacoRenderedLineCandidate[],
-  entireFileRendered: boolean,
-): RenderedCodeCandidate | null {
-  if (gutterCandidates.length === 0 || renderedCandidates.length === 0) return null;
-
-  const gutters = [...gutterCandidates].sort((left, right) => left.top - right.top);
-  const rendered = [...renderedCandidates].sort((left, right) => left.top - right.top);
-  for (let index = 0; index < gutters.length; index += 1) {
-    const gutter = gutters[index]!;
-    if (
-      !Number.isFinite(gutter.top) ||
-      !Number.isInteger(gutter.lineNumber) ||
-      gutter.lineNumber < 1
-    ) {
-      return null;
-    }
-    if (index > 0) {
-      const previous = gutters[index - 1]!;
-      if (gutter.top <= previous.top || gutter.lineNumber !== previous.lineNumber + 1) return null;
-    }
-  }
-  for (let index = 0; index < rendered.length; index += 1) {
-    const line = rendered[index]!;
-    if (!Number.isFinite(line.top) || (index > 0 && line.top <= rendered[index - 1]!.top)) {
-      return null;
-    }
-  }
-
-  const logicalLines = gutters.map(() => [] as string[]);
-  let gutterIndex = -1;
-  for (const line of rendered) {
-    while (gutterIndex + 1 < gutters.length && gutters[gutterIndex + 1]!.top <= line.top) {
-      gutterIndex += 1;
-    }
-    if (gutterIndex < 0) return null;
-    const fragments = logicalLines[gutterIndex]!;
-    if (fragments.length === 0 && line.top !== gutters[gutterIndex]!.top) return null;
-    const normalized = line.text.replaceAll('\u00a0', ' ');
-    fragments.push(fragments.length === 0 ? normalized : normalized.replace(/^[ \t]+/, ''));
-  }
-  if (logicalLines.some((fragments) => fragments.length === 0)) return null;
-
-  const startLine = gutters[0]!.lineNumber;
-  return {
-    code: logicalLines.map((fragments) => fragments.join('')).join('\n'),
-    startLine,
-    endLine: gutters.at(-1)!.lineNumber,
-    complete: startLine === 1 && entireFileRendered,
-  };
-}
 
 export function normalizeProblemTitle(rawTitle: string): {
   title: string;
@@ -229,25 +151,9 @@ const LANGUAGES = new Map<string, string>([
   ['ts', 'TypeScript'],
 ]);
 
-function normalizeLanguage(raw: string): string | null {
-  const normalized = raw
-    .trim()
-    .replace(/^(?:select|choose)\s+language\s*:?\s*/i, '')
-    .replace(/^language\s*:\s*/i, '')
-    .trim()
-    .toLowerCase();
-  return LANGUAGES.get(normalized) ?? null;
-}
-
-function extractLanguage(candidates: ExtractionCandidates): string {
-  for (const group of [candidates.nearbyLanguageCandidates, candidates.languageCandidates]) {
-    for (const candidate of group) {
-      if (!candidate.visible) continue;
-      const language = normalizeLanguage(candidate.text);
-      if (language) return language;
-    }
-  }
-  return 'Unknown';
+/** Maps Monaco's language id, which on LeetCode is the site's own slug, to a display name. */
+function normalizeLanguage(languageId: string): string {
+  return LANGUAGES.get(languageId.trim().toLowerCase()) ?? 'Unknown';
 }
 
 /** SHA-256 of the UTF-8 JSON array encoding `[slug, language, exactCode]`. */
@@ -283,28 +189,18 @@ export async function extractLeetCodeSnapshot(
     topics: extractTopics(candidates.topicCandidates),
   };
 
-  const language = extractLanguage(candidates);
-  const renderedCode = candidates.renderedCodeCandidates[0];
-  const textareaCode = candidates.codeCandidates.find(
-    (candidate) => candidate.visible && candidate.readable,
-  )?.value;
-  const code = renderedCode?.code ?? textareaCode;
+  const reading = candidates.model;
+  const language = reading ? normalizeLanguage(reading.languageId) : 'Unknown';
 
-  if (code !== undefined) {
-    const lineCount = code.length === 0 ? 1 : code.split('\n').length;
+  if (reading) {
+    const lineCount = reading.code.length === 0 ? 1 : reading.code.split('\n').length;
     return {
       codeAvailable: true,
       problem,
       language,
-      code,
-      codeRange: renderedCode
-        ? {
-            startLine: renderedCode.startLine,
-            endLine: renderedCode.endLine,
-            complete: renderedCode.complete,
-          }
-        : { startLine: 1, endLine: lineCount, complete: true },
-      fingerprint: await fingerprintCode(location.slug, language, code),
+      code: reading.code,
+      codeRange: { startLine: 1, endLine: lineCount, complete: true },
+      fingerprint: await fingerprintCode(location.slug, language, reading.code),
     };
   }
 
@@ -312,7 +208,7 @@ export async function extractLeetCodeSnapshot(
     codeAvailable: false,
     problem,
     language,
-    codeUnavailable: { reason: 'NO_VISIBLE_CODE_EDITOR' },
+    codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
     fingerprint: null,
   };
 }

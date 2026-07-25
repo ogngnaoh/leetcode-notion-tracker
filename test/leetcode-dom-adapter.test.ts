@@ -104,6 +104,7 @@ describe('LeetCode DOM adapter primitives', () => {
     const candidates = collectExtractionCandidates(
       document,
       'https://leetcode.com/problems/two-sum/',
+      null,
     );
     const result = await extractLeetCodeSnapshot(candidates);
 

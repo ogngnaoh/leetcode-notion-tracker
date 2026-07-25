@@ -1,9 +1,5 @@
-import {
-  reconstructMonacoCode,
-  type ExtractionCandidates,
-  type RenderedCodeCandidate,
-  type VisibleTextCandidate,
-} from './leetcode-extraction.js';
+import type { ExtractionCandidates, VisibleTextCandidate } from './leetcode-extraction.js';
+import type { EditorModelReading } from './leetcode-model-reader.js';
 
 export interface VisibilityFacts {
   hiddenInTree: boolean;
@@ -72,89 +68,10 @@ function textCandidate(element: Element, text = element.textContent ?? ''): Visi
   return { text, visible: isPubliclyVisible(element) };
 }
 
-function languageValues(element: Element): VisibleTextCandidate[] {
-  const visible = isPubliclyVisible(element);
-  const rawValues = [
-    element.textContent ?? '',
-    element.getAttribute('data-language') ?? '',
-    element.getAttribute('data-lang') ?? '',
-    element.getAttribute('aria-label') ?? '',
-    element.getAttribute('title') ?? '',
-  ];
-  return [...new Set(rawValues)].map((text) => ({ text, visible }));
-}
-
-function nearbyLanguageCandidates(codeEditors: Element[]): VisibleTextCandidate[] {
-  const candidates: VisibleTextCandidate[] = [];
-  const seen = new Set<Element>();
-  for (const editor of codeEditors.filter(isPubliclyVisible)) {
-    let container: Element | null = editor.parentElement;
-    for (let depth = 0; container && depth < 6; depth += 1, container = container.parentElement) {
-      for (const element of container.querySelectorAll(
-        'button, [role="button"], [data-language], [data-lang], [aria-label*="language" i]',
-      )) {
-        if (seen.has(element)) continue;
-        seen.add(element);
-        candidates.push(...languageValues(element));
-      }
-    }
-  }
-  return candidates;
-}
-
-function positionedTop(element: Element, boundary: Element): number | null {
-  for (
-    let current: Element | null = element;
-    current && current !== boundary;
-    current = current.parentElement
-  ) {
-    const value = Number.parseFloat((current as HTMLElement).style?.top ?? '');
-    if (Number.isFinite(value)) return value;
-  }
-  return null;
-}
-
-function entireFileRendered(editor: Element): boolean {
-  const scrollbar = editor.querySelector<HTMLElement>('.scrollbar.vertical');
-  if (!scrollbar) return false;
-  const maximum = Number.parseFloat(scrollbar.getAttribute('aria-valuemax') ?? '');
-  if (Number.isFinite(maximum)) return maximum <= 0;
-  const slider = scrollbar.querySelector<HTMLElement>('.slider');
-  if (!slider) return false;
-  const trackHeight = scrollbar.getBoundingClientRect().height;
-  const sliderHeight = slider.getBoundingClientRect().height;
-  return trackHeight > 0 && sliderHeight >= trackHeight - 1;
-}
-
-function renderedCodeCandidates(document: Document): RenderedCodeCandidate[] {
-  const candidates: RenderedCodeCandidate[] = [];
-  for (const editor of document.querySelectorAll('.monaco-editor')) {
-    if (!isPubliclyVisible(editor)) continue;
-    const gutters = Array.from(editor.querySelectorAll('.margin-view-overlays .line-numbers')).map(
-      (element) => ({
-        lineNumber: Number.parseInt(element.textContent?.trim() ?? '', 10),
-        top: positionedTop(element, editor),
-      }),
-    );
-    const rendered = Array.from(editor.querySelectorAll('.view-lines > .view-line')).map(
-      (element) => ({ text: element.textContent ?? '', top: positionedTop(element, editor) }),
-    );
-    if (gutters.some((line) => line.top === null) || rendered.some((line) => line.top === null)) {
-      continue;
-    }
-    const candidate = reconstructMonacoCode(
-      gutters.map((line) => ({ lineNumber: line.lineNumber, top: line.top! })),
-      rendered.map((line) => ({ text: line.text, top: line.top! })),
-      entireFileRendered(editor),
-    );
-    if (candidate) candidates.push(candidate);
-  }
-  return candidates;
-}
-
 export function collectExtractionCandidates(
   document: Document,
   locationUrl: string,
+  model: EditorModelReading | null,
 ): ExtractionCandidates {
   const slug = new URL(locationUrl).pathname.match(/^\/problems\/([a-z0-9-]+)/)?.[1] ?? '';
   const titleElements = elements(document, [
@@ -174,25 +91,6 @@ export function collectExtractionCandidates(
     '.text-difficulty-hard',
   ]);
   const topicElements = Array.from(document.querySelectorAll('a[href]'));
-  const ordinaryCodeEditors = Array.from(
-    document.querySelectorAll<HTMLTextAreaElement>(
-      'textarea[data-testid*="code" i], textarea[aria-label*="code" i]',
-    ),
-  ).filter((editor) => !editor.closest('.monaco-editor'));
-  const editorContainers = [
-    ...Array.from(document.querySelectorAll('.monaco-editor')),
-    ...ordinaryCodeEditors,
-  ];
-  const stableLanguage = elements(document, [
-    '[data-cy="lang-select"]',
-    '[data-testid="language-select"]',
-    '[data-testid*="language" i]',
-    '[data-language]',
-    '[data-lang]',
-    'button[aria-label*="language" i]',
-    '[role="button"][aria-label*="language" i]',
-    'button[id^="headlessui-listbox-button"]',
-  ]);
 
   return {
     locationUrl,
@@ -203,16 +101,7 @@ export function collectExtractionCandidates(
       ...textCandidate(element),
       href: element.getAttribute('href') ?? '',
     })),
-    renderedCodeCandidates: renderedCodeCandidates(document),
-    codeCandidates: ordinaryCodeEditors.map((editor) => {
-      try {
-        return { visible: isPubliclyVisible(editor), readable: true, value: editor.value };
-      } catch {
-        return { visible: isPubliclyVisible(editor), readable: false, value: '' };
-      }
-    }),
-    nearbyLanguageCandidates: nearbyLanguageCandidates(editorContainers),
-    languageCandidates: stableLanguage.flatMap(languageValues),
+    model,
   };
 }
 
@@ -238,19 +127,8 @@ export function observeLeetCodePageChanges(
       'hidden',
       'href',
       'style',
-      'value',
     ],
   });
-  const onEditorInput = (event: Event) => {
-    if (
-      event.target instanceof Element &&
-      event.target.matches('textarea[aria-label="Code editor"]')
-    ) {
-      onChange();
-    }
-  };
-  document.addEventListener('input', onEditorInput, true);
-  document.addEventListener('change', onEditorInput, true);
   window.addEventListener('popstate', onChange);
   window.addEventListener('hashchange', onChange);
   let observedHref = window.location.href;
@@ -262,8 +140,6 @@ export function observeLeetCodePageChanges(
 
   return () => {
     observer.disconnect();
-    document.removeEventListener('input', onEditorInput, true);
-    document.removeEventListener('change', onEditorInput, true);
     window.removeEventListener('popstate', onChange);
     window.removeEventListener('hashchange', onChange);
     clearInterval(locationInterval);

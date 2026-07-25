@@ -5,9 +5,21 @@ import {
 } from './leetcode-context-runtime.js';
 import { collectExtractionCandidates, observeLeetCodePageChanges } from './leetcode-dom-adapter.js';
 import { extractLeetCodeSnapshot } from './leetcode-extraction.js';
+import {
+  createModelRequester,
+  listenForModelChanges,
+  type ChannelWindow,
+} from './leetcode-model-channel.js';
 
-const extractCurrentContext = () =>
-  extractLeetCodeSnapshot(collectExtractionCandidates(document, window.location.href));
+const channelWindow = window as unknown as ChannelWindow;
+const requestModel = createModelRequester(channelWindow, window.location.origin, () =>
+  crypto.randomUUID(),
+);
+
+const extractCurrentContext = async () =>
+  extractLeetCodeSnapshot(
+    collectExtractionCandidates(document, window.location.href, await requestModel()),
+  );
 
 const handleMessage = createContentMessageHandler(extractCurrentContext);
 chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =>
@@ -27,4 +39,5 @@ const publisher = new ContextChangePublisher(
 );
 
 observeLeetCodePageChanges(document, window, () => publisher.notifyChange());
+listenForModelChanges(channelWindow, () => publisher.notifyChange());
 publisher.notifyChange();
