@@ -316,4 +316,5 @@ Those are separate features, not prerequisites for solving the personal logging 
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE). Bundled fonts and icons keep their own licenses, noted there.
+MIT — see [`LICENSE`](./LICENSE). Bundled fonts and icons keep their own licenses; see
+[`NOTICE.md`](./NOTICE.md).
