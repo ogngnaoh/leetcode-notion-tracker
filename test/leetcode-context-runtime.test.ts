@@ -39,7 +39,6 @@ function available(slug: string, fingerprint: string): LeetCodeSnapshot {
     },
     language: 'TypeScript',
     code: 'code',
-    codeRange: { startLine: 1, endLine: 1, complete: true },
     fingerprint,
   };
 }

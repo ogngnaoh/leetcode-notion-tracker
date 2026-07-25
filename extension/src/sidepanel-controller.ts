@@ -168,7 +168,8 @@ export class SidePanelController {
         ...this.currentView,
         mode: 'blocked',
         reviewLabel: 'Unavailable',
-        message: 'Make the LeetCode code editor visible with non-blank code, then try again.',
+        message:
+          'Open the LeetCode code editor with non-blank code, then try again. Reload the page if it stays unavailable.',
         loggedResult: this.state.lastSuccess?.result ?? null,
         busy: false,
       });

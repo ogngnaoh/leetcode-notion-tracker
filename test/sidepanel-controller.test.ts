@@ -48,7 +48,6 @@ function snapshot(overrides: Partial<AvailableLeetCodeSnapshot> = {}): Available
     },
     language: 'Python',
     code: 'def twoSum(nums, target):\n    return []',
-    codeRange: { startLine: 1, endLine: 2, complete: true },
     fingerprint: 'fingerprint-two-sum',
     ...overrides,
   };
@@ -337,7 +336,8 @@ describe('SidePanelController capture flow', () => {
     expect(h.sendCaptureBody).not.toHaveBeenCalled();
     expect(h.controller.view).toMatchObject({
       mode: 'blocked',
-      message: 'Make the LeetCode code editor visible with non-blank code, then try again.',
+      message:
+        'Open the LeetCode code editor with non-blank code, then try again. Reload the page if it stays unavailable.',
     });
   });
 

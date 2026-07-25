@@ -73,10 +73,7 @@ function renderSnapshot(snapshot: LeetCodeSnapshot | null): void {
   codeLanguage.textContent = snapshot.language;
   const code = snapshot.codeAvailable ? snapshot.code : '';
   const lines = exactLineCount(code);
-  codeLineCount.textContent =
-    snapshot.codeAvailable && !snapshot.codeRange.complete
-      ? `visible lines ${snapshot.codeRange.startLine}–${snapshot.codeRange.endLine}`
-      : `${lines} ${lines === 1 ? 'line' : 'lines'}`;
+  codeLineCount.textContent = `${lines} ${lines === 1 ? 'line' : 'lines'}`;
   capturedCode.textContent = code;
 }
 

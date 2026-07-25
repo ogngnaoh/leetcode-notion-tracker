@@ -24,11 +24,6 @@ export interface AvailableLeetCodeSnapshot {
   problem: ProblemSnapshot;
   language: string;
   code: string;
-  codeRange: {
-    startLine: number;
-    endLine: number;
-    complete: boolean;
-  };
   fingerprint: string;
 }
 
@@ -193,13 +188,11 @@ export async function extractLeetCodeSnapshot(
   const language = reading ? normalizeLanguage(reading.languageId) : 'Unknown';
 
   if (reading) {
-    const lineCount = reading.code.length === 0 ? 1 : reading.code.split('\n').length;
     return {
       codeAvailable: true,
       problem,
       language,
       code: reading.code,
-      codeRange: { startLine: 1, endLine: lineCount, complete: true },
       fingerprint: await fingerprintCode(location.slug, language, reading.code),
     };
   }

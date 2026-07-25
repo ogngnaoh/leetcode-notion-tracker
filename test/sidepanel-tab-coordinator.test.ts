@@ -21,7 +21,6 @@ function snapshot(slug: string): LeetCodeSnapshot {
     },
     language: 'Python',
     code: `code:${slug}`,
-    codeRange: { startLine: 1, endLine: 1, complete: true },
     fingerprint: `fingerprint:${slug}`,
   };
 }

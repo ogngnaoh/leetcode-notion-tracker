@@ -142,6 +142,14 @@ describe('LeetCode public-DOM extraction', () => {
     expect(result?.codeAvailable === true && result.code.split('\n')).toHaveLength(400);
   });
 
+  it('does not carry a code range', async () => {
+    const result = await extractLeetCodeSnapshot(
+      candidates({ model: { code: 'a\nb', languageId: 'python3' } }),
+    );
+
+    expect(result).not.toHaveProperty('codeRange');
+  });
+
   it('reports the model unavailable when there is no reading', async () => {
     const result = await extractLeetCodeSnapshot(candidates({ model: null }));
 
