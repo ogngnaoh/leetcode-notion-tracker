@@ -230,21 +230,24 @@ want LCTrack on that tab.
 No Notion credential enters Chrome: the launcher starts the same localhost bridge, which reads the
 ignored local `.env` from the repository.
 
-On panel startup, the extension reads from the public problem-page DOM without focusing or scrolling
-LeetCode:
+On panel startup, the extension reads the problem page without focusing or scrolling LeetCode.
+Problem metadata comes from the public DOM:
 
 - Problem slug
 - Problem title and number when visible
 - Canonical URL
 - Difficulty when visible
 - Topic links that are rendered in the DOM, including links below the viewport
-- Monaco's rendered logical lines, reconstructed from public line-number and `top` positions
-- The nearby visible language control
 
-The code disclosure starts expanded. When Monaco has not rendered the whole file, the panel labels
-the exact `visible lines X–Y` range; a normal visible non-Monaco textarea is the only fallback. If an
-extension reload left the tab without a content-script receiver, the panel injects the read-only
-script once and retries immediately.
+Code and language come from Monaco's editor model, read by a second content script running in the
+page's own JavaScript world. The model holds the entire buffer regardless of how much the editor has
+rendered, so a solution longer than the editor viewport is captured in full rather than truncated to
+the visible lines. The language is the model's own language id, not a scraped label.
+
+The code disclosure starts expanded. When no editor model can be read, the panel reports code
+unavailable and blocks capture rather than logging a fragment; it recovers automatically once the
+editor finishes hydrating. If an extension reload left the tab without a content-script receiver, the
+panel reinjects both scripts once and retries immediately.
 
 Each deliberate outcome click creates a new immutable Attempt and Client Event ID, even when the
 code is unchanged. The last successful outcome remains selected until another success or fingerprint
@@ -311,6 +314,6 @@ The MVP does **not**:
 
 Those are separate features, not prerequisites for solving the personal logging workflow.
 
-## Handoff to Codex
+## License
 
-Open the repository in Codex and paste the complete contents of [`CODEX_HANDOFF_PROMPT.md`](./CODEX_HANDOFF_PROMPT.md).
+MIT — see [`LICENSE`](./LICENSE). Bundled fonts and icons keep their own licenses, noted there.

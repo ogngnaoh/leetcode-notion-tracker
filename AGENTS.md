@@ -5,10 +5,10 @@ This repository is a deliberately lean personal MVP.
 Before changing code, read:
 
 1. `README.md`
-2. `STATUS.md`
-3. `docs/ARCHITECTURE.md`
-4. `docs/NOTION_SCHEMA.md`
-5. `CODEX_HANDOFF_PROMPT.md`
+2. `docs/ARCHITECTURE.md`
+3. `docs/NOTION_SCHEMA.md`
+4. `docs/SECURITY-MODEL.md`
+5. `docs/milestones.md`, then the active milestone and its handoff
 
 ## Non-negotiable boundaries
 

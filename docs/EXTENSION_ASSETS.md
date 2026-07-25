@@ -1,8 +1,9 @@
 # Extension asset provenance
 
-The extension vendors a deliberately small, self-contained subset of
-`/Users/hoangngo/Documents/personal-projects/acne-design-system`. The build performs no network
-font or stylesheet requests.
+The extension vendors a deliberately small, self-contained subset of the author's own
+`acne-design-system`, an unpublished personal design system. That CSS is original work by the author
+and is covered by this repository's MIT license. The build performs no network font or stylesheet
+requests.
 
 ## Source files
 
