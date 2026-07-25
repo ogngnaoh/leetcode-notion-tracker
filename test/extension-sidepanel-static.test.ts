@@ -5,9 +5,11 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
-  it('ships LCTrack version 0.1.7 with consistent user-facing identity', async () => {
-    const [manifestText, sidePanel, options] = await Promise.all([
+  it('ships synchronized LCTrack version 0.1.8 with consistent user-facing identity', async () => {
+    const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
+      readFile(resolve(root, 'package.json'), 'utf8'),
+      readFile(resolve(root, 'package-lock.json'), 'utf8'),
       readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
       readFile(resolve(root, 'extension/options.html'), 'utf8'),
     ]);
@@ -17,12 +19,20 @@ describe('one-click side panel artifact', () => {
       description: string;
       action?: { default_title?: string };
     };
+    const packageJson = JSON.parse(packageText) as { version: string };
+    const lockfile = JSON.parse(lockfileText) as {
+      version: string;
+      packages: { '': { version: string } };
+    };
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.1.7',
+      version: '0.1.8',
       description: 'leetcode tracker (notion-powered)',
     });
+    expect(packageJson.version).toBe(manifest.version);
+    expect(lockfile.version).toBe(manifest.version);
+    expect(lockfile.packages[''].version).toBe(manifest.version);
     expect(manifest.action?.default_title).toBe('Open LCTrack');
     expect(sidePanel).toMatch(/<title>LCTrack<\/title>/);
     expect(sidePanel).toMatch(/<h1[^>]*>[\s\S]*<span>LC TRACK<\/span>[\s\S]*<\/h1>/);

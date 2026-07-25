@@ -352,13 +352,14 @@ describe('visible bridge launcher', () => {
     }
   });
 
-  it('ships an executable repository-relative iTerm2 command launcher', async () => {
-    const path = resolve(root, 'Start LeetCode Tracker.command');
+  it('ships an executable repository-relative terminal-neutral command launcher', async () => {
+    const path = resolve(root, 'lc-log.command');
     const [metadata, source] = await Promise.all([stat(path), readFile(path, 'utf8')]);
 
     expect(metadata.mode & 0o111).not.toBe(0);
-    expect(source).toContain('TERM_PROGRAM');
-    expect(source).toContain('iTerm.app');
+    expect(source).not.toContain('TERM_PROGRAM');
+    expect(source).not.toContain('iTerm');
+    expect(source).toContain('Press any key to close this terminal window.');
     expect(source).toContain('src/launcher/start-bridge.ts');
     expect(source).toMatch(/cd .*dirname/);
     expect(source).not.toMatch(/^\s*status=/m);

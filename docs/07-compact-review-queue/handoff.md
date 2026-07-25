@@ -1,7 +1,7 @@
 # Start here next session
 
 Milestone 07 is shipped. Reuse its documentation for small follow-ups; create a new milestone only
-when future work spans sessions or independently shippable slices. Use LCTrack `0.1.7` as the release baseline.
+when future work spans sessions or independently shippable slices. Use LCTrack `0.1.8` as the release baseline.
 
 # Current state
 
@@ -10,10 +10,15 @@ excludes future rows. Its compact queue combines title search with `All due`, `T
 and `Needed help`, reveals matches in batches of 50, retains difficulty badges, and never mutates
 Notion. The new-Problem card counts First Attempts after a confirmed, locally persisted session
 boundary and keeps its maximum configurable; legacy goal-only settings retain calendar-day counting
-until the first reset. LCTrack `0.1.7` synchronizes package, lockfile, manifest, and assertion versions.
-Fresh release evidence is formatting, TypeScript, 350 Vitest tests, 26 Playwright scenarios, the
-extension build, security scan, focused red-green runs, and live desktop/mobile inspection with no
-console warnings, framework overlay, or horizontal overflow.
+until the first reset. LCTrack `0.1.8` synchronizes package, lockfile, manifest, and assertion versions.
+The renamed `lc-log.command` uses Terminal.app as the documented Finder default without enforcing a
+terminal host; foreground lifecycle, repository-relative startup, duplicate suppression, Ctrl-C
+shutdown, and the secret boundary remain unchanged.
+Version `0.1.8` evidence is targeted formatting, TypeScript, 350 Vitest tests, 26 Playwright
+scenarios, the extension build, security scan, exact live Notion verification, focused red-green
+runs, and direct launcher health/duplicate/Ctrl-C checks. The repository-wide format step remains
+blocked by unrelated untracked full-code-capture planning documents, and this Mac's Finder association
+still points to iTerm2 until the documented Terminal.app setup is applied.
 
 # Open concerns
 

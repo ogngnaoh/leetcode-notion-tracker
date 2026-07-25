@@ -3,7 +3,7 @@
 ## Runtime
 
 ```text
-deliberate Dock click → visible iTerm2 launcher → local Hono bridge → local daily dashboard
+deliberate Dock click → visible terminal launcher → local Hono bridge → local daily dashboard
 
 LeetCode problem page
   → read-only content script
@@ -15,11 +15,13 @@ LeetCode problem page
 ```
 
 The extension does not call Notion directly. It stores a low-scope bridge token, while the bridge alone stores the Notion integration token.
-The owner starts the bridge explicitly from the Dock after login. The launcher remains attached to a
-visible iTerm2 session, resolves the repository relative to itself, and never installs a login item or
-hidden daemon. An atomic per-repository, per-port claim in the user's temporary directory closes the
-pre-bind race between rapid clicks; dead-process claims are reclaimed, while live or malformed claims
-fail closed without killing anything.
+The owner starts the bridge explicitly from the Dock after login. Finder is documented to open
+`lc-log.command` with Terminal.app by default, but the launcher remains terminal-neutral and also
+supports direct shell and alternate-terminal execution. It remains attached to the visible terminal,
+resolves the repository relative to itself, and never installs a login item or hidden daemon. An
+atomic per-repository, per-port claim in the user's temporary directory closes the pre-bind race
+between rapid clicks; dead-process claims are reclaimed, while live or malformed claims fail closed
+without killing anything.
 
 Dashboard first-Attempt counts and due rows come only from Notion. The new-problem maximum and
 optional session boundary are separate, non-canonical presentation configuration: the bridge

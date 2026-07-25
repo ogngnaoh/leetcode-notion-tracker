@@ -35,10 +35,11 @@
 - Tab-scoped extension action available on any tab without carrying the panel into other Chrome tabs
 - Explicit click-only capture controls
 - Extension production build
-- Version 0.1.7 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
+- Version 0.1.8 LCTrack personal-use release with the `leetcode tracker (notion-powered)` description
   and Chrome-supported Lucide SquareTerminal PNG icons
 - Unit and route tests
-- Visible one-click iTerm2 bridge launcher with atomic duplicate-start suppression and stale-claim recovery
+- Terminal.app-default, terminal-neutral `lc-log.command` bridge launcher with atomic duplicate-start
+  suppression and stale-claim recovery
 
 ## Verified with the real workspace and Chrome
 
@@ -54,14 +55,17 @@
   the count stayed 1 and the original First Attempt timestamp remained unchanged.
 - On 2026-07-22, Valid Parentheses `Solved` changed the count from 1 to 2, stored streak 1, scheduled
   2026-07-23, and preserved the exact independently inspected 12-line Python body.
-- The tracked Dock launcher opens through Finder in iTerm2, starts the exact expected localhost bridge,
-  refuses duplicates and unknown port owners, stops with Ctrl-C, and restarts cleanly.
+- Direct `lc-log.command` execution starts the exact expected localhost bridge with a non-iTerm
+  terminal identifier, refuses a duplicate, and stops cleanly with Ctrl-C. The current Mac still maps
+  shell scripts to iTerm2, so the documented one-time Terminal.app Finder association remains pending
+  before that host-specific acceptance check.
 
 ## Release evidence
 
 - Milestones 01 through 07 are shipped; milestone 04’s paid Notion dashboard remains retired.
 - LCTrack `0.1.6` removed the Hard queue filter while retaining Hard row badges. LCTrack `0.1.7`
-  adds the local confirmed session reset; exact completion evidence is recorded in milestone 07's handoff.
+  added the local confirmed session reset; LCTrack `0.1.8` renames the visible launcher to
+  `lc-log.command`, documents Terminal.app as the Finder default, and permits other terminal hosts.
 - The standalone security scan and `git diff --check` passed. Follow-up review found no unresolved
   Critical or Important findings after all migration/runtime safety fixes.
 - Tests changed during milestones 06 and 07 are development evidence; the live Notion and actual

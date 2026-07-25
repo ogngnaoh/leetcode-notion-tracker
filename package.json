@@ -1,6 +1,6 @@
 {
   "name": "leetcode-notion-tracker",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "type": "module",
   "description": "A lean personal Chrome extension that logs LeetCode practice to two Notion databases.",

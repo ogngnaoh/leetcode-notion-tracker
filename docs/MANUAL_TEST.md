@@ -12,9 +12,9 @@
 
 ## Visible daily launcher
 
-1. In Finder, associate `.command` files with `/Applications/iTerm.app` and place
-   `Start LeetCode Tracker.command` in the Dock's document area.
-2. Click it once and confirm a visibly titled iTerm2 window reports the bridge listening on the
+1. In Finder, set Terminal.app as the **Open with** default for `lc-log.command`, select **Change All**,
+   and place `lc-log.command` in the Dock's document area.
+2. Click it once and confirm a visibly titled Terminal window reports the bridge listening on the
    configured localhost port.
 3. Click it again and confirm it reports the existing healthy bridge without starting another process.
 4. Press Ctrl-C in the original window and confirm the bridge stops.
@@ -22,6 +22,8 @@
    service returns.
 6. Temporarily occupy the configured port with a non-tracker process, click the launcher, and confirm
    it refuses startup without terminating that process.
+7. Run `./lc-log.command` directly from another terminal host and confirm it starts without a
+   terminal-brand restriction.
 
 ## Bridge API
 

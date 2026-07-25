@@ -4,18 +4,11 @@ printf '\033]0;LeetCode Tracker Bridge\007'
 
 pause_before_close() {
   if [[ -t 0 ]]; then
-    printf '\nPress any key to close this iTerm2 window.'
+    printf '\nPress any key to close this terminal window.'
     read -k 1
     printf '\n'
   fi
 }
-
-if [[ "${TERM_PROGRAM:-}" != "iTerm.app" ]]; then
-  print -u2 'This launcher is intentionally visible in iTerm2.'
-  print -u2 'In Finder, choose Get Info → Open with → iTerm.app → Change All, then launch it again.'
-  pause_before_close
-  exit 1
-fi
 
 tracker_root="$(cd -- "$(dirname -- "$0")" && pwd -P)"
 cd -- "$tracker_root" || exit 1

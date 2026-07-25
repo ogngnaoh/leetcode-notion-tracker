@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LCTrack",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "leetcode tracker (notion-powered)",
   "minimum_chrome_version": "116",
   "permissions": ["activeTab", "scripting", "sidePanel", "storage"],

@@ -34,7 +34,7 @@ docs/             Architecture, schema, security, and manual QA
 
 - Node.js 22+
 - Chrome 116+
-- iTerm2 installed at `/Applications/iTerm.app` for the deliberate daily launcher
+- macOS Terminal.app for the default deliberate daily launcher
 - Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
 - A Notion workspace
 - A Notion internal integration with read, insert, and update content capabilities
@@ -152,14 +152,16 @@ its original apply backup; an exact completed v4 rerun is a no-op.
 The tracker deliberately does not start a hidden service at login. Configure the visible launcher
 once:
 
-1. In Finder, select `Start LeetCode Tracker.command` and open **Get Info**.
-2. Under **Open with**, choose **iTerm.app**, then select **Change All**.
-3. Drag `Start LeetCode Tracker.command` to the Dock's document area, to the right of the divider.
+1. In Finder, select `lc-log.command` and open **Get Info**.
+2. Under **Open with**, choose **Terminal.app**, then select **Change All**.
+3. Drag `lc-log.command` to the Dock's document area, to the right of the divider.
 
-After each login, click that Dock item once. A titled iTerm2 window starts the local bridge and stays
+After each login, click that Dock item once. A titled Terminal window starts the local bridge and stays
 visible for its entire lifetime. Leave it open while using the extension; press Ctrl-C or close the
 window to stop the bridge. A second click opens the dashboard from the already-running bridge without
 creating another process. An unexpected port owner is reported and never terminated automatically.
+Terminal.app is only the documented Finder default: `lc-log.command` also supports direct shell
+execution and other terminal hosts.
 
 For development, the direct command remains available:
 
@@ -220,7 +222,7 @@ want LCTrack on that tab.
 
 ## Daily use
 
-1. Click the `Start LeetCode Tracker.command` item in the Dock.
+1. Click the `lc-log.command` item in the Dock.
 2. The bridge prefetches data and opens `http://127.0.0.1:8787/dashboard`; the side-panel shortcut
    returns to the same dashboard later.
 3. Open due problems there and confirm outcomes through the extension side panel.

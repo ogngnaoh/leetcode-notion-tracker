@@ -35,6 +35,9 @@ of due Problems remains easy to scan, filter, and open.
   while retaining difficulty badges and synchronized package, lockfile, and extension versions.
 - The `0.1.7` follow-up keeps automatic first-Problem counting but makes its session boundary a
   confirmed local manual reset, without changing Notion history or review behavior.
+- The `0.1.8` follow-up renames the launcher to `lc-log.command`, documents Terminal.app as the
+  Finder default, and removes the former terminal-brand restriction while preserving foreground
+  lifecycle and duplicate-start protection.
 
 ## Exit criteria
 
@@ -42,5 +45,7 @@ of due Problems remains easy to scan, filter, and open.
 - The selected saved view and search term combine predictably, counts reflect the full due snapshot,
   and rows reveal in batches of 50.
 - Desktop and narrow layouts remain usable with keyboard-visible controls and safe outbound links.
-- Synchronized version `0.1.7`, development tests, `npm run check`, and `git diff --check`
-  pass freshly.
+- Synchronized version `0.1.8`, development tests, `npm run check`, and `git diff --check` are the
+  release gate. In the shared checkout, unrelated untracked full-code-capture planning documents
+  currently block the repository-wide formatting step; the `0.1.8` candidate is verified separately
+  without those files.
