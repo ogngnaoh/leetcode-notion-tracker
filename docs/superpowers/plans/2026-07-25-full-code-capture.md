@@ -26,10 +26,12 @@
 ### Task 1: Pure Monaco model reader
 
 **Files:**
+
 - Create: `extension/src/leetcode-model-reader.ts`
 - Test: `test/leetcode-model-reader.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `readEditorModel(monaco: MonacoLike | null | undefined): EditorModelReading | null`, and types `EditorModelReading { code: string; languageId: string }`, `MonacoLike`, `EditorLike`, `EditorModelLike`, `EditorNodeLike`.
 
@@ -225,10 +227,12 @@ git commit -m "feat: add pure Monaco model reader"
 ### Task 2: Pure cross-world message channel
 
 **Files:**
+
 - Create: `extension/src/leetcode-model-channel.ts`
 - Test: `test/leetcode-model-channel.test.ts`
 
 **Interfaces:**
+
 - Consumes: `EditorModelReading` from Task 1.
 - Produces:
   - `MODEL_CHANNEL = 'lctrack-model'`
@@ -351,9 +355,7 @@ describe('model responder', () => {
     const win = new FakeWindow();
     createModelResponder(win, 'https://leetcode.com', () => reading);
     win.deliver({ channel: MODEL_CHANNEL, kind: 'request', id: 'id-9' });
-    expect(win.sent).toEqual([
-      { channel: MODEL_CHANNEL, kind: 'response', id: 'id-9', reading },
-    ]);
+    expect(win.sent).toEqual([{ channel: MODEL_CHANNEL, kind: 'response', id: 'id-9', reading }]);
   });
 
   it('replies with a null reading when no model is readable', () => {
@@ -551,6 +553,7 @@ git commit -m "feat: add cross-world model message channel"
 ### Task 3: MAIN-world bridge, manifest entry, and dual-world reinjection
 
 **Files:**
+
 - Create: `extension/src/leetcode-model-bridge.ts`
 - Modify: `extension/manifest.json:36-43`
 - Modify: `scripts/build-extension.mjs:13-18`
@@ -559,6 +562,7 @@ git commit -m "feat: add cross-world model message channel"
 - Test: `test/sidepanel-snapshot-reader.test.ts`
 
 **Interfaces:**
+
 - Consumes: `readEditorModel` (Task 1); `createModelResponder`, `publishModelChanged` (Task 2).
 - Produces: the built artifact `leetcode-model-bridge.js`; `SnapshotReaderDependencies.injectContentScripts(tabId: number): Promise<void>` replacing `injectContentScript(tabId, files)`.
 
@@ -608,8 +612,8 @@ export interface SnapshotReaderDependencies {
 ```
 
 ```ts
-      injectedTabs.add(tabId);
-      await dependencies.injectContentScripts(tabId);
+injectedTabs.add(tabId);
+await dependencies.injectContentScripts(tabId);
 ```
 
 Edit `extension/src/sidepanel.ts:117-119` — inject the MAIN-world bridge before the ISOLATED script:
@@ -728,12 +732,14 @@ git commit -m "feat: add MAIN-world Monaco bridge and dual-world injection"
 ### Task 4: Source code and language from the model
 
 **Files:**
+
 - Modify: `extension/src/leetcode-extraction.ts:1-70,199-318`
 - Modify: `extension/src/leetcode-dom-adapter.ts:1-6,71-153,155-217,219-271`
 - Modify: `extension/src/content.ts`
 - Test: `test/leetcode-extraction.test.ts`, `test/leetcode-dom-adapter.test.ts`, `test/leetcode-context-runtime.test.ts`
 
 **Interfaces:**
+
 - Consumes: `EditorModelReading` (Task 1); `createModelRequester`, `listenForModelChanges` (Task 2).
 - Produces: `collectExtractionCandidates(document: Document, locationUrl: string, model: EditorModelReading | null): ExtractionCandidates`, where `ExtractionCandidates` now carries `model: EditorModelReading | null` and no longer carries `renderedCodeCandidates`, `codeCandidates`, `nearbyLanguageCandidates`, or `languageCandidates`. `UnavailableLeetCodeSnapshot.codeUnavailable.reason` becomes `'NO_READABLE_EDITOR_MODEL'`.
 
@@ -850,28 +856,28 @@ function normalizeLanguage(languageId: string): string {
 Replace the tail of `extractLeetCodeSnapshot` (from `const language = ...` onward):
 
 ```ts
-  const reading = candidates.model;
-  const language = reading ? normalizeLanguage(reading.languageId) : 'Unknown';
+const reading = candidates.model;
+const language = reading ? normalizeLanguage(reading.languageId) : 'Unknown';
 
-  if (reading) {
-    const lineCount = reading.code.length === 0 ? 1 : reading.code.split('\n').length;
-    return {
-      codeAvailable: true,
-      problem,
-      language,
-      code: reading.code,
-      codeRange: { startLine: 1, endLine: lineCount, complete: true },
-      fingerprint: await fingerprintCode(location.slug, language, reading.code),
-    };
-  }
-
+if (reading) {
+  const lineCount = reading.code.length === 0 ? 1 : reading.code.split('\n').length;
   return {
-    codeAvailable: false,
+    codeAvailable: true,
     problem,
     language,
-    codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
-    fingerprint: null,
+    code: reading.code,
+    codeRange: { startLine: 1, endLine: lineCount, complete: true },
+    fingerprint: await fingerprintCode(location.slug, language, reading.code),
   };
+}
+
+return {
+  codeAvailable: false,
+  problem,
+  language,
+  codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
+  fingerprint: null,
+};
 ```
 
 In `extension/src/leetcode-dom-adapter.ts`: delete `positionedTop`, `entireFileRendered`, `renderedCodeCandidates`, `languageValues`, `nearbyLanguageCandidates`, the `ordinaryCodeEditors`/`editorContainers`/`stableLanguage` blocks, and the `reconstructMonacoCode` import. Change the signature and return:
@@ -971,12 +977,14 @@ git commit -m "feat: read captured code and language from the Monaco model"
 ### Task 5: Delete codeRange and the partial-range display
 
 **Files:**
+
 - Modify: `extension/src/leetcode-extraction.ts` (`AvailableLeetCodeSnapshot`, `extractLeetCodeSnapshot`)
 - Modify: `extension/src/sidepanel.ts:74-80`
 - Modify: `extension/src/sidepanel-controller.ts:171`
 - Test: `test/leetcode-extraction.test.ts`, `test/leetcode-context-runtime.test.ts`, `test/sidepanel-controller.test.ts`, `test/sidepanel-tab-coordinator.test.ts`
 
 **Interfaces:**
+
 - Consumes: everything from Task 4.
 - Produces: `AvailableLeetCodeSnapshot` without `codeRange`.
 
@@ -1018,24 +1026,24 @@ export interface AvailableLeetCodeSnapshot {
 ```
 
 ```ts
-  if (reading) {
-    return {
-      codeAvailable: true,
-      problem,
-      language,
-      code: reading.code,
-      fingerprint: await fingerprintCode(location.slug, language, reading.code),
-    };
-  }
+if (reading) {
+  return {
+    codeAvailable: true,
+    problem,
+    language,
+    code: reading.code,
+    fingerprint: await fingerprintCode(location.slug, language, reading.code),
+  };
+}
 ```
 
 In `extension/src/sidepanel.ts:74-80`, the line count is now always exact:
 
 ```ts
-  const code = snapshot.codeAvailable ? snapshot.code : '';
-  const lines = exactLineCount(code);
-  codeLineCount.textContent = `${lines} ${lines === 1 ? 'line' : 'lines'}`;
-  capturedCode.textContent = code;
+const code = snapshot.codeAvailable ? snapshot.code : '';
+const lines = exactLineCount(code);
+codeLineCount.textContent = `${lines} ${lines === 1 ? 'line' : 'lines'}`;
+capturedCode.textContent = code;
 ```
 
 In `extension/src/sidepanel-controller.ts:171`, update the blocked message:
@@ -1062,9 +1070,11 @@ git commit -m "refactor: drop the partial code range from the snapshot"
 ### Task 6: Playwright fixture on a Monaco stub
 
 **Files:**
+
 - Modify: `test/browser/mv3-capture.spec.ts`
 
 **Interfaces:**
+
 - Consumes: the built extension from Task 3.
 - Produces: no source interfaces; this task proves the regression is fixed end to end.
 
@@ -1079,10 +1089,10 @@ Replace the `startLine`/`complete` fields on `ProblemFixture` with `renderedLine
 Replace the `editor` string in `fixtureHtml` with markup plus an inline stub. The stub is the page's own script, so the MAIN-world bridge sees it:
 
 ```ts
-  const editor =
-    fixture.code === null
-      ? ''
-      : `<div class="editor"><div class="monaco-editor"><div class="view-lines"></div></div></div>
+const editor =
+  fixture.code === null
+    ? ''
+    : `<div class="editor"><div class="monaco-editor"><div class="view-lines"></div></div></div>
     <script>
       (() => {
         const listeners = new Set();
@@ -1139,13 +1149,13 @@ Delete the `.line-numbers`, `.margin-view-overlays`, `.scrollbar`, and textarea 
 Rewrite `openProblem`'s post-navigation assertions:
 
 ```ts
-  await page.goto(`https://leetcode.com/problems/${fixture.slug}/`);
-  if (fixture.code === null) {
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
-  } else {
-    await expect(page.locator('.view-lines > .view-line').first()).toBeAttached();
-    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
-  }
+await page.goto(`https://leetcode.com/problems/${fixture.slug}/`);
+if (fixture.code === null) {
+  await expect(page.locator('.monaco-editor')).toHaveCount(0);
+} else {
+  await expect(page.locator('.view-lines > .view-line').first()).toBeAttached();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
+}
 ```
 
 Rewrite `setCode` to drive the stub:
@@ -1204,7 +1214,10 @@ Delete the test `'labels a partial Monaco rendering with its visible logical ran
 
 ```ts
 test('captures the whole model when the view renders only part of it', async () => {
-  const longSolution = Array.from({ length: 40 }, (_, index) => `line_${index + 1} = ${index}`).join('\n');
+  const longSolution = Array.from(
+    { length: 40 },
+    (_, index) => `line_${index + 1} = ${index}`,
+  ).join('\n');
   const { panel } = await setupCase({ ...twoSum, code: longSolution, renderedLines: 5 });
 
   await expect(renderedLineCount(panel)).resolves.toBe(5);
@@ -1271,12 +1284,14 @@ git commit -m "test: drive browser fixtures from a Monaco model stub"
 ### Task 7: Documentation and release
 
 **Files:**
+
 - Modify: `docs/SECURITY.md:47-58`
 - Modify: `docs/ARCHITECTURE.md:89-96`
 - Modify: `docs/MANUAL_TEST.md`
 - Modify: `package.json:3`, `package-lock.json` (both `version` fields), `extension/manifest.json:4`
 
 **Interfaces:**
+
 - Consumes: the shipped behavior from Tasks 1-6.
 - Produces: no code interfaces.
 

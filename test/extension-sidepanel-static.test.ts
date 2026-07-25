@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
-  it('ships synchronized LCTrack version 0.1.8 with consistent user-facing identity', async () => {
+  it('ships synchronized LCTrack version 0.2.0 with consistent user-facing identity', async () => {
     const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
       readFile(resolve(root, 'package.json'), 'utf8'),
@@ -27,7 +27,7 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.1.8',
+      version: '0.2.0',
       description: 'leetcode tracker (notion-powered)',
     });
     expect(packageJson.version).toBe(manifest.version);

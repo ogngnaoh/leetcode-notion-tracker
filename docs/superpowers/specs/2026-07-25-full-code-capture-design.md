@@ -21,7 +21,7 @@ Measured on a live `leetcode.com/problems/two-sum/` page, 2026-07-25:
   observed in the same measurement.
 - `getLanguageId()` returns LeetCode's own language slug, not a Monaco-generic id.
 - LeetCode's Monaco emits no `aria-valuemax`, and its scrollbar carries `aria-hidden="true"
-  role="presentation"`. `entireFileRendered()` therefore always falls through to comparing slider
+role="presentation"`. `entireFileRendered()` therefore always falls through to comparing slider
   and track pixel heights. The completeness flag rests entirely on the geometry of a decorative
   element.
 - Four seconds after load, the code editor's DOM node measured 5×5 with zero rendered lines while
@@ -97,12 +97,12 @@ source-switching that this design exists to remove.
 
 ## Failure modes
 
-| Condition | Behavior |
-|---|---|
-| `window.monaco` absent | `codeAvailable: false`, capture blocked, bridge keeps polling |
-| Only a `plaintext` editor present | `codeAvailable: false`, capture blocked |
-| Bridge silent for 500ms | `codeAvailable: false`, retried on the next change signal |
-| Model present but empty | `codeAvailable: true`, blocked by the existing non-blank check |
+| Condition                         | Behavior                                                       |
+| --------------------------------- | -------------------------------------------------------------- |
+| `window.monaco` absent            | `codeAvailable: false`, capture blocked, bridge keeps polling  |
+| Only a `plaintext` editor present | `codeAvailable: false`, capture blocked                        |
+| Bridge silent for 500ms           | `codeAvailable: false`, retried on the next change signal      |
+| Model present but empty           | `codeAvailable: true`, blocked by the existing non-blank check |
 
 ## Risks
 

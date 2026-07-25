@@ -12,10 +12,11 @@ interface ProblemFixture {
   number: number;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   topics: string[];
+  /** Monaco language id, which on LeetCode is the site's own slug. */
   language: string;
   code: string | null;
-  startLine?: number;
-  complete?: boolean;
+  /** How many logical lines the fake view renders. Omit to render all of them. */
+  renderedLines?: number;
 }
 
 const twoSum: ProblemFixture = {
@@ -24,7 +25,7 @@ const twoSum: ProblemFixture = {
   number: 1,
   difficulty: 'Easy',
   topics: ['Array', 'Hash Table', 'Array'],
-  language: 'Python3',
+  language: 'python3',
   code: 'def twoSum(nums, target):\n    seen = {}\n    return []',
 };
 
@@ -34,7 +35,7 @@ const secondProblem: ProblemFixture = {
   number: 3,
   difficulty: 'Medium',
   topics: ['Hash Table', 'String', 'Sliding Window'],
-  language: 'TypeScript',
+  language: 'typescript',
   code: 'function lengthOfLongestSubstring(s: string): number {\n  return s.length;\n}',
 };
 
@@ -51,40 +52,67 @@ function fixtureHtml(fixture: ProblemFixture): string {
       return `<a class="topic" href="/tag/${slug}/">${topic}</a>`;
     })
     .join('');
-  const startLine = fixture.startLine ?? 1;
-  const codeLines = fixture.code?.split('\n') ?? [];
-  const gutters = codeLines
-    .map(
-      (_line, index) =>
-        `<div class="line-numbers" style="top: ${index * 20}px">${startLine + index}</div>`,
-    )
-    .join('');
-  const rendered = codeLines
-    .map(
-      (line, index) =>
-        `<div class="view-line" style="top: ${index * 20}px">${line
-          .replaceAll('&', '&amp;')
-          .replaceAll('<', '&lt;')
-          .replaceAll('>', '&gt;')}</div>`,
-    )
-    .join('');
   const editor =
     fixture.code === null
       ? ''
-      : `<div class="editor"><button aria-label="Language selector">${fixture.language}</button><div class="monaco-editor"><div class="margin-view-overlays">${gutters}</div><div class="view-lines">${rendered}</div><textarea aria-label="Code editor"></textarea><div class="scrollbar vertical" aria-valuemax="${fixture.complete === false ? 100 : 0}"><div class="slider"></div></div></div></div>`;
+      : `<div class="editor"><div class="monaco-editor"><div class="view-lines"></div></div></div>
+    <script>
+      (() => {
+        const contentListeners = new Set();
+        const languageListeners = new Set();
+        const state = {
+          code: ${JSON.stringify(fixture.code)},
+          languageId: ${JSON.stringify(fixture.language)},
+          rendered: ${fixture.renderedLines ?? -1},
+        };
+        const node = document.querySelector('.monaco-editor');
+        const view = node.querySelector('.view-lines');
+        const render = () => {
+          const lines = state.code.split('\\n');
+          const shown = state.rendered < 0 ? lines : lines.slice(0, state.rendered);
+          view.replaceChildren(...shown.map((text) => {
+            const line = document.createElement('div');
+            line.className = 'view-line';
+            line.textContent = text;
+            return line;
+          }));
+        };
+        const model = {
+          getValue: () => state.code,
+          getLineCount: () => state.code.split('\\n').length,
+          getLanguageId: () => state.languageId,
+          onDidChangeContent: (listener) => {
+            contentListeners.add(listener);
+            return { dispose: () => contentListeners.delete(listener) };
+          },
+        };
+        const editorInstance = {
+          getModel: () => model,
+          getDomNode: () => node,
+          onDidChangeModelLanguage: (listener) => {
+            languageListeners.add(listener);
+            return { dispose: () => languageListeners.delete(listener) };
+          },
+        };
+        window.monaco = { editor: { getEditors: () => [editorInstance] } };
+        window.__setModel = (code, languageId, rendered) => {
+          state.code = code;
+          if (languageId !== undefined) state.languageId = languageId;
+          if (rendered !== undefined) state.rendered = rendered;
+          render();
+          for (const listener of contentListeners) listener();
+          for (const listener of languageListeners) listener();
+        };
+        render();
+      })();
+    </script>`;
   return `<!doctype html>
     <html lang="en"><head><meta charset="utf-8"><title>${fixture.number}. ${fixture.title} - LeetCode</title>
     <style>
       body { font-family: sans-serif; }
-      [data-testid="question-title"], [data-testid="difficulty"], .topic, .editor, button { display: block; width: 480px; min-height: 24px; }
-      .monaco-editor { position: relative; width: 480px; height: ${Math.max(120, codeLines.length * 20)}px; }
-      .margin-view-overlays, .view-lines { position: absolute; inset: 0; }
-      .line-numbers, .view-line { position: absolute; min-height: 20px; }
-      .line-numbers { left: 0; width: 40px; }
-      .view-line { left: 48px; white-space: pre; }
-      .monaco-editor textarea { position: absolute; left: 48px; top: 0; width: 1px; height: 1px; }
-      .scrollbar.vertical { position: absolute; right: 0; top: 0; width: 8px; height: 120px; }
-      .scrollbar.vertical .slider { width: 8px; height: ${fixture.complete === false ? 60 : 120}px; }
+      [data-testid="question-title"], [data-testid="difficulty"], .topic, .editor { display: block; width: 480px; min-height: 24px; }
+      .monaco-editor { position: relative; width: 480px; height: 240px; }
+      .view-line { min-height: 20px; white-space: pre; }
       #topics { margin-top: 1600px; }
     </style></head><body>
       <h1 data-testid="question-title">${fixture.number}. ${fixture.title}</h1>
@@ -166,12 +194,9 @@ async function openProblem(fixture: ProblemFixture): Promise<Page> {
   });
   await page.goto(`https://leetcode.com/problems/${fixture.slug}/`);
   if (fixture.code === null) {
-    await expect(page.locator('textarea[aria-label="Code editor"]')).toHaveCount(0);
+    await expect(page.locator('.monaco-editor')).toHaveCount(0);
   } else {
-    await expect(page.locator('textarea[aria-label="Code editor"]')).toHaveValue('');
-    await expect(page.locator('.view-lines > .view-line')).toHaveCount(
-      fixture.code.split('\n').length,
-    );
+    await expect(page.locator('.view-lines > .view-line').first()).toBeAttached();
     expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
   }
   return page;
@@ -238,17 +263,14 @@ async function expectOnlyStatusPathSince(requestMark: number, expectedPath: stri
     .toBe(true);
 }
 
-async function replaceProblem(page: Page, fixture: ProblemFixture, publish = true): Promise<void> {
+async function replaceProblem(page: Page, fixture: ProblemFixture): Promise<void> {
   await page.evaluate(
-    ({ next, shouldPublish }) => {
+    ({ next }) => {
       history.pushState({}, '', `/problems/${next.slug}/`);
       document.title = `${next.number}. ${next.title} - LeetCode`;
       const title = document.querySelector('[data-testid="question-title"]');
       const difficulty = document.querySelector('[data-testid="difficulty"]');
       const topics = document.querySelector('#topics');
-      const language = document.querySelector('button[aria-label="Language selector"]');
-      const gutters = document.querySelector('.margin-view-overlays');
-      const rendered = document.querySelector('.view-lines');
       if (title) title.textContent = `${next.number}. ${next.title}`;
       if (difficulty) difficulty.textContent = next.difficulty;
       if (topics) {
@@ -262,61 +284,20 @@ async function replaceProblem(page: Page, fixture: ProblemFixture, publish = tru
           }),
         );
       }
-      if (language) language.textContent = next.language;
-      if (gutters && rendered && next.code !== null) {
-        const lines = next.code.split('\n');
-        gutters.replaceChildren(
-          ...lines.map((_, index) => {
-            const line = document.createElement('div');
-            line.className = 'line-numbers';
-            line.style.top = `${index * 20}px`;
-            line.textContent = String((next.startLine ?? 1) + index);
-            return line;
-          }),
-        );
-        rendered.replaceChildren(
-          ...lines.map((text, index) => {
-            const line = document.createElement('div');
-            line.className = 'view-line';
-            line.style.top = `${index * 20}px`;
-            line.textContent = text;
-            return line;
-          }),
-        );
-        if (shouldPublish) rendered.setAttribute('data-revision', crypto.randomUUID());
+      if (next.code !== null) {
+        (
+          window as unknown as { __setModel: (code: string, languageId?: string) => void }
+        ).__setModel(next.code, next.language);
       }
     },
-    { next: fixture, shouldPublish: publish },
+    { next: fixture },
   );
 }
 
-async function setCode(page: Page, code: string, publish: boolean): Promise<void> {
-  await page.locator('.view-lines').evaluate(
-    (rendered, value) => {
-      const gutters = document.querySelector('.margin-view-overlays');
-      const lines = value.code.split('\n');
-      gutters?.replaceChildren(
-        ...lines.map((_, index) => {
-          const line = document.createElement('div');
-          line.className = 'line-numbers';
-          line.style.top = `${index * 20}px`;
-          line.textContent = String(index + 1);
-          return line;
-        }),
-      );
-      rendered.replaceChildren(
-        ...lines.map((text, index) => {
-          const line = document.createElement('div');
-          line.className = 'view-line';
-          line.style.top = `${index * 20}px`;
-          line.textContent = text;
-          return line;
-        }),
-      );
-      if (value.publish) rendered.setAttribute('data-revision', crypto.randomUUID());
-    },
-    { code, publish },
-  );
+async function setCode(page: Page, code: string, _publish: boolean): Promise<void> {
+  await page.evaluate((value) => {
+    (window as unknown as { __setModel: (code: string) => void }).__setModel(value);
+  }, code);
 }
 
 function successReply(duplicate = false): BridgeReply {
@@ -432,17 +413,28 @@ test('shows an actionable shortcut error for an invalid Bridge URL', async () =>
   await expect(panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
 });
 
-test('labels a partial Monaco rendering with its visible logical range', async () => {
-  const partial = {
+test('captures the whole model when the view renders only part of it', async () => {
+  const longSolution = Array.from(
+    { length: 40 },
+    (_, index) => `line_${index + 1} = ${index}`,
+  ).join('\n');
+  const { problem, panel } = await setupCase({
     ...twoSum,
-    code: 'middle = nums[index]\nreturn middle',
-    startLine: 12,
-    complete: false,
-  };
-  const { panel } = await setupCase(partial);
+    code: longSolution,
+    renderedLines: 5,
+  });
 
-  await expect(panel.locator('#captured-code')).toHaveText(partial.code);
-  await expect(panel.locator('#code-line-count')).toHaveText('visible lines 12–13');
+  // The page really is showing a fraction of the solution.
+  await expect(problem.locator('.view-lines > .view-line')).toHaveCount(5);
+
+  await expect(panel.locator('#code-line-count')).toHaveText('40 lines');
+  await expect(panel.locator('#captured-code')).toHaveText(longSolution);
+
+  await choose(panel, 'Solved');
+  await expect(panel.locator('#success-confirmation')).toBeVisible();
+  const event = JSON.parse(bridge.posts()[0]!.body!) as { attempt: { code: string } };
+  expect(event.attempt.code).toBe(longSolution);
+  expect(event.attempt.code.split('\n')).toHaveLength(40);
 });
 
 test('renders a due status from the authenticated status endpoint without posting', async () => {
@@ -576,9 +568,9 @@ test('missing/wrong token and unreachable status remain actionable without a POS
   expect(bridge.posts()).toHaveLength(0);
 });
 
-test('missing or blank visible code blocks capture', async () => {
+test('missing or blank model code blocks capture', async () => {
   let current = await setupCase({ ...twoSum, code: null });
-  await expect(current.panel.locator('#status')).toContainText('code editor visible');
+  await expect(current.panel.locator('#status')).toContainText('Open the LeetCode code editor');
   await expect(current.panel.locator('#outcome-actions')).toBeHidden();
   expect(bridge.posts()).toHaveLength(0);
 

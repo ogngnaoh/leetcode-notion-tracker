@@ -56,17 +56,22 @@
 6. Switch to another tab and confirm LCTrack is not open there. Click the extension icon on that tab
    and confirm its own panel opens, then return to the original LeetCode tab and confirm its
    tab-scoped panel remains available.
-7. Without focusing or scrolling the editor, confirm title, difficulty, topics, language, and rendered
-   code appear; a partial snapshot must say `visible lines X–Y`.
-8. Confirm the square-terminal logo and spaced `LC TRACK` masthead render above the compact problem
+7. Without focusing or scrolling the editor, confirm title, difficulty, topics, language, and the
+   complete code appear.
+8. Open a problem whose solution is longer than the code editor viewport, and scroll the editor so
+   that neither the first nor the last line is on screen. Confirm the side panel reports the
+   solution's true total line count and that the captured code block contains both the first and the
+   last line. This is the check that decides whether full code capture works; the automated suites
+   were rewritten alongside the feature and cannot decide it.
+9. Confirm the square-terminal logo and spaced `LC TRACK` masthead render above the compact problem
    card, followed by exactly two equal outcomes, `Needed help` and `Solved`, and then expanded code.
-9. Confirm **Dashboard ↗** is always visible in the masthead. Open the dashboard, return to LeetCode,
-   click the shortcut, and confirm it focuses that exact tab and Chrome window without duplicating it.
-10. Close the dashboard, click the shortcut again, and confirm one replacement tab opens.
-11. Choose one truthful outcome and confirm all outcomes remain active with that result selected.
-12. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
-13. Confirm the Notion Problem and immutable Attempts match both submitted events.
-14. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
+10. Confirm **Dashboard ↗** is always visible in the masthead. Open the dashboard, return to LeetCode,
+    click the shortcut, and confirm it focuses that exact tab and Chrome window without duplicating it.
+11. Close the dashboard, click the shortcut again, and confirm one replacement tab opens.
+12. Choose one truthful outcome and confirm all outcomes remain active with that result selected.
+13. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
+14. Confirm the Notion Problem and immutable Attempts match both submitted events.
+15. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
 
 ## First-attempt acceptance
 

@@ -91,11 +91,12 @@ exact v3 manifest + paginated Problems/Attempts inventory
 ## Data flow for one capture
 
 1. On startup, the side panel requests the current snapshot. If an extension reload left no receiver,
-   it injects the read-only content script once through `scripting` and retries.
-2. The content script maps Monaco's rendered fragments to numbered logical lines using public `top`
-   positions, normalizes nonbreaking spaces, joins soft wraps, and rejects ambiguous mappings. It
-   reports complete code only from line 1 when the public scrollbar shows the whole file; otherwise it
-   reports `visible lines X–Y`. A visible non-Monaco textarea is the only fallback.
+   it injects the MAIN-world model bridge and the read-only content script once through `scripting`
+   and retries.
+2. The content script reads title, difficulty, and topics from the public DOM, and requests code and
+   language from the MAIN-world bridge, which returns Monaco's complete model buffer and its language
+   id. Because the model is independent of the virtualized view, a solution longer than the editor
+   viewport is captured in full. An unreadable model blocks capture rather than reporting a fragment.
 3. The user confirms `Needed help` or `Solved`. The extension creates a new UUID `Client Event ID` for
    every deliberate click, including unchanged code.
 4. The bridge checks Attempts for that event ID.

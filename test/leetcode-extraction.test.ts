@@ -170,9 +170,7 @@ describe('LeetCode public-DOM extraction', () => {
     ['golang', 'Go'],
     ['brand-new-language', 'Unknown'],
   ])('maps the model language id %s to %s', async (languageId, expected) => {
-    const result = await extractLeetCodeSnapshot(
-      candidates({ model: { code: 'x', languageId } }),
-    );
+    const result = await extractLeetCodeSnapshot(candidates({ model: { code: 'x', languageId } }));
 
     expect(result?.language).toBe(expected);
   });

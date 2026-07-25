@@ -48,10 +48,19 @@ Its temporary startup claim contains only a process ID and is never used to tran
 
 ## LeetCode access
 
-The extension reads only the active `leetcode.com/problems/*` page after Chrome injects the declared
-content script or the side panel reinjects that same read-only script once after an extension reload.
-It reads public rendered Monaco lines, gutter positions, and scrollbar state without focusing or
-scrolling the page. It does not:
+The extension reads only the active `leetcode.com/problems/*` page. Problem title, difficulty, and
+topics come from the public DOM through the declared read-only content script. Captured code and
+language come from Monaco's editor model, read by a second declared content script running in the
+page's own JavaScript world, which answers nonce-matched requests over `window.postMessage`. The side
+panel reinjects both scripts once after an extension reload. Neither script focuses, scrolls, or
+otherwise mutates the page.
+
+Because the model reader runs in the page's world, a hostile page could forge a reply and supply code
+the user did not write. This is not a new exposure: the page already controls every element the
+extension reads. Replies are validated for shape and matched against a per-request nonce, and a
+missing reply blocks capture rather than substituting partial data.
+
+It does not:
 
 - Read cookies
 - Intercept network traffic
