@@ -114,8 +114,13 @@ const readSnapshot = createSnapshotReader({
     chrome.tabs.sendMessage(tabId, {
       type: 'GET_LEETCODE_CONTEXT',
     }) as Promise<ContentScriptResponse | undefined>,
-  injectContentScript: async (tabId, files) => {
-    await chrome.scripting.executeScript({ target: { tabId }, files });
+  injectContentScripts: async (tabId) => {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['leetcode-model-bridge.js'],
+      world: 'MAIN',
+    });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
   },
 });
 

@@ -13,6 +13,7 @@ await build({
   entryPoints: {
     background: resolve(source, 'src/background.ts'),
     content: resolve(source, 'src/content.ts'),
+    'leetcode-model-bridge': resolve(source, 'src/leetcode-model-bridge.ts'),
     sidepanel: resolve(source, 'src/sidepanel.ts'),
     options: resolve(source, 'src/options.ts'),
   },

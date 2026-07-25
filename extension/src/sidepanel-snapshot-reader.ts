@@ -3,7 +3,7 @@ import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 
 export interface SnapshotReaderDependencies {
   sendMessage(tabId: number): Promise<ContentScriptResponse | undefined>;
-  injectContentScript(tabId: number, files: string[]): Promise<void>;
+  injectContentScripts(tabId: number): Promise<void>;
 }
 
 function hasNoReceiver(error: unknown): boolean {
@@ -22,7 +22,7 @@ export function createSnapshotReader(dependencies: SnapshotReaderDependencies) {
     } catch (error) {
       if (!hasNoReceiver(error) || injectedTabs.has(tabId)) throw error;
       injectedTabs.add(tabId);
-      await dependencies.injectContentScript(tabId, ['content.js']);
+      await dependencies.injectContentScripts(tabId);
       return (await dependencies.sendMessage(tabId))?.context ?? null;
     }
   };
