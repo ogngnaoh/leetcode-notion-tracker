@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
-  it('ships synchronized LCTrack version 0.2.0 with consistent user-facing identity', async () => {
+  it('ships synchronized LCTrack version 0.2.2 with consistent user-facing identity', async () => {
     const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
       readFile(resolve(root, 'package.json'), 'utf8'),
@@ -27,7 +27,7 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.2.0',
+      version: '0.2.2',
       description: 'leetcode tracker (notion-powered)',
     });
     expect(packageJson.version).toBe(manifest.version);
@@ -173,6 +173,45 @@ describe('one-click side panel artifact', () => {
     expect(background).not.toContain('openPanelOnActionClick: true');
     expect(background).toContain('configureTabScopedSidePanel');
     expect(background).toContain('openSidePanelForTab');
+  });
+
+  it('wires the toggle command to the panel presence events that keep its state honest', async () => {
+    const background = await readFile(resolve(root, 'extension/src/background.ts'), 'utf8');
+
+    expect(background).toContain('chrome.commands.onCommand.addListener');
+    expect(background).toContain('toggleSidePanelForTab');
+    // Without both presence listeners the toggle desyncs the first time the user closes the panel
+    // with its own control, and without hydration it desyncs whenever the worker restarts.
+    expect(background).toContain('chrome.sidePanel.onOpened.addListener');
+    expect(background).toContain('chrome.sidePanel.onClosed.addListener');
+    expect(background).toContain('hydrateOpenPanels');
+  });
+
+  it('declares a named toggle command Chrome leaves unassigned until the user binds one', async () => {
+    const manifest = JSON.parse(
+      await readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
+    ) as {
+      minimum_chrome_version?: string;
+      commands?: Record<string, { suggested_key?: Record<string, string>; description?: string }>;
+      action?: { default_popup?: string };
+    };
+    const command = manifest.commands?.['toggle-side-panel'];
+
+    expect(command).toBeDefined();
+    // A named command is what puts "Toggle LCTrack side panel" on chrome://extensions/shortcuts;
+    // the reserved _execute_action renders as the generic "Activate the extension" and ignores
+    // description entirely. Chrome adds that row implicitly, so declaring it here would be noise.
+    expect(command?.description).toBe('Toggle LCTrack side panel');
+    expect(manifest.commands?.['_execute_action']).toBeUndefined();
+    // Shipping no suggested_key is the decision, not an omission: any default we picked would be
+    // claimed browser-wide, and Ctrl/Cmd+Shift+L in particular is Monaco's select-all-occurrences
+    // on the leetcode.com/problems/* pages this extension targets.
+    expect(command?.suggested_key).toBeUndefined();
+    // sidePanel.onClosed is Chrome 142+, and the toggle cannot track state without it.
+    expect(manifest.minimum_chrome_version).toBe('142');
+    // The toolbar icon still routes through chrome.action.onClicked, which a popup would suppress.
+    expect(manifest.action).toBeDefined();
+    expect(manifest.action?.default_popup).toBeUndefined();
   });
 
   it('ships Chrome-supported PNG icons at every declared size', async () => {

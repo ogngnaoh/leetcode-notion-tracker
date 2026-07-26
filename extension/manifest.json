@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "LCTrack",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "leetcode tracker (notion-powered)",
-  "minimum_chrome_version": "116",
+  "minimum_chrome_version": "142",
   "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "host_permissions": [
     "https://leetcode.com/problems/*",
@@ -27,6 +27,11 @@
       "32": "icons/square-terminal-32.png",
       "48": "icons/square-terminal-48.png",
       "128": "icons/square-terminal-128.png"
+    }
+  },
+  "commands": {
+    "toggle-side-panel": {
+      "description": "Toggle LCTrack side panel"
     }
   },
   "side_panel": {

@@ -132,12 +132,31 @@ Can read the currently displayed LeetCode problem page. It cannot access the Not
 ### Side panel
 
 Can access extension storage and call the configured bridge. It creates the capture event only after
-explicit submission. Its dashboard shortcut derives the bridge origin’s exact `/dashboard` URL,
+explicit submission. Its **Dashboard ↗** button derives the bridge origin’s exact `/dashboard` URL,
 focuses a matching tab and Chrome window (preferring an active match), and creates a tab only when no
-match exists. It stores no additional shortcut setting. The extension action disables Chrome’s global
-side-panel behavior and enables `sidepanel.html` only for the exact tab where the user clicked. The
+match exists. It stores no dashboard setting of its own. The extension action disables Chrome’s global
+side-panel behavior and enables `sidepanel.html` only for the exact tab where the user invoked it. The
 action is available on any tab, but switching tabs does not carry the panel into tabs where it was not
 opened.
+
+The panel has two invokers. Clicking the toolbar icon reaches `chrome.action.onClicked` and always
+opens. The named `toggle-side-panel` command, declared with no `suggested_key` and left unassigned
+until the user binds a key at `chrome://extensions/shortcuts` (Chrome stores that binding in the
+browser profile, not in extension storage), reaches `chrome.commands.onCommand` and opens or closes
+depending on what is already open for that tab. Adding an action popup — statically via
+`default_popup` or at runtime via `chrome.action.setPopup()` — suppresses `onClicked` and would
+disable the icon, though the command would keep working.
+
+Toggle state lives in memory in the service worker as a set of tab IDs, maintained by
+`chrome.sidePanel.onOpened` and `onClosed` so that closing the panel with its own control stays
+consistent with what the next keypress does. Because an MV3 worker is torn down when idle while an
+open panel survives it, `hydrateOpenPanels` rebuilds that set from
+`chrome.runtime.getContexts({contextTypes: ['SIDE_PANEL']})` at worker startup; without it a
+restarted worker would believe every panel is closed and could never toggle one shut. State is held
+in memory rather than `chrome.storage.session` deliberately: `sidePanel.open()` is rejected unless it
+runs while the user gesture is still active, so the toggle decision has to be readable synchronously.
+
+`sidePanel.onClosed` is Chrome 142+, which sets `minimum_chrome_version`.
 
 ### Bridge
 

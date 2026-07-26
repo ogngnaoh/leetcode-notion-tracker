@@ -66,12 +66,26 @@
 9. Confirm the square-terminal logo and spaced `LC TRACK` masthead render above the compact problem
    card, followed by exactly two equal outcomes, `Needed help` and `Solved`, and then expanded code.
 10. Confirm **Dashboard ↗** is always visible in the masthead. Open the dashboard, return to LeetCode,
-    click the shortcut, and confirm it focuses that exact tab and Chrome window without duplicating it.
-11. Close the dashboard, click the shortcut again, and confirm one replacement tab opens.
-12. Choose one truthful outcome and confirm all outcomes remain active with that result selected.
-13. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
-14. Confirm the Notion Problem and immutable Attempts match both submitted events.
-15. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
+    click **Dashboard ↗**, and confirm it focuses that exact tab and Chrome window without
+    duplicating it.
+11. Close the dashboard, click **Dashboard ↗** again, and confirm one replacement tab opens.
+12. Open `chrome://extensions/shortcuts`, confirm LCTrack lists **Toggle LCTrack side panel** with an
+    empty key field, and assign one. This group of checks decides whether the keyboard entry point
+    works: `sidePanel.open()` is rejected without a real user gesture, so neither vitest nor
+    Playwright can drive it, and the unit tests exercise the toggle only against fake APIs.
+    a. On a LeetCode problem tab with the panel closed, press the key and confirm the panel opens.
+    b. Press it again and confirm the panel closes.
+    c. Open it with the key, close it with the panel's own close control, then press the key and
+    confirm it opens rather than doing nothing — this is what `onClosed` tracking is for.
+    d. Open the panel, leave Chrome untouched for a minute or two so the service worker shuts down
+    (`chrome://extensions` shows it stop), then press the key and confirm it closes the panel
+    rather than reopening it — this is what `hydrateOpenPanels` is for, and it is the one path
+    no automated check reaches.
+    e. Confirm the key you chose still does whatever it did in the LeetCode editor before.
+13. Choose one truthful outcome and confirm all outcomes remain active with that result selected.
+14. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
+15. Confirm the Notion Problem and immutable Attempts match both submitted events.
+16. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
 
 ## First-attempt acceptance
 

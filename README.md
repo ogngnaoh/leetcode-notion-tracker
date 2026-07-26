@@ -212,6 +212,7 @@ Then:
 6. Save `http://127.0.0.1:8787` and your `BRIDGE_TOKEN`.
 7. Open a page matching `https://leetcode.com/problems/<slug>/`.
 8. Select the extension icon to open the side panel.
+9. Optional: assign a keyboard shortcut at `chrome://extensions/shortcuts` (see below).
 
 The side-panel masthead’s **Dashboard ↗** button derives `/dashboard` from the saved Bridge URL. It
 focuses an existing exact dashboard tab and its Chrome window when possible, or opens one new tab.
@@ -220,11 +221,45 @@ The extension icon can open LCTrack from any tab, but the panel belongs only to 
 clicked. Moving to another tab does not carry the side panel with it; click the icon there if you also
 want LCTrack on that tab.
 
+### Keyboard shortcut
+
+LCTrack declares a **Toggle LCTrack side panel** command but ships no default key, so Chrome installs
+it unassigned. Give it one at `chrome://extensions/shortcuts` — LCTrack's row is blank until you do,
+and nothing about the extension changes if you never do. The key toggles: press it to open the panel
+for the current tab, press it again to close that panel. (LCTrack's other row on that page,
+**Activate the extension**, is one Chrome adds to every extension; leave it unset.)
+
+The toolbar icon still only opens. Toggling needs to know whether a panel is already open, which the
+icon path has no reason to track.
+
+No default is shipped on purpose. A default would be claimed browser-wide the moment the extension
+loads, and the obvious candidates are already taken on the pages LCTrack targets: LeetCode's editor
+is Monaco, where <kbd>Cmd/Ctrl+Shift+L</kbd> is select-all-occurrences and <kbd>Cmd/Ctrl+Shift+K</kbd>
+is delete-line. Chrome hands the keystroke to the extension before the page sees it, so a default
+would silently disable whichever editor command it shadowed.
+
+When picking a key, note that Chrome's shortcut field only accepts <kbd>Ctrl</kbd> or <kbd>Alt</kbd>
+(<kbd>Command</kbd> or <kbd>Option</kbd> on macOS), optionally plus <kbd>Shift</kbd>, plus one more
+key. It silently refuses plain letters, bare function keys, and combinations Chrome reserves — and
+it will not record a combination another extension already holds.
+
+Once bound, the key acts on the active tab, with one exception: Chrome does not deliver extension
+shortcuts on its own pages (the New Tab page, `chrome://*`, the Web Store), where the icon still
+works.
+
+The toggle requires **Chrome 142 or newer** — it tracks panel state from `sidePanel.onOpened` and
+`sidePanel.onClosed`, and the latter landed in 142. That is why `minimum_chrome_version` moved up
+from 116.
+
+Because this project is installed unpacked, Chrome derives the extension's identity from the load
+path. Keep the checkout where it is — loading from a different directory registers a fresh extension
+with a blank shortcut, and you would assign it again.
+
 ## Daily use
 
 1. Click the `lc-log.command` item in the Dock.
-2. The bridge prefetches data and opens `http://127.0.0.1:8787/dashboard`; the side-panel shortcut
-   returns to the same dashboard later.
+2. The bridge prefetches data and opens `http://127.0.0.1:8787/dashboard`; the side panel's
+   **Dashboard ↗** button returns to the same dashboard later.
 3. Open due problems there and confirm outcomes through the extension side panel.
 
 No Notion credential enters Chrome: the launcher starts the same localhost bridge, which reads the
