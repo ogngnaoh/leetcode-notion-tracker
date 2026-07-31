@@ -30,7 +30,7 @@ src/notion/          setup, migration, and verification CLIs
 src/launcher/        lc-log.command daily launcher
 test/*.ts            33 vitest files (Node, no browser)
 test/browser/*.ts    3 Playwright specs, loaded as an unpacked extension
-docs/                ARCHITECTURE, NOTION_SCHEMA, SECURITY-MODEL, MANUAL_TEST, milestones
+docs/                ARCHITECTURE, NOTION_SCHEMA, SECURITY-MODEL, MANUAL_TEST
 ```
 
 Load `dist/extension` unpacked — never `extension/`, which has no compiled JS.

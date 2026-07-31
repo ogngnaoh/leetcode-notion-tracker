@@ -8,7 +8,6 @@ Before changing code, read:
 2. `docs/ARCHITECTURE.md`
 3. `docs/NOTION_SCHEMA.md`
 4. `docs/SECURITY-MODEL.md`
-5. `docs/milestones.md`, then the active milestone and its handoff
 
 ## Non-negotiable boundaries
 
