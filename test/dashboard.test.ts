@@ -110,11 +110,27 @@ describe('local dashboard', () => {
     expect(html).toContain('NEW PROBLEMS THIS SESSION');
     expect(html).toContain('First attempts since your last reset.');
     expect(html).toContain('New-problem session');
-    expect(html).toContain('Set your maximum or start a fresh counting session.');
+    expect(html).toContain('Start a fresh counting session without changing your saved attempts.');
     expect(html).toContain('data-dashboard-new-problem-count>1</strong>');
+    expect(html).toContain(
+      'data-dashboard-goal aria-label="Maximum new problems: 10. Activate to edit.">10</button>',
+    );
+    expect(html).toContain(
+      'id="daily-new-problem-goal" name="dailyNewProblemGoal" type="number" min="1" max="100" step="1" required value="10"',
+    );
+    expect(html).toContain(
+      '</div><p id="daily-new-problem-goal-error" class="goal-error" role="status" aria-live="polite"></p>',
+    );
+    expect(html).not.toContain('id="dashboard-settings-form"');
+    expect(html).not.toContain('Save maximum');
+    expect(html).not.toContain('Maximum new problems</label>');
+    expect(html).toContain('id="cancel-dashboard-settings"');
+    expect(html).toContain('>Close</button>');
     expect(html).toContain('id="reset-new-problem-session"');
     expect(html).toContain('id="reset-new-problem-session-dialog"');
     expect(html).toContain('Reset the new-problems count to zero?');
+    expect(html).toContain('/dashboard-assets/dashboard.css?v=5');
+    expect(html).toContain('/dashboard-assets/dashboard.js?v=5');
     expect(html).not.toContain('NEW SOLVES TODAY');
     expect(html).not.toContain('new-solve');
     expect(html).toContain('data-review-queue');

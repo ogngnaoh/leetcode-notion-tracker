@@ -99,7 +99,7 @@ describe('bridge app', () => {
     expect(dashboard.current()?.goal).toBe(14);
     expect(response.headers.get('access-control-allow-origin')).toBeNull();
     expect(await (await app.request('/dashboard')).text()).toContain(
-      'data-dashboard-goal> / 14</span>',
+      'data-dashboard-goal aria-label="Maximum new problems: 14. Activate to edit.">14</button>',
     );
   });
 

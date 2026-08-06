@@ -172,9 +172,11 @@ npm run dev:bridge
 Notion remains the only source for new-Problem counts and review rows. The new-problem maximum and
 optional session boundary are tracker-wide local bridge preferences stored atomically in ignored
 `build/dashboard-settings.json`. `DAILY_NEW_PROBLEM_GOAL` supplies only the first-run maximum. Use
-the dashboard masthead’s **Settings** dialog to choose an integer from 1 through 100 or deliberately
-reset the current count after confirmation. Resetting records only a local timestamp; it never
-changes Problems, Attempts, solved state, streaks, or review dates in Notion.
+the maximum button in **NEW PROBLEMS THIS SESSION** to choose an integer from 1 through 100. Enter
+saves the inline edit, Escape cancels it, and leaving the field saves a changed value. The masthead’s
+**Settings** dialog is reset-only: it deliberately restarts the current count after confirmation.
+Resetting records only a local timestamp; it never changes Problems, Attempts, solved state, streaks,
+or review dates in Notion.
 
 To review the dashboard’s normal, empty, stale, loading, and unavailable design states locally:
 
@@ -301,7 +303,8 @@ The managed Notion views are `Review queue`, `All problems`, and `Recent attempt
 Before the first manual reset, the local dashboard counts each Problem once on
 `First Attempt = today` for backward compatibility. After reset, it counts immutable First Attempts
 strictly after the saved session boundary and shows `NEW PROBLEMS THIS SESSION`; the configurable
-maximum is unchanged. The compact review queue uses direct LeetCode URLs and includes every Problem whose `Next Review` is today or
+maximum is an inline button beside the count, while Settings remains dedicated to resetting the
+session. The compact review queue uses direct LeetCode URLs and includes every Problem whose `Next Review` is today or
 earlier and defensively excludes future-dated rows even if an upstream response contains one. Use
 the `All due`, `Today`, `Overdue`, and `Needed help` local views with title search; matching
 rows appear in batches of 50. These controls filter the in-memory snapshot only and never mutate

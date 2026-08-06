@@ -1,10 +1,10 @@
 const refreshUrl = '/dashboard?refresh=1';
 const dialog = document.querySelector('#dashboard-settings-dialog');
-const form = document.querySelector('#dashboard-settings-form');
 const opener = document.querySelector('#open-dashboard-settings');
 const cancel = document.querySelector('#cancel-dashboard-settings');
-const input = document.querySelector('#daily-new-problem-goal');
-const error = document.querySelector('#dashboard-settings-error');
+const goalButton = document.querySelector('[data-dashboard-goal]');
+const goalInput = document.querySelector('#daily-new-problem-goal');
+const goalError = document.querySelector('#daily-new-problem-goal-error');
 const resetOpener = document.querySelector('#reset-new-problem-session');
 const resetDialog = document.querySelector('#reset-new-problem-session-dialog');
 const resetCancel = document.querySelector('#cancel-new-problem-session-reset');
@@ -14,17 +14,20 @@ const token = document.querySelector('meta[name="dashboard-settings-token"]')?.c
 
 if (
   dialog instanceof HTMLDialogElement &&
-  form instanceof HTMLFormElement &&
   opener instanceof HTMLButtonElement &&
   cancel instanceof HTMLButtonElement &&
-  input instanceof HTMLInputElement &&
-  error instanceof HTMLElement &&
+  goalButton instanceof HTMLButtonElement &&
+  goalInput instanceof HTMLInputElement &&
+  goalError instanceof HTMLElement &&
   resetOpener instanceof HTMLButtonElement &&
   resetDialog instanceof HTMLDialogElement &&
   resetCancel instanceof HTMLButtonElement &&
   resetConfirm instanceof HTMLButtonElement &&
   resetError instanceof HTMLElement
 ) {
+  let persistedGoal = Number(goalInput.value);
+  let savingGoal = false;
+
   const saveSettings = async (body) => {
     if (!token) throw new Error('Reload the dashboard and try again.');
     const response = await fetch('/dashboard/settings', {
@@ -45,11 +48,94 @@ if (
     }
     return responseBody;
   };
+
+  const clearGoalError = () => {
+    goalError.textContent = '';
+    goalInput.removeAttribute('aria-invalid');
+  };
+
+  const updateGoal = (goal) => {
+    persistedGoal = goal;
+    goalButton.textContent = String(goal);
+    goalButton.setAttribute('aria-label', `Maximum new problems: ${goal}. Activate to edit.`);
+    goalInput.value = String(goal);
+  };
+
+  const finishGoalEdit = (restoreFocus) => {
+    goalInput.value = String(persistedGoal);
+    clearGoalError();
+    goalInput.hidden = true;
+    goalButton.hidden = false;
+    if (restoreFocus) goalButton.focus();
+  };
+
+  const beginGoalEdit = () => {
+    if (savingGoal) return;
+    clearGoalError();
+    goalInput.value = String(persistedGoal);
+    goalButton.hidden = true;
+    goalInput.hidden = false;
+    goalInput.focus();
+    goalInput.select();
+  };
+
+  const persistGoal = async (restoreFocus) => {
+    if (savingGoal) return;
+    const value = goalInput.value.trim();
+    const goal = Number(value);
+    if (value === '' || !Number.isInteger(goal) || goal < 1 || goal > 100) {
+      goalInput.setAttribute('aria-invalid', 'true');
+      goalError.textContent = 'Enter an integer from 1–100.';
+      return;
+    }
+    if (goal === persistedGoal) {
+      finishGoalEdit(restoreFocus);
+      return;
+    }
+
+    savingGoal = true;
+    goalInput.disabled = true;
+    clearGoalError();
+    try {
+      const body = await saveSettings({ dailyNewProblemGoal: goal });
+      if (
+        !Number.isInteger(body?.dailyNewProblemGoal) ||
+        body.dailyNewProblemGoal < 1 ||
+        body.dailyNewProblemGoal > 100
+      ) {
+        throw new Error('The local bridge returned an invalid response.');
+      }
+      updateGoal(body.dailyNewProblemGoal);
+      finishGoalEdit(restoreFocus);
+    } catch (caught) {
+      goalError.textContent =
+        caught instanceof Error
+          ? caught.message
+          : 'Could not save the goal. Check the local bridge and try again.';
+    } finally {
+      savingGoal = false;
+      goalInput.disabled = false;
+    }
+  };
+
+  goalButton.addEventListener('click', beginGoalEdit);
+  goalInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      finishGoalEdit(true);
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void persistGoal(true);
+    }
+  });
+  goalInput.addEventListener('blur', () => {
+    if (!savingGoal) void persistGoal(false);
+  });
+
   opener.addEventListener('click', () => {
-    error.textContent = '';
     dialog.showModal();
-    input.focus();
-    input.select();
   });
   cancel.addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => opener.focus());
@@ -61,31 +147,6 @@ if (
   resetCancel.addEventListener('click', () => resetDialog.close());
   resetDialog.addEventListener('close', () => {
     if (dialog.open) resetOpener.focus();
-  });
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!form.reportValidity()) return;
-    const goal = Number(input.value);
-    const controls = form.querySelectorAll('button, input');
-    for (const control of controls) control.disabled = true;
-    error.textContent = '';
-    try {
-      const body = await saveSettings({ dailyNewProblemGoal: goal });
-      if (!Number.isInteger(body?.dailyNewProblemGoal)) {
-        throw new Error('The local bridge returned an invalid response.');
-      }
-      input.value = String(body.dailyNewProblemGoal);
-      const denominator = document.querySelector('[data-dashboard-goal]');
-      if (denominator) denominator.textContent = ` / ${body.dailyNewProblemGoal}`;
-      dialog.close();
-    } catch (caught) {
-      error.textContent =
-        caught instanceof Error
-          ? caught.message
-          : 'Could not save the goal. Check the local bridge and try again.';
-    } finally {
-      for (const control of controls) control.disabled = false;
-    }
   });
   resetConfirm.addEventListener('click', async () => {
     resetConfirm.disabled = true;
@@ -101,10 +162,9 @@ if (
         throw new Error('The local bridge returned an invalid response.');
       }
       const count = document.querySelector('[data-dashboard-new-problem-count]');
-      const denominator = document.querySelector('[data-dashboard-goal]');
       if (count) count.textContent = '0';
-      if (denominator) denominator.textContent = ` / ${body.dailyNewProblemGoal}`;
-      input.value = String(body.dailyNewProblemGoal);
+      updateGoal(body.dailyNewProblemGoal);
+      finishGoalEdit(false);
       resetDialog.close();
       dialog.close();
     } catch (caught) {
@@ -190,7 +250,11 @@ if (
 }
 
 function reloadLoadingDashboard() {
-  if (dialog instanceof HTMLDialogElement && dialog.open) {
+  if (
+    (dialog instanceof HTMLDialogElement && dialog.open) ||
+    (resetDialog instanceof HTMLDialogElement && resetDialog.open) ||
+    (goalInput instanceof HTMLInputElement && !goalInput.hidden)
+  ) {
     window.setTimeout(reloadLoadingDashboard, 400);
     return;
   }
@@ -207,7 +271,9 @@ if (
 document.addEventListener('visibilitychange', () => {
   if (
     document.visibilityState === 'visible' &&
-    !(dialog instanceof HTMLDialogElement && dialog.open)
+    !(dialog instanceof HTMLDialogElement && dialog.open) &&
+    !(resetDialog instanceof HTMLDialogElement && resetDialog.open) &&
+    !(goalInput instanceof HTMLInputElement && !goalInput.hidden)
   ) {
     window.location.replace(refreshUrl);
   }

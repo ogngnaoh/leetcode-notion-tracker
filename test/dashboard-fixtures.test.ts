@@ -10,7 +10,10 @@ describe('dashboard design fixtures', () => {
       expect(fixture.html).toContain(fixture.expectedText);
       expect(fixture.html).toContain('id="open-dashboard-settings"');
       expect(fixture.html).toContain('id="dashboard-settings-dialog"');
+      expect(fixture.html).not.toContain('id="dashboard-settings-form"');
+      expect(fixture.html).toContain('data-dashboard-goal');
       expect(fixture.html).toContain('id="daily-new-problem-goal"');
+      expect(fixture.html).toContain('id="daily-new-problem-goal-error"');
       expect(fixture.html).toContain('NEW PROBLEMS THIS SESSION');
       expect(fixture.html).toContain('id="reset-new-problem-session"');
       expect(fixture.html).not.toContain('NEW SOLVES TODAY');
@@ -35,5 +38,19 @@ describe('dashboard design fixtures', () => {
       dailyNewProblemGoal: 10,
       newProblemCount: 0,
     });
+  });
+
+  it('supports the exact inline maximum response for live interaction inspection', async () => {
+    const response = await createDashboardFixtureApp().request('/dashboard/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LC-Dashboard-Token': 'fixture-dashboard-token',
+      },
+      body: JSON.stringify({ dailyNewProblemGoal: 14 }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ dailyNewProblemGoal: 14 });
   });
 });

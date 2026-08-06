@@ -143,6 +143,19 @@ export function createDashboardFixtureApp(): Hono {
     }
     const body = await context.req.json().catch(() => null);
     if (
+      typeof body === 'object' &&
+      body !== null &&
+      !Array.isArray(body) &&
+      Object.keys(body).length === 1 &&
+      Number.isInteger((body as Record<string, unknown>).dailyNewProblemGoal) &&
+      Number((body as Record<string, unknown>).dailyNewProblemGoal) >= 1 &&
+      Number((body as Record<string, unknown>).dailyNewProblemGoal) <= 100
+    ) {
+      return context.json({
+        dailyNewProblemGoal: (body as Record<string, number>).dailyNewProblemGoal,
+      });
+    }
+    if (
       typeof body !== 'object' ||
       body === null ||
       Array.isArray(body) ||

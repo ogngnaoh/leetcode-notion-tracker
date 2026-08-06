@@ -91,7 +91,8 @@ button.refresh {
 .brand:focus-visible,
 .dialog-button:focus-visible,
 #reset-new-problem-session:focus-visible,
-#daily-new-problem-goal:focus-visible,
+.goal-button:focus-visible,
+.goal-input:focus-visible,
 [data-review-filter]:focus-visible,
 [data-review-search]:focus-visible,
 [data-review-more]:focus-visible {
@@ -108,36 +109,17 @@ dialog {
 dialog::backdrop {
   background: rgb(0 0 0 / 45%);
 }
-#dashboard-settings-form,
 .dialog-panel {
   padding: 24px;
 }
-#dashboard-settings-form h2,
 .dialog-panel h2 {
   margin: 10px 0 8px;
   font-size: 24px;
   font-weight: 500;
 }
-#dashboard-settings-form > p,
 .dialog-panel > p {
   margin: 0 0 22px;
   color: #555;
-}
-#dashboard-settings-form label {
-  display: block;
-  margin-bottom: 12px;
-  font: 11px/1.2 var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-#daily-new-problem-goal {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--color-black);
-  border-radius: 0;
-  background: var(--color-white);
-  color: var(--color-black);
-  font: 18px/1.2 var(--font-mono);
 }
 .dialog-error {
   min-height: 21px;
@@ -150,14 +132,6 @@ dialog::backdrop {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
-}
-.dialog-actions--split {
-  justify-content: space-between;
-  align-items: center;
-}
-.dialog-actions__end {
-  display: flex;
-  gap: 8px;
 }
 .dialog-button {
   border: 1px solid var(--color-black);
@@ -174,7 +148,7 @@ dialog::backdrop {
   color: var(--color-white);
 }
 .dialog-button:disabled,
-#daily-new-problem-goal:disabled {
+.goal-input:disabled {
   cursor: wait;
   opacity: 0.55;
 }
@@ -195,6 +169,7 @@ main {
   flex-direction: column;
 }
 .summary--solves {
+  position: relative;
   background: var(--color-pink);
   border-right: 1px solid var(--color-black);
 }
@@ -206,16 +181,63 @@ main {
   letter-spacing: 0.08em;
 }
 .number {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
   margin-top: 12px;
   font: 40px/1 var(--font-mono);
 }
 .number strong {
   font-weight: 400;
 }
-.number span {
+.goal-separator {
   color: #463f38;
 }
-.summary p {
+.goal-button {
+  border: 0;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: #463f38;
+  cursor: text;
+  font: inherit;
+  line-height: inherit;
+}
+.goal-button:hover {
+  color: var(--color-cobalt);
+}
+.goal-input {
+  width: 3.2ch;
+  min-width: 0;
+  height: 1em;
+  border: 1px solid var(--color-black);
+  border-radius: 0;
+  padding: 0 3px;
+  appearance: textfield;
+  background: var(--color-white);
+  color: var(--color-black);
+  font: inherit;
+  line-height: inherit;
+}
+.goal-input::-webkit-inner-spin-button,
+.goal-input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+.goal-error {
+  margin: 3px 0 0;
+  color: var(--color-critical);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.goal-error:empty {
+  display: none;
+}
+.goal-error:not(:empty) + .summary-description {
+  display: none;
+}
+.summary-description {
   margin: auto 0 0;
   color: #463f38;
   font-size: 12px;
@@ -485,11 +507,24 @@ main {
     padding: 12px;
   }
   .number {
+    min-height: 28px;
     margin-top: 10px;
     font-size: 28px;
   }
-  .summary p {
+  .summary-description {
     display: none;
+  }
+  .summary--solves .goal-error {
+    position: absolute;
+    right: 12px;
+    bottom: 7px;
+    left: 12px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .summary--solves:has(.goal-error:not(:empty)) .number {
+    margin-top: 3px;
   }
   .section-title {
     margin-top: 20px;
@@ -550,7 +585,7 @@ main {
   .header-actions {
     margin-left: auto;
   }
-  #dashboard-settings-form {
+  .dialog-panel {
     padding: 20px;
   }
 }
