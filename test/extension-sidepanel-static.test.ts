@@ -5,7 +5,21 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
-  it('ships synchronized LCTrack version 0.2.3 with consistent user-facing identity', async () => {
+  it('opens on an accessible standalone Daily Reps tab with Notion Log secondary', async () => {
+    const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
+
+    expect(html).toMatch(/role="tablist"[\s\S]*id="daily-reps-tab"[\s\S]*Daily Reps/);
+    expect(html).toMatch(/id="daily-reps-tab"[\s\S]*aria-selected="true"/);
+    expect(html).toMatch(/id="notion-log-tab"[\s\S]*aria-selected="false"/);
+    expect(html).toMatch(/id="daily-reps-panel"[^>]*role="tabpanel"/);
+    expect(html).toMatch(/id="notion-log-panel"[^>]*role="tabpanel"[^>]*hidden/);
+    expect(html).toContain('id="daily-goal-input"');
+    expect(html).toContain('id="log-daily-rep"');
+    expect(html).toContain('id="finish-daily-session"');
+    expect(html).toContain('id="daily-history"');
+  });
+
+  it('ships synchronized LCTrack version 0.2.7 with consistent user-facing identity', async () => {
     const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
       readFile(resolve(root, 'package.json'), 'utf8'),
@@ -27,8 +41,8 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.2.3',
-      description: 'leetcode tracker (notion-powered)',
+      version: '0.2.7',
+      description: 'Daily LeetCode reps with optional Notion capture',
     });
     expect(packageJson.version).toBe(manifest.version);
     expect(lockfile.version).toBe(manifest.version);
@@ -40,14 +54,16 @@ describe('one-click side panel artifact', () => {
     expect(options).toMatch(/<h1>LCTrack<\/h1>/);
   });
 
-  it('contains exactly two compact outcome controls and no form or reload control', async () => {
+  it('keeps exactly two compact Notion outcomes and only the bounded Daily Reps goal input', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     const outcomes = [...html.matchAll(/data-result="([^"]+)"/g)].map((match) => match[1]);
     expect(outcomes).toEqual(['Needed help', 'Solved']);
     expect(html).not.toMatch(/<form\b/i);
     expect(html).not.toMatch(/id="reload"/i);
-    expect(html).not.toMatch(/<input\b|<select\b|<textarea\b/i);
+    expect([...html.matchAll(/<input\b/g)]).toHaveLength(1);
+    expect(html).toMatch(/<input[^>]*id="daily-goal-input"[^>]*min="1"[^>]*max="100"/);
+    expect(html).not.toMatch(/<select\b|<textarea\b/i);
     expect(html).toContain('<details');
     expect(html).toContain('id="code-language"');
     expect(html).toContain('id="code-line-count"');
@@ -96,7 +112,7 @@ describe('one-click side panel artifact', () => {
     expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*gap:\s*var\(--space-2\)/);
   });
 
-  it('keeps an always-visible Dashboard shortcut in the masthead without new permissions', async () => {
+  it('keeps the Dashboard shortcut inside Notion Log without new permissions', async () => {
     const [html, manifestText] = await Promise.all([
       readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
@@ -104,7 +120,7 @@ describe('one-click side panel artifact', () => {
     const manifest = JSON.parse(manifestText) as { permissions?: string[] };
 
     expect(html).toMatch(
-      /<header class="masthead">[\s\S]*id="open-dashboard"[\s\S]*Dashboard ↗[\s\S]*<\/header>/,
+      /id="notion-log-panel"[\s\S]*id="open-dashboard"[\s\S]*Dashboard ↗[\s\S]*id="open-options"/,
     );
     expect(manifest.permissions).toEqual(['activeTab', 'scripting', 'sidePanel', 'storage']);
   });
@@ -129,6 +145,26 @@ describe('one-click side panel artifact', () => {
     expect(fonts).toContain('url("./ibm-plex-mono-400.woff2")');
     expect(styles).toContain(':disabled');
     expect(styles).toMatch(/\.outcome\[aria-pressed=['"]true['"]\]/);
+  });
+
+  it('gives Daily Reps actions a legible primary, secondary, and disabled hierarchy', async () => {
+    const [html, styles] = await Promise.all([
+      readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
+      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
+    ]);
+
+    expect(html).toMatch(
+      /id="edit-daily-goal"[^>]*aria-controls="daily-goal-editor"[^>]*aria-expanded="false"/,
+    );
+    expect(html).toMatch(/id="save-daily-goal"[^>]*class="[^"]*btn--dark/);
+    expect(html).toMatch(/id="cancel-daily-goal"[^>]*class="[^"]*btn--outline/);
+    expect(styles).toMatch(/\.daily-goal-action\s*{[\s\S]*border-color:\s*var\(--color-black\)/);
+    expect(styles).toMatch(/\.btn--outline\s*{[\s\S]*border-color:\s*var\(--color-black\)/);
+    expect(styles).toMatch(/\.log-daily-rep:disabled[\s\S]*color:\s*var\(--text-secondary\)/);
+    expect(styles).toMatch(
+      /\.finish-daily-session:disabled[\s\S]*color:\s*var\(--text-secondary\)/,
+    );
+    expect(styles).toMatch(/\.daily-reps-panel \.btn\s*{[\s\S]*min-height:\s*40px/);
   });
 
   it('documents asset hashes and includes the font license beside the files', async () => {

@@ -1,7 +1,9 @@
 import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 
+export const GET_LEETCODE_CONTEXT_MESSAGE = 'GET_LEETCODE_CONTEXT_V2';
+
 export interface GetLeetCodeContextMessage {
-  type: 'GET_LEETCODE_CONTEXT';
+  type: typeof GET_LEETCODE_CONTEXT_MESSAGE;
 }
 
 export interface ContentScriptResponse {
@@ -22,7 +24,7 @@ export function createContentMessageHandler(extract: ExtractLeetCodeContext) {
       typeof message !== 'object' ||
       message === null ||
       !('type' in message) ||
-      message.type !== 'GET_LEETCODE_CONTEXT'
+      message.type !== GET_LEETCODE_CONTEXT_MESSAGE
     ) {
       return false;
     }

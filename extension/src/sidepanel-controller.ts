@@ -34,6 +34,7 @@ export interface SidePanelControllerDependencies {
   sendCaptureBody(settings: ExtensionSettings, body: string): Promise<CaptureResult>;
   randomUUID(): string;
   now(): Date;
+  initialCaptureEnabled?: boolean;
 }
 
 type ViewListener = (view: SidePanelView) => void;
@@ -79,6 +80,7 @@ export class SidePanelController {
   private listeners = new Set<ViewListener>();
   private statusRevision = 0;
   private submitting = false;
+  private captureEnabled: boolean;
   private active = true;
   private currentView: SidePanelView = {
     mode: 'loading',
@@ -90,7 +92,9 @@ export class SidePanelController {
     loggedResult: null,
   };
 
-  constructor(private readonly dependencies: SidePanelControllerDependencies) {}
+  constructor(private readonly dependencies: SidePanelControllerDependencies) {
+    this.captureEnabled = dependencies.initialCaptureEnabled ?? true;
+  }
 
   get view(): SidePanelView {
     return this.currentView;
@@ -109,6 +113,25 @@ export class SidePanelController {
     this.listeners.clear();
   }
 
+  async setCaptureEnabled(enabled: boolean): Promise<void> {
+    if (!this.active || this.captureEnabled === enabled) return;
+    this.captureEnabled = enabled;
+    this.statusRevision += 1;
+    if (enabled) {
+      await this.acceptSnapshot(this.currentView.snapshot);
+      return;
+    }
+    this.setView({
+      ...this.currentView,
+      mode: 'loading',
+      reviewLabel: 'Notion Log',
+      message: 'Open Notion Log to check or capture this problem.',
+      showSettings: false,
+      busy: this.submitting,
+      loggedResult: null,
+    });
+  }
+
   async initialize(snapshot: LeetCodeSnapshot | null): Promise<void> {
     this.state = await this.dependencies.store.read();
     if (!this.active) return;
@@ -123,6 +146,19 @@ export class SidePanelController {
       showSettings: false,
       busy: this.submitting,
     });
+
+    if (!this.captureEnabled) {
+      this.setView({
+        ...this.currentView,
+        mode: 'loading',
+        reviewLabel: 'Notion Log',
+        message: 'Open Notion Log to check or capture this problem.',
+        showSettings: false,
+        busy: this.submitting,
+        loggedResult: null,
+      });
+      return;
+    }
 
     if (this.submitting && !this.state.pending) return;
 

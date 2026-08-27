@@ -207,11 +207,12 @@ async function openProblem(fixture: ProblemFixture): Promise<Page> {
   return page;
 }
 
-async function openPanel(activeProblem: Page): Promise<Page> {
+async function openPanel(activeProblem: Page, openNotion = true): Promise<Page> {
   const panel = await context.newPage();
   await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
   await activeProblem.bringToFront();
   await expect(panel.locator('#problem-title')).not.toHaveText('OPEN A LEETCODE PROBLEM');
+  if (openNotion) await panel.locator('#notion-log-tab').click();
   return panel;
 }
 
@@ -338,6 +339,87 @@ test.afterAll(async () => {
   await context?.close().catch(() => undefined);
   await bridge.stop();
   if (userDataDir) await rm(userDataDir, { recursive: true, force: true });
+});
+
+test('logs repeated daily reps without code, bridge settings, or Notion traffic and archives below goal', async () => {
+  await closeCasePages();
+  bridge.reset();
+  await setStorage(null);
+  const problem = await openProblem({ ...twoSum, code: null });
+  const panel = await openPanel(problem, false);
+
+  await expect(panel.locator('#daily-reps-tab')).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.locator('#daily-reps-panel')).toBeVisible();
+  await expect(panel.locator('#notion-log-panel')).toBeHidden();
+  await expect(panel.locator('#daily-problem-title')).toHaveText('Two Sum');
+  await expect(panel.locator('#daily-goal-editor')).toBeVisible();
+  await expect(panel.locator('#log-daily-rep')).toBeDisabled();
+  expect(bridge.requests).toHaveLength(0);
+
+  await panel.locator('#daily-goal-input').fill('3');
+  await panel.locator('#save-daily-goal').click();
+  await expect(panel.locator('#daily-goal-display')).toHaveText('3');
+  await expect(panel.locator('#log-daily-rep')).toBeEnabled();
+  await panel.locator('#log-daily-rep').click();
+  await panel.locator('#log-daily-rep').click();
+
+  await expect(panel.locator('#daily-rep-count')).toHaveText('2');
+  await expect(panel.locator('#current-reps-list .rep-row')).toHaveCount(2);
+  await expect(panel.locator('#current-reps-list .rep-title')).toHaveText([
+    '#1 Two Sum',
+    '#1 Two Sum',
+  ]);
+  await panel.locator('#current-reps-list .remove-rep').first().click();
+  await expect(panel.locator('#daily-rep-count')).toHaveText('1');
+  await panel.locator('#log-daily-rep').click();
+  await expect(panel.locator('#daily-rep-count')).toHaveText('2');
+  expect(bridge.requests).toHaveLength(0);
+
+  await panel.locator('#finish-daily-session').click();
+  await expect(panel.locator('#finish-session-message')).toContainText('2 of 3 reps, 1 short');
+  await panel.locator('#confirm-finish-session').click();
+  await expect(panel.locator('#daily-rep-count')).toHaveText('0');
+  await expect(panel.locator('#daily-goal-display')).toHaveText('3');
+  await expect(panel.locator('#daily-history .history-session')).toHaveCount(1);
+  await expect(panel.locator('#daily-history .history-session')).toContainText('2/3');
+
+  await panel.close();
+  const reopened = await openPanel(problem, false);
+  await expect(reopened.locator('#daily-goal-display')).toHaveText('3');
+  await expect(reopened.locator('#daily-history .history-session')).toHaveCount(1);
+  await reopened.locator('#daily-history .history-session summary').click();
+  await expect(reopened.locator('#daily-history .rep-topics').first()).toContainText(
+    'Array · Hash Table',
+  );
+  await reopened.locator('.delete-history-session').click();
+  await expect(reopened.locator('#delete-session-dialog')).toBeVisible();
+  await reopened.locator('#confirm-delete-session').click();
+  await expect(reopened.locator('#daily-history .history-session')).toHaveCount(0);
+});
+
+test('keeps the bridge dormant on Daily Reps and activates the unchanged capture only on Notion Log', async () => {
+  await closeCasePages();
+  bridge.reset();
+  await setStorage(TEST_BRIDGE_TOKEN);
+  const problem = await openProblem(twoSum);
+  const panel = await openPanel(problem, false);
+
+  await panel.locator('#daily-goal-input').fill('1');
+  await panel.locator('#save-daily-goal').click();
+  await panel.locator('#log-daily-rep').click();
+  await panel.locator('#log-daily-rep').click();
+  await expect(panel.locator('#daily-rep-count')).toHaveText('2');
+  await expect(panel.locator('#daily-goal-message')).toContainText('1 rep over target');
+  expect(bridge.requests).toHaveLength(0);
+
+  await panel.locator('#notion-log-tab').click();
+  await expect(panel.locator('#outcome-actions')).toBeVisible();
+  await expect.poll(() => bridge.requests.some((request) => request.method === 'GET')).toBe(true);
+  await choose(panel, 'Solved');
+  await expect(panel.locator('#success-confirmation')).toBeVisible();
+
+  await panel.locator('#daily-reps-tab').click();
+  await expect(panel.locator('#daily-rep-count')).toHaveText('2');
 });
 
 test('extracts and renders visible public-DOM problem, topics, language, and exact code', async () => {

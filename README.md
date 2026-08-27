@@ -1,18 +1,22 @@
-# LeetCode → Notion Tracker
+# LCTrack
 
-A lean personal project that logs LeetCode practice into two Notion databases.
+A lean personal Chrome extension for counting daily LeetCode repetitions, with the original
+spaced-repetition capture available through an optional local Notion bridge.
 
-The project deliberately solves one workflow:
+The default workflow is standalone:
 
 1. Open a LeetCode problem.
 2. Open the Chrome side panel.
-3. Confirm the visible attempt with one of two outcomes.
-4. Send the capture to a local bridge.
-5. Upsert the canonical problem, append an immutable attempt, and update the next review date in Notion.
+3. Set a goal once, then select **Log rep** after each question.
+4. Finish and archive the session manually when the day is done.
+
+The secondary **Notion Log** tab retains the existing confirmed-outcome workflow for attempts that
+should update the two Notion databases and their review schedule.
 
 ## Why this shape
 
 - **Two Notion databases:** one current `Problem` record and many immutable `Attempt` records.
+- **Standalone daily reps:** repeated questions count independently in browser-local extension data.
 - **Local bridge:** the Notion token never enters the extension.
 - **Exact schema:** the extension is for this personal tracker, not every arbitrary Notion database.
 - **Manual confirmation:** nothing is sent until you choose `Needed help` or `Solved`.
@@ -210,13 +214,13 @@ Then:
 2. Enable **Developer mode**.
 3. Select **Load unpacked**.
 4. Choose `dist/extension`.
-5. Open the extension's **Details → Extension options**.
-6. Save `http://127.0.0.1:8787` and your `BRIDGE_TOKEN`.
-7. Open a page matching `https://leetcode.com/problems/<slug>/`.
-8. Select the extension icon to open the side panel.
+5. Open a page matching `https://leetcode.com/problems/<slug>/`.
+6. Select the extension icon to open the side panel.
+7. Set a Daily Reps goal and log the current question as often as needed.
+8. Optional for Notion capture: open **Details → Extension options** and save the bridge URL/token.
 9. Optional: assign a keyboard shortcut at `chrome://extensions/shortcuts` (see below).
 
-The side-panel masthead’s **Dashboard ↗** button derives `/dashboard` from the saved Bridge URL. It
+The **Notion Log** tab’s **Dashboard ↗** button derives `/dashboard` from the saved Bridge URL. It
 focuses an existing exact dashboard tab and its Chrome window when possible, or opens one new tab.
 The bottom **Bridge settings** action remains the place to edit the Bridge URL and token.
 The extension icon can open LCTrack from any tab, but the panel belongs only to the tab where it was
@@ -259,10 +263,16 @@ with a blank shortcut, and you would assign it again.
 
 ## Daily use
 
-1. Click the `lc-log.command` item in the Dock.
-2. The bridge prefetches data and opens `http://127.0.0.1:8787/dashboard`; the side panel's
-   **Dashboard ↗** button returns to the same dashboard later.
-3. Open due problems there and confirm outcomes through the extension side panel.
+1. Open a LeetCode problem and open LCTrack. **Daily Reps** is always the initial tab.
+2. Set or edit the 1–100 goal. Each **Log rep** click appends one timestamped local entry, including
+   repeated clicks for the same problem.
+3. Remove mistaken current entries if needed, then select **Finish & reset** to archive the session.
+   The goal carries forward; sessions never reset automatically at midnight.
+4. Expand **History** to inspect locally archived problems. This history is profile-local, is not
+   synced, and is removed if Chrome clears the extension's data or the extension is uninstalled.
+
+For the optional Notion workflow, start the local bridge, switch to **Notion Log**, and confirm
+`Needed help` or `Solved`. The bridge is not contacted while the panel remains on Daily Reps.
 
 No Notion credential enters Chrome: the launcher starts the same localhost bridge, which reads the
 ignored local `.env` from the repository.

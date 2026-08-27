@@ -23,6 +23,13 @@ The extension stores:
 - Bridge URL
 - Personal bridge token
 - Per-tab, session-scoped pending retry bodies and last-success presentation records
+- A versioned Daily Reps record containing the 1–100 goal, public problem metadata, timestamps, the
+  active repetition list, and manually completed session archives
+
+Daily Reps never stores captured code, language, outcomes, bridge credentials, or Notion IDs. It is
+kept in `chrome.storage.local`, is not cloud-synced, and is removed when extension storage is cleared
+or the extension is uninstalled. Mutations are serialized by the background worker and accepted only
+from extension-owned pages; a malformed stored record is reported without being overwritten.
 
 The bridge token authorizes only the narrow bridge endpoint. It is not a Notion credential.
 

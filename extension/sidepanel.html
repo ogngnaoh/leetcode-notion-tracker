@@ -16,58 +16,234 @@
           <img src="icons/square-terminal-32.png" width="20" height="20" alt="" />
           <span>LC TRACK</span>
         </h1>
-        <button id="open-dashboard" class="btn dashboard-action" type="button">Dashboard ↗</button>
       </header>
 
-      <section class="problem-panel" aria-labelledby="problem-title">
-        <div class="problem-kicker">
-          <span id="problem-number">—</span>
-          <span id="problem-difficulty" class="badge">UNKNOWN</span>
-        </div>
-        <h2 id="problem-title" class="problem-title">OPEN A LEETCODE PROBLEM</h2>
-        <div class="review-row">
-          <span>REVIEW</span>
-          <span id="review-state" class="badge badge--muted">READING…</span>
-        </div>
-        <ul id="problem-topics" class="topics" aria-label="Problem topics"></ul>
-      </section>
-
-      <section class="capture-section" aria-labelledby="capture-heading">
-        <h2 id="capture-heading" class="section-label">HOW DID THIS ATTEMPT GO?</h2>
-        <div id="outcome-actions" class="outcome-actions" hidden>
-          <button class="btn outcome" type="button" data-result="Needed help" aria-pressed="false">
-            Needed help
-          </button>
-          <button class="btn outcome" type="button" data-result="Solved" aria-pressed="false">
-            Solved
-          </button>
-        </div>
-        <button id="retry-attempt" class="btn btn--block retry" type="button" hidden>
-          Retry same attempt
+      <nav class="tracker-tabs" role="tablist" aria-label="Tracker mode">
+        <button
+          id="daily-reps-tab"
+          class="tracker-tab"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="daily-reps-panel"
+          tabindex="0"
+        >
+          Daily Reps
         </button>
-        <p id="success-confirmation" class="success-confirmation" hidden></p>
-      </section>
+        <button
+          id="notion-log-tab"
+          class="tracker-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="notion-log-panel"
+          tabindex="-1"
+        >
+          Notion Log
+        </button>
+      </nav>
 
-      <details id="code-disclosure" class="code-disclosure" open>
-        <summary>
-          <span>CODE SNAPSHOT</span>
-          <span class="code-summary-meta">
-            <span id="code-language">UNKNOWN</span>
-            <span aria-hidden="true">·</span>
-            <span id="code-line-count">0 LINES</span>
-          </span>
-        </summary>
-        <pre id="captured-code" class="captured-code" tabindex="0"></pre>
-      </details>
+      <section
+        id="daily-reps-panel"
+        class="tracker-tab-panel daily-reps-panel"
+        role="tabpanel"
+        aria-labelledby="daily-reps-tab"
+      >
+        <section class="daily-progress" aria-labelledby="daily-progress-heading">
+          <div class="daily-progress-heading-row">
+            <div>
+              <p class="section-label">CURRENT SESSION</p>
+              <h2 id="daily-progress-heading" class="daily-progress-count">
+                <span id="daily-rep-count">0</span>
+                <span aria-hidden="true">/</span>
+                <span id="daily-goal-display">—</span>
+              </h2>
+            </div>
+            <button
+              id="edit-daily-goal"
+              class="btn btn--quiet daily-goal-action"
+              type="button"
+              aria-controls="daily-goal-editor"
+              aria-expanded="false"
+            >
+              Set goal
+            </button>
+          </div>
+          <div
+            id="daily-progress-bar"
+            class="daily-progress-bar"
+            role="progressbar"
+            aria-label="Daily repetitions"
+            aria-valuemin="0"
+            aria-valuenow="0"
+            aria-valuetext="Set a goal to begin"
+          >
+            <span id="daily-progress-fill"></span>
+          </div>
+          <div id="daily-goal-editor" class="daily-goal-editor" hidden>
+            <label for="daily-goal-input">Planned questions</label>
+            <input
+              id="daily-goal-input"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              inputmode="numeric"
+            />
+            <div class="daily-goal-editor-actions">
+              <button id="save-daily-goal" class="btn btn--dark" type="button">Save goal</button>
+              <button id="cancel-daily-goal" class="btn btn--outline" type="button">Cancel</button>
+            </div>
+          </div>
+          <p id="daily-goal-message" class="daily-goal-message">
+            Set a goal from 1 to 100 to begin.
+          </p>
+          <p id="stale-session-warning" class="daily-warning" role="status" hidden></p>
+        </section>
 
-      <section class="feedback" aria-label="Capture status">
-        <p id="status" class="status" role="status" aria-live="polite">
-          Reading the current LeetCode problem…
+        <section class="daily-problem-panel" aria-labelledby="daily-problem-title">
+          <div class="problem-kicker">
+            <span id="daily-problem-number">—</span>
+            <span id="daily-problem-difficulty" class="badge badge--muted">UNKNOWN</span>
+          </div>
+          <h2 id="daily-problem-title" class="problem-title">OPEN A LEETCODE PROBLEM</h2>
+          <ul id="daily-problem-topics" class="topics" aria-label="Current problem topics"></ul>
+          <a id="daily-problem-link" class="daily-problem-link" href="#" hidden>Open problem ↗</a>
+        </section>
+
+        <button id="log-daily-rep" class="btn btn--block log-daily-rep" type="button" disabled>
+          Log rep
+        </button>
+        <p id="daily-status" class="status daily-status" role="status" aria-live="polite">
+          Reading the active LeetCode tab…
         </p>
-        <button id="open-options" class="btn btn--quiet settings-action" type="button">
-          Bridge settings
-        </button>
+
+        <section class="current-reps" aria-labelledby="current-reps-heading">
+          <div class="section-heading-row">
+            <h2 id="current-reps-heading" class="section-label">LOGGED THIS SESSION</h2>
+            <span id="current-reps-total" class="badge badge--muted">0 REPS</span>
+          </div>
+          <ol id="current-reps-list" class="rep-list"></ol>
+          <p id="current-reps-empty" class="empty-copy">No repetitions logged yet.</p>
+          <button
+            id="finish-daily-session"
+            class="btn btn--block finish-daily-session"
+            type="button"
+            disabled
+          >
+            Finish &amp; reset
+          </button>
+        </section>
+
+        <section class="daily-history-section" aria-labelledby="daily-history-heading">
+          <div class="section-heading-row">
+            <h2 id="daily-history-heading" class="section-label">HISTORY</h2>
+            <span id="daily-history-total" class="badge badge--muted">0 SESSIONS</span>
+          </div>
+          <div id="daily-history" class="daily-history"></div>
+          <p id="daily-history-empty" class="empty-copy">Finished sessions will appear here.</p>
+          <button
+            id="show-older-history"
+            class="btn btn--quiet show-older-history"
+            type="button"
+            hidden
+          >
+            Show older sessions
+          </button>
+        </section>
       </section>
+
+      <section
+        id="notion-log-panel"
+        class="tracker-tab-panel"
+        role="tabpanel"
+        aria-labelledby="notion-log-tab"
+        hidden
+      >
+        <div class="notion-actions">
+          <p class="section-label">SPACED-REPETITION CAPTURE</p>
+          <button id="open-dashboard" class="btn dashboard-action" type="button">
+            Dashboard ↗
+          </button>
+        </div>
+
+        <section class="problem-panel" aria-labelledby="problem-title">
+          <div class="problem-kicker">
+            <span id="problem-number">—</span>
+            <span id="problem-difficulty" class="badge">UNKNOWN</span>
+          </div>
+          <h2 id="problem-title" class="problem-title">OPEN A LEETCODE PROBLEM</h2>
+          <div class="review-row">
+            <span>REVIEW</span>
+            <span id="review-state" class="badge badge--muted">READING…</span>
+          </div>
+          <ul id="problem-topics" class="topics" aria-label="Problem topics"></ul>
+        </section>
+
+        <section class="capture-section" aria-labelledby="capture-heading">
+          <h2 id="capture-heading" class="section-label">HOW DID THIS ATTEMPT GO?</h2>
+          <div id="outcome-actions" class="outcome-actions" hidden>
+            <button
+              class="btn outcome"
+              type="button"
+              data-result="Needed help"
+              aria-pressed="false"
+            >
+              Needed help
+            </button>
+            <button class="btn outcome" type="button" data-result="Solved" aria-pressed="false">
+              Solved
+            </button>
+          </div>
+          <button id="retry-attempt" class="btn btn--block retry" type="button" hidden>
+            Retry same attempt
+          </button>
+          <p id="success-confirmation" class="success-confirmation" hidden></p>
+        </section>
+
+        <details id="code-disclosure" class="code-disclosure" open>
+          <summary>
+            <span>CODE SNAPSHOT</span>
+            <span class="code-summary-meta">
+              <span id="code-language">UNKNOWN</span>
+              <span aria-hidden="true">·</span>
+              <span id="code-line-count">0 LINES</span>
+            </span>
+          </summary>
+          <pre id="captured-code" class="captured-code" tabindex="0"></pre>
+        </details>
+
+        <section class="feedback" aria-label="Capture status">
+          <p id="status" class="status" role="status" aria-live="polite">
+            Open Notion Log to check the current problem…
+          </p>
+          <button id="open-options" class="btn btn--quiet settings-action" type="button">
+            Bridge settings
+          </button>
+        </section>
+      </section>
+
+      <dialog id="finish-session-dialog" class="confirmation-dialog">
+        <h2>Finish this session?</h2>
+        <p id="finish-session-message"></p>
+        <div class="dialog-actions">
+          <button id="cancel-finish-session" class="btn btn--quiet" type="button">Cancel</button>
+          <button id="confirm-finish-session" class="btn btn--dark" type="button">
+            Finish &amp; reset
+          </button>
+        </div>
+      </dialog>
+
+      <dialog id="delete-session-dialog" class="confirmation-dialog">
+        <h2>Delete archived session?</h2>
+        <p>This permanently removes the session and all of its locally stored repetitions.</p>
+        <div class="dialog-actions">
+          <button id="cancel-delete-session" class="btn btn--quiet" type="button">Cancel</button>
+          <button id="confirm-delete-session" class="btn btn--critical" type="button">
+            Delete session
+          </button>
+        </div>
+      </dialog>
     </main>
     <script type="module" src="sidepanel.js"></script>
   </body>

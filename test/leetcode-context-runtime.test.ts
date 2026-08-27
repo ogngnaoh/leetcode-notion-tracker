@@ -5,6 +5,7 @@ import type {
 } from '../extension/src/leetcode-extraction.js';
 import {
   ContextChangePublisher,
+  GET_LEETCODE_CONTEXT_MESSAGE,
   createContentMessageHandler,
   type ContentScriptResponse,
 } from '../extension/src/leetcode-context-runtime.js';
@@ -47,7 +48,7 @@ async function request(
   handler: ReturnType<typeof createContentMessageHandler>,
 ): Promise<ContentScriptResponse> {
   return await new Promise((resolve) => {
-    expect(handler({ type: 'GET_LEETCODE_CONTEXT' }, resolve)).toBe(true);
+    expect(handler({ type: GET_LEETCODE_CONTEXT_MESSAGE }, resolve)).toBe(true);
   });
 }
 

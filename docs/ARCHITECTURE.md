@@ -8,10 +8,9 @@ deliberate Dock click → visible terminal launcher → local Hono bridge → lo
 LeetCode problem page
   → read-only content script
   → Chrome side panel
-  → POST /api/capture
-  → local Hono bridge
-  → Notion REST API
-  → Problems + Attempts
+      ├─ Daily Reps (default) → serialized chrome.storage.local session + archives
+      └─ Notion Log (on demand) → POST /api/capture → local Hono bridge
+                                                → Notion REST API → Problems + Attempts
 ```
 
 The extension does not call Notion directly. It stores a low-scope bridge token, while the bridge alone stores the Notion integration token.
@@ -135,8 +134,13 @@ Can read the currently displayed LeetCode problem page. It cannot access the Not
 
 ### Side panel
 
-Can access extension storage and call the configured bridge. It creates the capture event only after
-explicit submission. Its **Dashboard ↗** button derives the bridge origin’s exact `/dashboard` URL,
+Can access extension storage and call the configured bridge. Daily Reps is the default tab and logs
+only after an explicit **Log rep** click. Every click is a separate local repetition, without code,
+language, result, or Notion identifiers. The background worker accepts Daily Reps commands only from
+extension-owned pages and broadcasts storage changes to keep open panels synchronized.
+
+The secondary Notion Log creates a capture event only after explicit outcome submission. Its
+**Dashboard ↗** button derives the bridge origin’s exact `/dashboard` URL,
 focuses a matching tab and Chrome window (preferring an active match), and creates a tab only when no
 match exists. It stores no dashboard setting of its own. The extension action disables Chrome’s global
 side-panel behavior and enables `sidepanel.html` only for the exact tab where the user invoked it. The
@@ -173,4 +177,5 @@ authenticated.
 
 ### Notion
 
-Is the canonical store. No second application database is used.
+Is the canonical store for confirmed attempts and review state. Daily Reps is deliberately separate,
+non-canonical browser-local utility data; no second application database is used.

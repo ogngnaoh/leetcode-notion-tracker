@@ -78,6 +78,7 @@ function harness(
     status?: ProblemStatus;
     send?: SidePanelControllerDependencies['sendCaptureBody'];
     uuids?: string[];
+    captureEnabled?: boolean;
   } = {},
 ) {
   const area = options.area ?? new FakeSessionArea();
@@ -103,6 +104,7 @@ function harness(
     sendCaptureBody,
     randomUUID,
     now: () => new Date(2026, 6, 20, 8, 30, 0),
+    initialCaptureEnabled: options.captureEnabled ?? true,
   });
   return {
     area,
@@ -228,6 +230,23 @@ describe('CaptureSessionStore', () => {
 });
 
 describe('SidePanelController capture flow', () => {
+  it('does not read settings or contact the bridge until Notion Log is enabled', async () => {
+    const h = harness({ captureEnabled: false });
+
+    await initialize(h);
+
+    expect(h.getProblemStatus).not.toHaveBeenCalled();
+    expect(h.controller.view).toMatchObject({
+      snapshot: snapshot(),
+      message: 'Open Notion Log to check or capture this problem.',
+    });
+
+    await h.controller.setCaptureEnabled(true);
+
+    expect(h.getProblemStatus).toHaveBeenCalledWith(settings, 'two-sum');
+    expect(h.controller.view.mode).toBe('ready');
+  });
+
   it('loads status without posting before an outcome click', async () => {
     const h = harness();
 

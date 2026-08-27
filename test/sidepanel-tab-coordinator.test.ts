@@ -42,6 +42,7 @@ class FakeController implements CoordinatedSidePanelController {
   readonly acceptSnapshot = vi.fn(async (_snapshot: LeetCodeSnapshot | null) => undefined);
   readonly selectResult = vi.fn(async (_result: AttemptResult) => undefined);
   readonly retryPending = vi.fn(async () => undefined);
+  readonly setCaptureEnabled = vi.fn(async (_enabled: boolean) => undefined);
   readonly deactivate = vi.fn();
   private listener: ((next: SidePanelView) => void) | null = null;
 

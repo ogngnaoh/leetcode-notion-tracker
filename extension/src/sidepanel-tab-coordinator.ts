@@ -13,6 +13,7 @@ export interface CoordinatedSidePanelController {
   acceptSnapshot(snapshot: LeetCodeSnapshot | null): Promise<void>;
   selectResult(result: AttemptResult): Promise<void>;
   retryPending(): Promise<void>;
+  setCaptureEnabled(enabled: boolean): Promise<void>;
   deactivate(): void;
 }
 
@@ -51,6 +52,7 @@ function isLeetCodeProblem(url: string | undefined): boolean {
 export class SidePanelTabCoordinator {
   private generation = 0;
   private binding: ActiveBinding | null = null;
+  private captureEnabled = false;
 
   constructor(private readonly dependencies: SidePanelTabCoordinatorDependencies) {}
 
@@ -115,6 +117,8 @@ export class SidePanelTabCoordinator {
       binding.queuedSnapshot = null;
       await controller.acceptSnapshot(queuedSnapshot);
     }
+    if (this.binding !== binding) return;
+    await controller.setCaptureEnabled(this.captureEnabled);
   }
 
   async refreshActiveTab(tabId: number, url?: string): Promise<void> {
@@ -151,6 +155,11 @@ export class SidePanelTabCoordinator {
 
   async retryPending(): Promise<void> {
     await this.binding?.controller.retryPending();
+  }
+
+  async setCaptureEnabled(enabled: boolean): Promise<void> {
+    this.captureEnabled = enabled;
+    await this.binding?.controller.setCaptureEnabled(enabled);
   }
 
   private unbind(): void {
