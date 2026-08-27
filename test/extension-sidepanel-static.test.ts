@@ -19,7 +19,7 @@ describe('one-click side panel artifact', () => {
     expect(html).toContain('id="daily-history"');
   });
 
-  it('ships synchronized LCTrack version 0.2.7 with consistent user-facing identity', async () => {
+  it('ships synchronized LCTrack version 0.2.8 with consistent user-facing identity', async () => {
     const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
       readFile(resolve(root, 'package.json'), 'utf8'),
@@ -41,7 +41,7 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.2.7',
+      version: '0.2.8',
       description: 'Daily LeetCode reps with optional Notion capture',
     });
     expect(packageJson.version).toBe(manifest.version);
@@ -164,7 +164,39 @@ describe('one-click side panel artifact', () => {
     expect(styles).toMatch(
       /\.finish-daily-session:disabled[\s\S]*color:\s*var\(--text-secondary\)/,
     );
-    expect(styles).toMatch(/\.daily-reps-panel \.btn\s*{[\s\S]*min-height:\s*40px/);
+    expect(styles).toMatch(/\.daily-reps-panel \.btn\s*{[\s\S]*min-height:\s*36px/);
+  });
+
+  it('keeps the daily surface compact and removes controls that do not help daily logging', async () => {
+    const [html, styles, runtime] = await Promise.all([
+      readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
+      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
+      readFile(resolve(root, 'extension/src/sidepanel.ts'), 'utf8'),
+    ]);
+
+    expect(html).not.toContain('daily-problem-link');
+    expect(html).not.toContain('Open problem ↗');
+    expect(html).not.toContain('current-reps-empty');
+    expect(html).not.toContain('daily-history-empty');
+    expect(html).toMatch(/class="current-reps"[^>]*hidden/);
+    expect(html).toMatch(/class="daily-history-section"[^>]*hidden/);
+    expect(html).toContain('class="daily-problem-main"');
+    expect(styles).toMatch(/\.shell\s*,[\s\S]*padding:\s*var\(--space-2\)/);
+    expect(styles).toMatch(/\.tracker-tab\s*{[\s\S]*min-height:\s*36px/);
+    expect(styles).toMatch(/\.daily-progress-bar\s*{[\s\S]*height:\s*6px/);
+    expect(styles).toMatch(/\.log-daily-rep\s*{[\s\S]*min-height:\s*44px/);
+    expect(styles).toMatch(/\.daily-problem-main\s*{[\s\S]*grid-template-columns/);
+    expect(styles).toMatch(/\.history-session > summary\s*{[\s\S]*padding:\s*var\(--space-2\)/);
+    expect(runtime).toContain(
+      "item.className = target === dailyProblemTopics ? 'daily-topic' : 'chip'",
+    );
+    expect(runtime).toContain('currentRepsSection.hidden = count === 0');
+    expect(runtime).toContain('dailyHistorySection.hidden = count === 0');
+    expect(runtime).not.toContain("topicCopy.className = 'rep-topics'");
+    expect(runtime).toContain(
+      "rep.problem.topics.length > 0 ? ` · ${rep.problem.topics.join(' · ')}` : ''",
+    );
+    expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*font-size:\s*var\(--font-size-lg\)/);
   });
 
   it('documents asset hashes and includes the font license beside the files', async () => {

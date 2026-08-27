@@ -11,6 +11,10 @@ body {
 .settings-shell {
   width: min(100%, 680px);
   margin-inline: auto;
+  padding: var(--space-2);
+}
+
+.settings-shell {
   padding: var(--space-4);
 }
 
@@ -18,20 +22,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  padding-block: var(--space-1) var(--space-3);
+  gap: var(--space-2);
+  padding-block: 0 var(--space-2);
 }
 
 .tracker-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
   border: var(--border-width) solid var(--color-black);
 }
 
 .tracker-tab {
-  min-height: 42px;
-  padding: var(--space-2);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2);
   border: 0;
   background: var(--color-white);
   color: var(--text-primary);
@@ -51,7 +55,7 @@ body {
 }
 
 .daily-progress {
-  padding: var(--space-4);
+  padding: var(--space-3);
   border: var(--border-width) solid var(--color-black);
   background: var(--color-pink);
 }
@@ -62,7 +66,8 @@ body {
 }
 
 .daily-reps-panel .btn {
-  min-height: 40px;
+  min-height: 36px;
+  padding: 7px var(--space-2);
 }
 
 .daily-progress-heading-row,
@@ -77,8 +82,7 @@ body {
 }
 
 .daily-progress-count {
-  margin-top: var(--space-1);
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
 }
@@ -98,8 +102,8 @@ body {
 }
 
 .daily-progress-bar {
-  height: 12px;
-  margin-top: var(--space-3);
+  height: 6px;
+  margin-top: 8px;
   overflow: hidden;
   border: var(--border-width) solid var(--color-black);
   background: var(--color-white);
@@ -120,9 +124,11 @@ body {
 
 .daily-goal-editor {
   display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto;
+  align-items: end;
   gap: var(--space-2);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: var(--border-width) solid rgb(0 0 0 / 24%);
 }
 
@@ -133,18 +139,25 @@ body {
   gap: var(--space-1);
 }
 
+.daily-goal-field {
+  display: grid;
+  gap: 2px;
+}
+
 .daily-goal-editor input {
-  min-height: 42px;
+  min-height: 36px;
   border-color: var(--color-black);
 }
 
 .daily-goal-message {
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-2xs);
+  line-height: 16px;
   color: var(--text-secondary);
 }
 
 .daily-warning {
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   padding: var(--space-2);
   border: var(--border-width) solid var(--color-warning);
   background: var(--color-warning-surface);
@@ -152,22 +165,56 @@ body {
 }
 
 .daily-problem-panel {
-  margin-top: var(--space-3);
-  padding: var(--space-3);
+  margin-top: 8px;
+  padding: var(--space-2);
   border: var(--border-width) solid var(--color-black);
   background: var(--color-white);
 }
 
-.daily-problem-link {
-  display: inline-flex;
-  margin-top: var(--space-3);
-  color: var(--color-accent);
+.daily-problem-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-problem-main .problem-title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-md);
+  line-height: var(--leading-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#daily-problem-number {
+  color: var(--text-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.daily-problem-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0 0;
+  border-top: var(--border-width) solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: var(--font-size-2xs);
+  line-height: 16px;
+  list-style: none;
   text-transform: uppercase;
 }
 
+.daily-topic + .daily-topic::before {
+  margin-inline: var(--space-1);
+  content: '·';
+}
+
 .log-daily-rep {
-  min-height: 58px;
-  margin-top: var(--space-2);
+  min-height: 44px;
+  margin-top: var(--space-1);
   border-color: var(--color-black);
   background: var(--color-black);
   color: var(--color-white);
@@ -187,14 +234,16 @@ body {
 }
 
 .daily-status {
-  min-height: 32px;
-  margin-top: var(--space-2);
+  min-height: 20px;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-2xs);
+  line-height: 16px;
 }
 
 .current-reps,
 .daily-history-section {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: var(--border-width) solid var(--border-control);
 }
 
@@ -205,7 +254,7 @@ body {
 .rep-list {
   display: grid;
   gap: var(--space-1);
-  margin: var(--space-3) 0 0;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -214,7 +263,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-2);
   border: var(--border-width) solid var(--border-control);
   background: var(--color-white);
 }
@@ -235,19 +284,17 @@ body {
 }
 
 .rep-meta,
-.rep-topics,
 .history-session-meta,
 .empty-copy {
   color: var(--text-secondary);
 }
 
-.rep-meta,
-.rep-topics {
+.rep-meta {
   margin-top: var(--space-1);
   font-size: var(--font-size-2xs);
 }
 
-.rep-topics {
+.rep-meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -261,19 +308,24 @@ body {
   color: var(--color-critical);
 }
 
+.daily-reps-panel .remove-rep,
+.daily-reps-panel .delete-history-session {
+  min-height: 32px;
+}
+
 .empty-copy {
   margin-top: var(--space-3);
 }
 
 .finish-daily-session {
-  margin-top: var(--space-3);
+  margin-top: 8px;
   border-color: var(--color-black);
 }
 
 .daily-history {
   display: grid;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin-top: 8px;
 }
 
 .history-session {
@@ -282,7 +334,7 @@ body {
 }
 
 .history-session > summary {
-  padding: var(--space-3);
+  padding: var(--space-2);
   cursor: pointer;
   list-style-position: inside;
 }
@@ -293,13 +345,19 @@ body {
   vertical-align: middle;
 }
 
+.history-session-result {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .history-session-meta {
-  display: block;
-  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-size-2xs);
 }
 
 .history-session-body {
-  padding: 0 var(--space-3) var(--space-3);
+  padding: 0 var(--space-2) var(--space-2);
   border-top: var(--border-width) solid var(--border-default);
 }
 
@@ -376,7 +434,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);

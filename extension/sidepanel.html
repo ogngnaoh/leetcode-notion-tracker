@@ -81,15 +81,17 @@
             <span id="daily-progress-fill"></span>
           </div>
           <div id="daily-goal-editor" class="daily-goal-editor" hidden>
-            <label for="daily-goal-input">Planned questions</label>
-            <input
-              id="daily-goal-input"
-              type="number"
-              min="1"
-              max="100"
-              step="1"
-              inputmode="numeric"
-            />
+            <label class="daily-goal-field" for="daily-goal-input">
+              <span>Daily goal</span>
+              <input
+                id="daily-goal-input"
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                inputmode="numeric"
+              />
+            </label>
             <div class="daily-goal-editor-actions">
               <button id="save-daily-goal" class="btn btn--dark" type="button">Save goal</button>
               <button id="cancel-daily-goal" class="btn btn--outline" type="button">Cancel</button>
@@ -102,13 +104,16 @@
         </section>
 
         <section class="daily-problem-panel" aria-labelledby="daily-problem-title">
-          <div class="problem-kicker">
+          <div class="daily-problem-main">
             <span id="daily-problem-number">—</span>
+            <h2 id="daily-problem-title" class="problem-title">OPEN A LEETCODE PROBLEM</h2>
             <span id="daily-problem-difficulty" class="badge badge--muted">UNKNOWN</span>
           </div>
-          <h2 id="daily-problem-title" class="problem-title">OPEN A LEETCODE PROBLEM</h2>
-          <ul id="daily-problem-topics" class="topics" aria-label="Current problem topics"></ul>
-          <a id="daily-problem-link" class="daily-problem-link" href="#" hidden>Open problem ↗</a>
+          <ul
+            id="daily-problem-topics"
+            class="daily-problem-topics"
+            aria-label="Current problem topics"
+          ></ul>
         </section>
 
         <button id="log-daily-rep" class="btn btn--block log-daily-rep" type="button" disabled>
@@ -118,13 +123,17 @@
           Reading the active LeetCode tab…
         </p>
 
-        <section class="current-reps" aria-labelledby="current-reps-heading">
+        <section
+          id="current-reps-section"
+          class="current-reps"
+          aria-labelledby="current-reps-heading"
+          hidden
+        >
           <div class="section-heading-row">
-            <h2 id="current-reps-heading" class="section-label">LOGGED THIS SESSION</h2>
+            <h2 id="current-reps-heading" class="section-label">SESSION REPS</h2>
             <span id="current-reps-total" class="badge badge--muted">0 REPS</span>
           </div>
           <ol id="current-reps-list" class="rep-list"></ol>
-          <p id="current-reps-empty" class="empty-copy">No repetitions logged yet.</p>
           <button
             id="finish-daily-session"
             class="btn btn--block finish-daily-session"
@@ -135,13 +144,17 @@
           </button>
         </section>
 
-        <section class="daily-history-section" aria-labelledby="daily-history-heading">
+        <section
+          id="daily-history-section"
+          class="daily-history-section"
+          aria-labelledby="daily-history-heading"
+          hidden
+        >
           <div class="section-heading-row">
             <h2 id="daily-history-heading" class="section-label">HISTORY</h2>
             <span id="daily-history-total" class="badge badge--muted">0 SESSIONS</span>
           </div>
           <div id="daily-history" class="daily-history"></div>
-          <p id="daily-history-empty" class="empty-copy">Finished sessions will appear here.</p>
           <button
             id="show-older-history"
             class="btn btn--quiet show-older-history"

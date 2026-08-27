@@ -53,16 +53,15 @@ const dailyProblemNumber = element<HTMLSpanElement>('daily-problem-number');
 const dailyProblemTitle = element<HTMLHeadingElement>('daily-problem-title');
 const dailyProblemDifficulty = element<HTMLSpanElement>('daily-problem-difficulty');
 const dailyProblemTopics = element<HTMLUListElement>('daily-problem-topics');
-const dailyProblemLink = element<HTMLAnchorElement>('daily-problem-link');
 const logDailyRep = element<HTMLButtonElement>('log-daily-rep');
 const dailyStatus = element<HTMLParagraphElement>('daily-status');
+const currentRepsSection = element<HTMLElement>('current-reps-section');
 const currentRepsTotal = element<HTMLSpanElement>('current-reps-total');
 const currentRepsList = element<HTMLOListElement>('current-reps-list');
-const currentRepsEmpty = element<HTMLParagraphElement>('current-reps-empty');
 const finishDailySession = element<HTMLButtonElement>('finish-daily-session');
+const dailyHistorySection = element<HTMLElement>('daily-history-section');
 const dailyHistoryTotal = element<HTMLSpanElement>('daily-history-total');
 const dailyHistory = element<HTMLDivElement>('daily-history');
-const dailyHistoryEmpty = element<HTMLParagraphElement>('daily-history-empty');
 const showOlderHistory = element<HTMLButtonElement>('show-older-history');
 const finishSessionDialog = element<HTMLDialogElement>('finish-session-dialog');
 const finishSessionMessage = element<HTMLParagraphElement>('finish-session-message');
@@ -131,7 +130,7 @@ function renderTopics(target: HTMLUListElement, labels: string[]): void {
   target.replaceChildren();
   for (const label of labels) {
     const item = document.createElement('li');
-    item.className = 'chip';
+    item.className = target === dailyProblemTopics ? 'daily-topic' : 'chip';
     item.textContent = label;
     target.append(item);
   }
@@ -150,8 +149,6 @@ function renderDailySnapshot(snapshot: LeetCodeSnapshot | null): void {
     dailyProblemDifficulty.className = 'badge badge--muted';
     dailyProblemDifficulty.textContent = 'Unknown';
     renderTopics(dailyProblemTopics, []);
-    dailyProblemLink.hidden = true;
-    dailyProblemLink.removeAttribute('href');
     if (!dailyReadFailed) setDailyStatus('Open a LeetCode problem to log a repetition.');
     updateDailyControls();
     return;
@@ -164,8 +161,6 @@ function renderDailySnapshot(snapshot: LeetCodeSnapshot | null): void {
   dailyProblemDifficulty.className = `badge ${difficultyBadgeClass(snapshot.problem.difficulty)}`;
   dailyProblemDifficulty.textContent = snapshot.problem.difficulty;
   renderTopics(dailyProblemTopics, snapshot.problem.topics);
-  dailyProblemLink.href = snapshot.problem.url;
-  dailyProblemLink.hidden = false;
   if (!dailyReadFailed) {
     setDailyStatus(
       dailyState?.goal === null
@@ -219,14 +214,9 @@ function createRepRow(rep: DailyRep, removable: boolean): HTMLLIElement {
   primary.append(link);
   const meta = document.createElement('p');
   meta.className = 'rep-meta';
-  meta.textContent = `${rep.problem.difficulty} · ${formatTime(rep.loggedAt)}`;
+  const topicMeta = rep.problem.topics.length > 0 ? ` · ${rep.problem.topics.join(' · ')}` : '';
+  meta.textContent = `${rep.problem.difficulty}${topicMeta} · ${formatTime(rep.loggedAt)}`;
   copy.append(primary, meta);
-  if (rep.problem.topics.length > 0) {
-    const topicCopy = document.createElement('p');
-    topicCopy.className = 'rep-topics';
-    topicCopy.textContent = rep.problem.topics.join(' · ');
-    copy.append(topicCopy);
-  }
   item.append(copy);
   if (removable) {
     const remove = document.createElement('button');
@@ -246,8 +236,8 @@ function createRepRow(rep: DailyRep, removable: boolean): HTMLLIElement {
 
 function renderCurrentReps(state: DailyRepsStateV1): void {
   const count = state.currentReps.length;
+  currentRepsSection.hidden = count === 0;
   currentRepsTotal.textContent = countLabel(count, 'REP');
-  currentRepsEmpty.hidden = count > 0;
   currentRepsList.replaceChildren(
     ...[...state.currentReps].reverse().map((rep) => createRepRow(rep, true)),
   );
@@ -265,11 +255,14 @@ function createHistorySession(session: ArchivedRepSession): HTMLDetailsElement {
   const result = document.createElement('span');
   result.className = `badge ${session.reps.length >= session.goal ? '' : 'badge--muted'}`.trim();
   result.textContent = `${session.reps.length}/${session.goal}`;
-  heading.append(headingCopy, result);
   const meta = document.createElement('span');
   meta.className = 'history-session-meta';
-  meta.textContent = session.reps.length >= session.goal ? 'Goal complete' : 'Finished below goal';
-  summary.append(heading, meta);
+  meta.textContent = session.reps.length >= session.goal ? 'Complete' : 'Below goal';
+  const resultGroup = document.createElement('span');
+  resultGroup.className = 'history-session-result';
+  resultGroup.append(meta, result);
+  heading.append(headingCopy, resultGroup);
+  summary.append(heading);
   const body = document.createElement('div');
   body.className = 'history-session-body';
   const reps = document.createElement('ol');
@@ -288,8 +281,8 @@ function createHistorySession(session: ArchivedRepSession): HTMLDetailsElement {
 
 function renderHistory(state: DailyRepsStateV1): void {
   const count = state.archivedSessions.length;
+  dailyHistorySection.hidden = count === 0;
   dailyHistoryTotal.textContent = countLabel(count, 'SESSION');
-  dailyHistoryEmpty.hidden = count > 0;
   dailyHistory.replaceChildren(
     ...state.archivedSessions.slice(0, visibleHistoryCount).map(createHistorySession),
   );

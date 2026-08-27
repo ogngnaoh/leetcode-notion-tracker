@@ -352,8 +352,11 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await expect(panel.locator('#daily-reps-panel')).toBeVisible();
   await expect(panel.locator('#notion-log-panel')).toBeHidden();
   await expect(panel.locator('#daily-problem-title')).toHaveText('Two Sum');
+  await expect(panel.locator('#daily-problem-link')).toHaveCount(0);
   await expect(panel.locator('#daily-goal-editor')).toBeVisible();
   await expect(panel.locator('#log-daily-rep')).toBeDisabled();
+  await expect(panel.locator('.current-reps')).toBeHidden();
+  await expect(panel.locator('.daily-history-section')).toBeHidden();
   expect(bridge.requests).toHaveLength(0);
 
   await panel.locator('#daily-goal-input').fill('3');
@@ -369,6 +372,8 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
     '#1 Two Sum',
     '#1 Two Sum',
   ]);
+  await expect(panel.locator('.current-reps')).toBeVisible();
+  await expect(panel.locator('#finish-daily-session')).toBeVisible();
   await panel.locator('#current-reps-list .remove-rep').first().click();
   await expect(panel.locator('#daily-rep-count')).toHaveText('1');
   await panel.locator('#log-daily-rep').click();
@@ -380,6 +385,8 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await panel.locator('#confirm-finish-session').click();
   await expect(panel.locator('#daily-rep-count')).toHaveText('0');
   await expect(panel.locator('#daily-goal-display')).toHaveText('3');
+  await expect(panel.locator('.current-reps')).toBeHidden();
+  await expect(panel.locator('.daily-history-section')).toBeVisible();
   await expect(panel.locator('#daily-history .history-session')).toHaveCount(1);
   await expect(panel.locator('#daily-history .history-session')).toContainText('2/3');
 
@@ -388,13 +395,14 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await expect(reopened.locator('#daily-goal-display')).toHaveText('3');
   await expect(reopened.locator('#daily-history .history-session')).toHaveCount(1);
   await reopened.locator('#daily-history .history-session summary').click();
-  await expect(reopened.locator('#daily-history .rep-topics').first()).toContainText(
-    'Array · Hash Table',
+  await expect(reopened.locator('#daily-history .rep-meta').first()).toContainText(
+    'Easy · Array · Hash Table',
   );
   await reopened.locator('.delete-history-session').click();
   await expect(reopened.locator('#delete-session-dialog')).toBeVisible();
   await reopened.locator('#confirm-delete-session').click();
   await expect(reopened.locator('#daily-history .history-session')).toHaveCount(0);
+  await expect(reopened.locator('.daily-history-section')).toBeHidden();
 });
 
 test('keeps the bridge dormant on Daily Reps and activates the unchanged capture only on Notion Log', async () => {
