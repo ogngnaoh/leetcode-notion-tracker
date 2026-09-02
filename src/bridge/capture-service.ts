@@ -1,7 +1,12 @@
 import type { CaptureEvent, CaptureResult, ProblemStatus } from '../shared/contract.js';
 import { problemExternalKey } from '../shared/keys.js';
 import { computeReviewState } from '../shared/review.js';
-import type { CaptureRepository, StoredAttempt } from './repository.js';
+import type {
+  CaptureRepository,
+  ProblemRecord,
+  ProblemUpdate,
+  StoredAttempt,
+} from './repository.js';
 
 function timestampValue(value: string): number {
   const timestamp = Date.parse(value);
@@ -40,27 +45,25 @@ export class CaptureService {
 
   private async captureOnce(event: CaptureEvent): Promise<CaptureResult> {
     const existingAttempt = await this.repository.findAttemptByEventId(event.clientEventId);
-    if (existingAttempt) {
-      return this.withProblemLock(existingAttempt.problemKey, () =>
-        this.repairDuplicate(existingAttempt),
-      );
-    }
-
-    const externalKey = problemExternalKey(event.problem.slug);
+    // A recorded UUID wins over incoming retry metadata, including an invalid slug.
+    const externalKey = existingAttempt?.problemKey ?? problemExternalKey(event.problem.slug);
     return this.withProblemLock(externalKey, async () => {
-      const attemptCreatedWhileWaiting = await this.repository.findAttemptByEventId(
+      const repository = this.repository.captureSession(existingAttempt);
+      const reconciled = await this.reconcileLatest(repository, externalKey);
+      const attemptCreatedWhileWaiting = await repository.findAttemptByEventId(
         event.clientEventId,
+        externalKey,
       );
       if (attemptCreatedWhileWaiting) {
-        return this.repairDuplicate(attemptCreatedWhileWaiting);
+        const result = await this.repairDuplicate(repository, attemptCreatedWhileWaiting);
+        await repository.completeCapture();
+        return result;
       }
+      if (existingAttempt) throw new Error('Previously recorded capture receipt is missing.');
 
-      let problem = await this.repository.findProblemByExternalKey(externalKey);
-      if (problem) {
-        await this.repository.updateProblemMetadata(problem.pageId, event);
-      } else {
-        problem = await this.repository.createProblem(event, externalKey);
-      }
+      let problem = reconciled ?? (await repository.findProblemByExternalKey(externalKey));
+      const update: ProblemUpdate = problem ? { event } : {};
+      if (!problem) problem = await repository.createProblem(event, externalKey);
 
       const olderThanCanonical =
         problem.lastAttempt !== null &&
@@ -72,16 +75,18 @@ export class CaptureService {
             nextReview: problem.nextReview,
           }
         : computeReviewState(problem.solvedStreak, event.attempt.result, event.attempt.attemptedOn);
-      const attempt = await this.repository.createAttempt(problem, event, externalKey, review);
+      const attempt = await repository.createAttempt(problem, event, externalKey, review);
       if (
         problem.firstAttempt === null ||
         timestampValue(event.attempt.attemptedAt) < timestampValue(problem.firstAttempt)
       ) {
-        await this.repository.applyFirstAttempt(problem.pageId, event.attempt.attemptedAt);
+        update.firstAttempt = event.attempt.attemptedAt;
       }
       if (!olderThanCanonical) {
-        await this.repository.applyReview(problem.pageId, event.attempt.attemptedAt, review);
+        update.review = { attemptedAt: event.attempt.attemptedAt, state: review };
       }
+      await repository.updateProblem(problem.pageId, update);
+      await repository.completeCapture();
 
       return {
         duplicate: false,
@@ -92,30 +97,72 @@ export class CaptureService {
     });
   }
 
-  private async repairDuplicate(existingAttempt: StoredAttempt): Promise<CaptureResult> {
-    const problem = await this.repository.findProblemByPageId(existingAttempt.problemPageId);
+  private async reconcileLatest(
+    repository: CaptureRepository,
+    problemKey: string,
+  ): Promise<ProblemRecord | null> {
+    const latest = await repository.findLatestAttemptByProblemKey(problemKey);
+    if (!latest) return null;
+    const problem = await repository.findProblemByPageId(latest.problemPageId);
+    if (!problem) throw new Error('Latest Attempt references a missing Problem.');
+    const first = latest.firstAttempt ?? latest.attemptedAt;
+    const update: ProblemUpdate = latest.pendingEvent ? { event: latest.pendingEvent } : {};
+    if (
+      problem.firstAttempt === null ||
+      timestampValue(first) < timestampValue(problem.firstAttempt)
+    ) {
+      update.firstAttempt = first;
+    }
+    if (
+      problem.lastAttempt === null ||
+      timestampValue(latest.attemptedAt) > timestampValue(problem.lastAttempt) ||
+      (timestampValue(latest.attemptedAt) === timestampValue(problem.lastAttempt) &&
+        (problem.practiceState !== latest.review.practiceState ||
+          problem.solvedStreak !== latest.review.solvedStreak ||
+          problem.nextReview !== latest.review.nextReview))
+    ) {
+      update.review = { attemptedAt: latest.attemptedAt, state: latest.review };
+    }
+    await repository.updateProblem(problem.pageId, update);
+    // Recovery is durable before calculating the next event's streak.
+    await repository.completeCapture();
+    return {
+      ...problem,
+      ...(update.event
+        ? { ...update.event.problem, number: update.event.problem.number ?? null }
+        : {}),
+      ...(update.firstAttempt ? { firstAttempt: update.firstAttempt } : {}),
+      ...(update.review ? { ...update.review.state, lastAttempt: update.review.attemptedAt } : {}),
+    };
+  }
+
+  private async repairDuplicate(
+    repository: CaptureRepository,
+    existingAttempt: StoredAttempt,
+  ): Promise<CaptureResult> {
+    const problem = await repository.findProblemByPageId(existingAttempt.problemPageId);
     if (!problem) {
       throw new Error(`Attempt ${existingAttempt.pageId} references a missing Problem.`);
     }
+    const update: ProblemUpdate = {};
     if (
       problem.firstAttempt === null ||
       timestampValue(existingAttempt.attemptedAt) < timestampValue(problem.firstAttempt)
     ) {
-      await this.repository.applyFirstAttempt(
-        existingAttempt.problemPageId,
-        existingAttempt.attemptedAt,
-      );
+      update.firstAttempt = existingAttempt.attemptedAt;
     }
     if (
-      problem.lastAttempt === null ||
-      timestampValue(existingAttempt.attemptedAt) >= timestampValue(problem.lastAttempt)
+      !existingAttempt.superseded &&
+      (problem.lastAttempt === null ||
+        timestampValue(existingAttempt.attemptedAt) > timestampValue(problem.lastAttempt) ||
+        (timestampValue(existingAttempt.attemptedAt) === timestampValue(problem.lastAttempt) &&
+          (problem.practiceState !== existingAttempt.review.practiceState ||
+            problem.solvedStreak !== existingAttempt.review.solvedStreak ||
+            problem.nextReview !== existingAttempt.review.nextReview)))
     ) {
-      await this.repository.applyReview(
-        existingAttempt.problemPageId,
-        existingAttempt.attemptedAt,
-        existingAttempt.review,
-      );
+      update.review = { attemptedAt: existingAttempt.attemptedAt, state: existingAttempt.review };
     }
+    await repository.updateProblem(existingAttempt.problemPageId, update);
     return {
       duplicate: true,
       problemPageId: existingAttempt.problemPageId,

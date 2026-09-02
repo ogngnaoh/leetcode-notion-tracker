@@ -4,6 +4,7 @@ export interface DataSourceVerificationOptions {
   relation: { name: string; dataSourceId: string };
   selects: Record<string, readonly SelectOption[]>;
   selectNames?: Record<string, readonly string[]>;
+  optionalTypes?: Record<string, string>;
 }
 
 export function verifyV2DataSource(
@@ -19,7 +20,11 @@ export function verifyV2DataSource(
 
   const failures: string[] = [];
   for (const name of Object.keys(properties)) {
-    if (!expected[name]) failures.push(`${name}: unexpected`);
+    if (!expected[name] && !options.optionalTypes?.[name]) failures.push(`${name}: unexpected`);
+    const optionalType = options.optionalTypes?.[name];
+    if (optionalType && properties[name].type !== optionalType) {
+      failures.push(`${name}: expected ${optionalType}, received ${String(properties[name].type)}`);
+    }
   }
   for (const [name, type] of Object.entries(expected)) {
     const property = properties[name];

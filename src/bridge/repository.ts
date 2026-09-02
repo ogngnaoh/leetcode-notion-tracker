@@ -23,20 +23,31 @@ export interface StoredAttempt {
   attemptedAt: string;
   result: CaptureEvent['attempt']['result'];
   review: ReviewState;
+  superseded?: boolean;
+  firstAttempt?: string;
+  pendingEvent?: CaptureEvent;
+}
+
+export interface ProblemUpdate {
+  event?: CaptureEvent;
+  firstAttempt?: string;
+  review?: { attemptedAt: string; state: ReviewState };
 }
 
 export interface CaptureRepository {
-  findAttemptByEventId(clientEventId: string): Promise<StoredAttempt | null>;
+  // Called only after acquiring the Problem lock. State must not escape this capture.
+  captureSession(existing: StoredAttempt | null): CaptureRepository;
+  completeCapture(): Promise<void>;
+  updateProblem(problemPageId: string, update: ProblemUpdate): Promise<void>;
+  findAttemptByEventId(clientEventId: string, problemKey?: string): Promise<StoredAttempt | null>;
+  findLatestAttemptByProblemKey(problemKey: string): Promise<StoredAttempt | null>;
   findProblemByExternalKey(externalKey: string): Promise<ProblemRecord | null>;
   findProblemByPageId(pageId: string): Promise<ProblemRecord | null>;
   createProblem(event: CaptureEvent, externalKey: string): Promise<ProblemRecord>;
-  updateProblemMetadata(problemPageId: string, event: CaptureEvent): Promise<void>;
   createAttempt(
     problem: ProblemRecord,
     event: CaptureEvent,
     externalKey: string,
     review: ReviewState,
   ): Promise<StoredAttempt>;
-  applyReview(problemPageId: string, attemptedAt: string, review: ReviewState): Promise<void>;
-  applyFirstAttempt(problemPageId: string, attemptedAt: string): Promise<void>;
 }

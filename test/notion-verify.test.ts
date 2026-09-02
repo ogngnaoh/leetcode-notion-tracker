@@ -35,6 +35,26 @@ function dataSource(
 }
 
 describe('verifyV2DataSource', () => {
+  it('allows only explicitly configured optional Grind fields with their exact types', () => {
+    const source = dataSource(
+      { ...REQUIRED_PROBLEMS_TYPES, 'Grind Open': 'formula' },
+      { Attempts: 'attempts-source' },
+      { 'Practice State': STATE_OPTIONS },
+    );
+    const options = {
+      relation: { name: 'Attempts', dataSourceId: 'attempts-source' },
+      selects: { 'Practice State': STATE_OPTIONS },
+      optionalTypes: { 'Grind Open': 'formula' },
+    };
+    expect(() =>
+      verifyV2DataSource(source, 'Problems', REQUIRED_PROBLEMS_TYPES, options),
+    ).not.toThrow();
+    source.properties['Grind Open'].type = 'rich_text';
+    expect(() => verifyV2DataSource(source, 'Problems', REQUIRED_PROBLEMS_TYPES, options)).toThrow(
+      'expected formula',
+    );
+  });
+
   it('accepts exact v2 types, reciprocal relation target, and native option colors', () => {
     const problems = dataSource(
       REQUIRED_PROBLEMS_TYPES,

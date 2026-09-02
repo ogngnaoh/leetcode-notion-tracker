@@ -1,6 +1,7 @@
 import type { EditorModelReading } from './leetcode-model-reader.js';
 
 export const MODEL_CHANNEL = 'lctrack-model';
+export const MODEL_PROTOCOL_VERSION = 2;
 
 export interface MessageEventLike {
   data: unknown;
@@ -55,13 +56,22 @@ export function createModelRequester(
       const listener = (event: MessageEventLike): void => {
         if (event.source !== window || !isChannelMessage(event.data)) return;
         const message = event.data;
-        if (message.kind !== 'response' || message.id !== id || !isReading(message.reading)) return;
+        if (
+          message.protocolVersion !== MODEL_PROTOCOL_VERSION ||
+          message.kind !== 'response' ||
+          message.id !== id ||
+          !isReading(message.reading)
+        )
+          return;
         finish(message.reading);
       };
 
       const timer = setTimeout(() => finish(null), timeoutMs);
       window.addEventListener('message', listener);
-      window.postMessage({ channel: MODEL_CHANNEL, kind: 'request', id }, origin);
+      window.postMessage(
+        { channel: MODEL_CHANNEL, protocolVersion: MODEL_PROTOCOL_VERSION, kind: 'request', id },
+        origin,
+      );
     });
 }
 
@@ -73,9 +83,20 @@ export function createModelResponder(
   const listener = (event: MessageEventLike): void => {
     if (event.source !== window || !isChannelMessage(event.data)) return;
     const message = event.data;
-    if (message.kind !== 'request' || typeof message.id !== 'string') return;
+    if (
+      message.protocolVersion !== MODEL_PROTOCOL_VERSION ||
+      message.kind !== 'request' ||
+      typeof message.id !== 'string'
+    )
+      return;
     window.postMessage(
-      { channel: MODEL_CHANNEL, kind: 'response', id: message.id, reading: read() },
+      {
+        channel: MODEL_CHANNEL,
+        protocolVersion: MODEL_PROTOCOL_VERSION,
+        kind: 'response',
+        id: message.id,
+        reading: read(),
+      },
       origin,
     );
   };
@@ -85,13 +106,17 @@ export function createModelResponder(
 }
 
 export function publishModelChanged(window: ChannelWindow, origin: string): void {
-  window.postMessage({ channel: MODEL_CHANNEL, kind: 'changed' }, origin);
+  window.postMessage(
+    { channel: MODEL_CHANNEL, protocolVersion: MODEL_PROTOCOL_VERSION, kind: 'changed' },
+    origin,
+  );
 }
 
 export function listenForModelChanges(window: ChannelWindow, onChange: () => void): () => void {
   const listener = (event: MessageEventLike): void => {
     if (event.source !== window || !isChannelMessage(event.data)) return;
-    if (event.data.kind !== 'changed') return;
+    if (event.data.protocolVersion !== MODEL_PROTOCOL_VERSION || event.data.kind !== 'changed')
+      return;
     onChange();
   };
 

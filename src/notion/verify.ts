@@ -53,6 +53,15 @@ async function main(): Promise<void> {
   verifyV2DataSource(problems, 'LeetCode Problems', REQUIRED_PROBLEMS_TYPES, {
     relation: { name: 'Attempts', dataSourceId: manifest.attempts.dataSourceId },
     selects: { 'Practice State': STATE_OPTIONS, Difficulty: DIFFICULTY_OPTIONS },
+    optionalTypes: {
+      'Grind Block': 'select',
+      'Grind Day': 'select',
+      'Grind Order': 'number',
+      'Grind Done': 'checkbox',
+      'Grind Open': 'formula',
+      Solution: 'formula',
+      'Grind Attempt': 'relation',
+    },
   });
   verifyDatabasePresentation(problemsDatabase, 'LeetCode Problems', PROBLEMS_DATABASE_PRESENTATION);
   verifyDatabasePresentation(attemptsDatabase, 'LeetCode Attempts', ATTEMPTS_DATABASE_PRESENTATION);

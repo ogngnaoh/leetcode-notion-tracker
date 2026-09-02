@@ -62,7 +62,53 @@ function captureEvent(
 }
 
 describe('CaptureService', () => {
-  it('creates a problem and immutable attempt before applying review state', async () => {
+  it('keeps one stable Attempt page while retaining old event receipts', async () => {
+    const repository = new MemoryCaptureRepository();
+    const service = new CaptureService(repository);
+    const first = await service.capture(captureEvent());
+    const second = await service.capture(
+      captureEvent({
+        clientEventId: 'd83d5722-13dd-4b2f-8d60-115613364ed4',
+        attemptedAt: '2026-07-21T08:00:00-04:00',
+        attemptedOn: '2026-07-21',
+        result: 'Needed help',
+      }),
+    );
+    expect(second.attemptPageId).toBe(first.attemptPageId);
+    expect(await service.capture(captureEvent())).toMatchObject({ duplicate: true });
+    expect(repository.problems.get('leetcode:two-sum')?.practiceState).toBe('Needed help');
+  });
+
+  it('repairs a prior failed Problem write before computing a different capture', async () => {
+    const repository = new MemoryCaptureRepository();
+    const service = new CaptureService(repository);
+    vi.spyOn(repository, 'applyReview').mockRejectedValueOnce(new Error('offline'));
+    await expect(service.capture(captureEvent())).rejects.toThrow('offline');
+    const second = await service.capture(
+      captureEvent({
+        clientEventId: 'd83d5722-13dd-4b2f-8d60-115613364ed4',
+        attemptedAt: '2026-07-21T08:00:00-04:00',
+        attemptedOn: '2026-07-21',
+      }),
+    );
+    expect(second.review.solvedStreak).toBe(2);
+  });
+
+  it('does not rewind a newer event when an older receipt has the same timestamp', async () => {
+    const repository = new MemoryCaptureRepository();
+    const service = new CaptureService(repository);
+    await service.capture(captureEvent());
+    await service.capture(
+      captureEvent({
+        clientEventId: 'd83d5722-13dd-4b2f-8d60-115613364ed4',
+        result: 'Needed help',
+      }),
+    );
+    await service.capture(captureEvent());
+    expect(repository.problems.get('leetcode:two-sum')?.practiceState).toBe('Needed help');
+  });
+
+  it('creates a problem and first attempt before applying review state', async () => {
     const repository = new MemoryCaptureRepository();
     const service = new CaptureService(repository);
 
@@ -309,6 +355,9 @@ describe('CaptureService', () => {
     const service = new CaptureService(repository);
     const older = captureEvent();
     await service.capture(older);
+    // A completed duplicate now skips no-op writes. Simulate the interrupted
+    // Problem write this test is intended to repair, then race the next solve.
+    repository.problems.get('leetcode:two-sum')!.solvedStreak = 0;
     repository.blockedAttemptedAt = older.attempt.attemptedAt;
 
     const duplicate = service.capture(older);

@@ -3,7 +3,8 @@
 ## Runtime
 
 ```text
-deliberate Dock click → visible terminal launcher → local Hono bridge → local daily dashboard
+explicit app open → on-demand menu-bar controller → local Hono bridge → local daily dashboard
+          or deliberate Dock click → visible terminal launcher ↗
 
 LeetCode problem page
   → read-only content script
@@ -13,13 +14,28 @@ LeetCode problem page
                                                 → Notion REST API → Problems + Attempts
 ```
 
-The extension does not call Notion directly. It stores a low-scope bridge token, while the bridge alone stores the Notion integration token.
-The owner starts the bridge explicitly from the Dock after login. Finder is documented to open
-`lc-log.command` with Terminal.app by default, but the launcher remains terminal-neutral and also
-supports direct shell and alternate-terminal execution. It remains attached to the visible terminal,
-resolves the repository relative to itself, and never installs a login item or hidden daemon. An
-atomic per-repository, per-port claim in the user's temporary directory closes the pre-bind race
-between rapid clicks; dead-process claims are reclaimed, while live or malformed claims fail closed
+Daily Reps stores only public problem metadata and timestamps in the browser profile. Its background
+worker serializes every read-modify-write command so multiple open panels cannot lose repetitions.
+The versioned record is validated before use; malformed data is left untouched, and failed writes do
+not replace the last durable state. Reset is manual and archives the current repetitions with the
+goal at completion time.
+
+The extension does not call Notion directly. The Notion Log tab stores a low-scope bridge token,
+while the bridge alone stores the Notion integration token. Bridge status is not requested until the
+user opens that secondary tab.
+The owner starts the bridge explicitly by opening the generated `LCTrack.app` or by clicking the
+visible Terminal fallback after login. The menu-bar app is a locally compiled AppKit controller: it
+starts the existing launcher as its child, shows lifecycle state, and stops its owned child when the
+user chooses Stop or Quit. It does not register a LaunchAgent or login item, start at login, or restart
+after a crash. Its generated configuration contains only the repository path, Node executable path,
+and port. If a healthy bridge already exists, it reports an externally managed bridge and will not
+stop it.
+
+Finder is documented to open `lc-log.command` with Terminal.app for the fallback, but that launcher
+remains terminal-neutral and also supports direct shell and alternate-terminal execution. It stays
+attached to the visible terminal and resolves the repository relative to itself. Both paths use an
+atomic per-repository, per-port claim in the user's temporary directory to close the pre-bind race
+between rapid starts; dead-process claims are reclaimed, while live or malformed claims fail closed
 without killing anything.
 
 Dashboard first-Attempt counts and due rows come only from Notion. The new-problem maximum and
@@ -93,26 +109,68 @@ exact v3 manifest + paginated Problems/Attempts inventory
 
 ## Data flow for one capture
 
-1. On startup, the side panel requests the current snapshot. If an extension reload left no receiver,
-   it injects the MAIN-world model bridge and the read-only content script once through `scripting`
-   and retries.
+1. On startup, the side panel requests the current snapshot with the current protocol message type.
+   If an extension reload left no receiver or only a stale receiver, it injects the MAIN-world model
+   bridge and the read-only content script once through `scripting` and retries. Page-world model
+   requests and responses also carry a protocol version, so a stale bridge cannot win the reply race.
 2. The content script reads title, difficulty, and topics from the public DOM, and requests code and
-   language from the MAIN-world bridge, which returns Monaco's complete model buffer and its language
-   id. Because the model is independent of the virtualized view, a solution longer than the editor
+   language from the MAIN-world bridge. All problem subroutes, including accepted submissions, resolve
+   to the same canonical problem URL. An inactive mounted Description pane can supply metadata only
+   when its title link matches the current slug; other panes are excluded. DOM refreshes have a bounded
+   debounce so ongoing page animations do not keep deferring the read until user interaction.
+   The bridge prefers Monaco when present and otherwise reads
+   focus mode's CodeMirror state document from the problem-editor scope. Model events publish changes
+   immediately; a short discovery interval covers late hydration and programmatic CodeMirror updates.
+   Because both models are independent of their virtualized views, a solution longer than the editor
    viewport is captured in full. An unreadable model blocks capture rather than reporting a fragment.
 3. The user confirms `Needed help` or `Solved`. The extension creates a new UUID `Client Event ID` for
    every deliberate click, including unchanged code.
-4. The bridge checks Attempts for that event ID.
-5. When already present, the bridge returns the existing attempt and reapplies its stored review state.
-6. Otherwise, the bridge finds or creates the Problem by `leetcode:<slug>`.
+4. The bridge checks Attempts for the current event ID, then checks compact receipts on the latest
+   related Attempt under the per-problem lock. Pending writes are recovered before another capture.
+5. When already present, it returns the stable Attempt page and reconciles its saved review state.
+   Superseded receipts cannot rewind state, including events with identical timestamps.
+6. Otherwise, it uses the latest Attempt's canonical Problem relation, or finds/creates a Problem by
+   `leetcode:<slug>` when no Attempt exists. Grind-only duplicate rows do not receive capture state.
 7. It computes the calendar-date review transition.
-8. It creates one immutable Attempt containing Result, Resulting State, Resulting Solved Streak, and
-   Resulting Next Review.
-9. After Attempt creation, it sets `First Attempt` when missing or later than that Attempt timestamp.
-10. It updates the Problem's Practice State, Solved Streak, Last Attempt, and Next Review.
+8. It creates the first Attempt or updates the same retained page's managed code block and properties.
+   Before an in-place update, a Notion receipt block durably stores the pending event and computed
+   review state. Recovery repeats those writes. Older incoming events never replace code.
+9. A single Problem update applies metadata, `First Attempt` when missing/later, and the new Practice
+   State, Solved Streak, Last Attempt and Next Review when the capture is not older than canonical state.
+10. Only after those writes succeed is the pending payload removed, retaining the event UUID,
+    timestamp, result and review snapshot. The synchronous success response follows completion.
 
-The resulting review state is stored on the Attempt so a retry can reconcile a partially completed
-write without incrementing the solved streak twice.
+Each locked capture gets a short-lived repository session. Attempt properties, body/receipt blocks
+and the canonical Problem are read once, with full pagination, and discarded after that operation.
+Validated append/update responses supply new IDs and values without redundant read-backs; an error
+ends the session, so the next retry reloads actual Notion state. An unfinished capture is reconciled
+and completed before computing the next transition. Completed duplicate retries skip no-op writes.
+The pre-lock exact UUID query remains to recognize saved events before trusting retry metadata;
+the locked receipt lookup reuses its result instead of repeating the same global query.
+
+Normal replacements with one body/receipt page use 10 requests, first captures use 6, and completed
+duplicate retries use 5 read-only requests. This reduces serial round trips, not Notion's own request
+latency. The existing single-bridge-process requirement still applies; no cross-process transaction,
+durable local cache or background write queue was added.
+
+The resulting review state and compact historical receipts live in Notion, not in another application
+database. A collapsed `LCTrack retry receipts — managed` toggle is created on the first replacement.
+Each receipt is independently paginated, so historical event IDs are not squeezed into one property.
+The current `Client Event ID` property remains a single UUID. Exact retries use their original immutable
+problem key to locate older receipts. Before a different event, the latest stored result repairs any
+failed Problem update so its streak is not lost. User-authored blocks outside the managed code and
+receipt section remain untouched. One bridge process per tracker is required, as before.
+
+`notion:latest` inventories and backs up existing history but never trashes pages. Its optional
+`--apply-grind-link` mode changes the shared formula and adds a one-way `Grind Attempt` relation for
+Grind-only duplicate checklist rows, without changing the canonical reciprocal relation. Creation
+time and page ID break tied timestamps consistently in the runtime, preview and formula. Actual
+history cleanup is a separate approval step and must preserve all compact receipts before removal.
+The separate `notion:latest:cleanup` command requires the approved backup path and SHA-256. It
+recomputes the plan, checks live populations and each target's properties/body, preserves all receipts
+before any trash operation, and verifies retained content and Problem state afterward. A local audit
+binds each run to its backup. Recovery uses the same original backup and tolerates only its own
+receipt additions and approved pages already in Trash, not new capture state or extra deletion targets.
 
 Before sending, the extension persists one immutable pending body per tab. An uncertain response
 keeps that exact body and Client Event ID as the sole retry action. A successful response replaces it

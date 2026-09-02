@@ -46,21 +46,30 @@ token or Notion data, is replaced atomically, and is never copied into extension
 ## Local-first default
 
 The bridge binds to `127.0.0.1`, not every network interface. The extension manifest grants bridge access only to localhost on port 8787.
-The Dock launcher stores no credentials, sources no shell environment file, and prints no secret
-values. Finder documents Terminal.app as the default handler for `lc-log.command`, while direct shell
-and alternate-terminal launches remain supported. Every launch starts the same bridge in a visible
-foreground terminal only after an explicit action; there is no LaunchAgent, login item, cloud secret,
-or Notion token in extension storage.
-Its temporary startup claim contains only a process ID and is never used to transport credentials.
+The generated menu-bar app stores only the repository path, Node executable path, and configured port.
+It invokes the existing launcher, which reads `.env` itself; neither Notion nor bridge token enters the
+app bundle or its log. Opening the app is the explicit start action. Stop and Quit terminate only its
+owned launcher, crashes are not restarted, and there is no LaunchAgent, login item, cloud secret, or
+Notion token in extension storage. A healthy bridge started elsewhere is detected but never stopped.
+
+The visible Dock fallback stores no credentials, sources no shell environment file, and prints no
+secret values. Finder documents Terminal.app as the default handler for `lc-log.command`, while direct
+shell and alternate-terminal launches remain supported. Both launch paths use the same temporary
+startup claim, which contains only a process ID and is never used to transport credentials.
 
 ## LeetCode access
 
 The extension reads only the active `leetcode.com/problems/*` page. Problem title, difficulty, and
-topics come from the public DOM through the declared read-only content script. Captured code and
-language come from Monaco's editor model, read by a second declared content script running in the
-page's own JavaScript world, which answers nonce-matched requests over `window.postMessage`. The side
-panel reinjects both scripts once after an extension reload. Neither script focuses, scrolls, or
-otherwise mutates the page.
+topics come from the public DOM through the declared read-only content script. An inactive mounted
+Description pane may supply metadata only
+when its title link matches the current URL's slug, including on an accepted-submission route. Reading
+this pane does not click, focus, or activate it, and never requests another page. Captured code comes
+from the active Monaco or CodeMirror state model, read by a second declared content script running in
+the page's own JavaScript world. Monaco supplies its model language id; focus mode supplies the
+language from the CodeMirror content element scoped beneath LeetCode's problem-editor marker. The
+bridge answers nonce- and protocol-matched requests over `window.postMessage`, and the side panel
+reinjects both scripts once after an extension reload when the receiver is missing or stale. Neither
+script focuses, scrolls, edits, or reconstructs code from the virtualized editor DOM.
 
 Because the model reader runs in the page's world, a hostile page could forge a reply and supply code
 the user did not write. This is not a new exposure: the page already controls every element the
@@ -86,6 +95,21 @@ profiles and Playwright results live outside source control and are removed or k
 `build/` paths.
 
 ## Migration review
+
+Latest-Attempt retention keeps compact retry receipts in the existing Notion Attempt page. An
+unfinished update temporarily stores its user-confirmed code payload in a managed receipt block;
+successful recovery replaces that block with code-free receipt metadata. Only the managed captured
+code block is updated; unrelated notes are preserved. The narrow bridge API is unchanged.
+
+`npm run notion:latest` reads all Attempt properties and nested page bodies and writes a local
+mode-0600 backup under ignored `build/`, printing only IDs, counts, warnings and the backup hash.
+It never trashes pages. `--apply-grind-link` changes only the Grind formula, its optional one-way
+Attempt relation and that relation's values on Grind-only duplicate rows, with read-back checks.
+Historical removal requires separate approval after review and preservation of retry receipts.
+`notion:latest:cleanup` requires that approved backup and its SHA-256, writes a token-free local audit,
+and moves only the exact checked older pages to recoverable Notion Trash. It refuses changed
+properties, bodies, unapproved pages, or extra notes on deletion candidates. Run it with the bridge
+stopped; Notion does not provide a transaction spanning capture writes and cleanup.
 
 Run `npm run notion:migrate:v2` without flags first. Inspect the reported backup path and counts before
 running `npm run notion:migrate:v2 -- --apply`. Backups preserve legacy practice data and may contain

@@ -1,6 +1,6 @@
 {
   "name": "leetcode-notion-tracker",
-  "version": "0.2.8",
+  "version": "0.2.13",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -18,7 +18,10 @@
     "notion:migrate:v4": "tsx src/notion/migrate-v4-cli.ts",
     "notion:dashboard:rollback": "tsx src/notion/dashboard-rollback-cli.ts",
     "notion:verify": "tsx src/notion/verify.ts",
+    "notion:latest": "tsx src/notion/latest-attempt-cli.ts",
+    "notion:latest:cleanup": "tsx src/notion/latest-attempt-cleanup-cli.ts",
     "build:extension": "node scripts/build-extension.mjs",
+    "build:menu-bar": "node scripts/build-menu-bar-app.mjs",
     "build": "npm run typecheck && npm run build:extension",
     "test": "vitest run",
     "test:browser": "npm run build:extension && playwright test",

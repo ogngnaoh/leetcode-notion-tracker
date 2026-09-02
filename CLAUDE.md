@@ -14,6 +14,7 @@ npm run test             # vitest only (fast; no browser)
 npm run test:browser     # builds the extension, then Playwright against real Chromium
 npm run build            # typecheck + build extension into dist/extension
 npm run build:extension  # esbuild only, no typecheck
+npm run build:menu-bar   # compile the on-demand native macOS menu-bar app into build/
 npm run start:bridge     # Hono bridge on http://127.0.0.1:8787
 npm run format           # prettier --write .
 ```
@@ -27,8 +28,9 @@ extension/src/*.ts   esbuild (scripts/build-extension.mjs) -> dist/extension/*.j
 extension/           manifest.json, *.html, styles.css, icons/, vendor/ copied verbatim
 src/bridge/          Hono server on :8787 — the only thing holding the Notion token
 src/notion/          setup, migration, and verification CLIs
-src/launcher/        lc-log.command daily launcher
-test/*.ts            33 vitest files (Node, no browser)
+src/launcher/        shared bridge-launcher lifecycle
+macos/               native on-demand menu-bar controller source
+test/*.ts            35 vitest files (Node, no browser)
 test/browser/*.ts    3 Playwright specs, loaded as an unpacked extension
 docs/                ARCHITECTURE, NOTION_SCHEMA, SECURITY-MODEL, MANUAL_TEST
 ```

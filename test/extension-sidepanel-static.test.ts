@@ -19,7 +19,7 @@ describe('one-click side panel artifact', () => {
     expect(html).toContain('id="daily-history"');
   });
 
-  it('ships synchronized LCTrack version 0.2.8 with consistent user-facing identity', async () => {
+  it('ships synchronized LCTrack version 0.2.13 with consistent user-facing identity', async () => {
     const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
       readFile(resolve(root, 'package.json'), 'utf8'),
@@ -41,7 +41,7 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.2.8',
+      version: '0.2.13',
       description: 'Daily LeetCode reps with optional Notion capture',
     });
     expect(packageJson.version).toBe(manifest.version);

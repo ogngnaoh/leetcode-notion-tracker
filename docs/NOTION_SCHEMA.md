@@ -27,7 +27,8 @@ One row is one canonical LeetCode problem.
 
 ## LeetCode Attempts
 
-One row is one immutable attempt.
+One retained row is the latest captured Attempt for a canonical problem key. Its page ID stays stable
+across captures. Legacy historical rows remain until an explicitly approved cleanup.
 
 | Property                | Type         | Meaning                              |
 | ----------------------- | ------------ | ------------------------------------ |
@@ -50,6 +51,23 @@ use gray `New`, yellow `Needed help`, green `Solved`, and blue `Mastered`.
 `Result` uses yellow `Needed help` and green `Solved`.
 
 Captured code is written in the Attempt page body under `Captured code`.
+
+On the first replacement, the page gains a collapsed `LCTrack retry receipts — managed` toggle.
+Each JSON code block stores one version-1 receipt: `clientEventId`, `attemptedAt`, `result`, and
+`review`. A `pending` capture payload remains until both the Attempt and Problem writes finish. Never
+manually edit these blocks; they replace immutable history as the retry/recovery record. Completed
+receipts contain no historical solution code. `Client Event ID` remains the current event's UUID.
+`First Attempt` means the earliest recorded capture, even after older Attempt pages are removed.
+
+Existing Grind workspaces may additionally contain exactly these optional Problem properties:
+`Grind Day` (select), `Grind Block` (select), `Grind Order` (number), `Grind Done` (checkbox),
+`Solution` (formula, formerly `Grind Open`, whose legacy name is still accepted), and
+`Grind Attempt` (one-way relation to Attempts). The last field links
+Grind-only duplicate checklist rows without changing the canonical Attempt's `Problem` relation.
+The shared formula chooses the latest related Attempt by timestamp, creation time, then page ID,
+and returns a single native page chip for an in-place peek, or an empty list when no saved Attempt
+exists. It does not generate URL links or copy solution bodies. Fresh setup does not create
+Grind scaffolding. Required v4 properties and the two-database boundary are unchanged.
 
 ## v1→v2 migration contract
 

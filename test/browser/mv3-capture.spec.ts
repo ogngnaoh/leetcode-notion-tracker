@@ -12,13 +12,19 @@ interface ProblemFixture {
   number: number;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   topics: string[];
-  /** Monaco language id, which on LeetCode is the site's own slug. */
+  /** LeetCode editor language id. */
   language: string;
   code: string | null;
   /** How many logical lines the fake view renders. Omit to render all of them. */
   renderedLines?: number;
   /** Installs `window.monaco` well after the model request timeout, mimicking slow hydration. */
   lateModel?: boolean;
+  /** Editor runtime used by the page. Focus mode currently uses CodeMirror. */
+  editor?: 'monaco' | 'codemirror';
+  /** Accepted submissions keep the description mounted in an inactive layout tab. */
+  inactiveDescription?: boolean;
+  route?: string;
+  animate?: boolean;
 }
 
 const twoSum: ProblemFixture = {
@@ -57,7 +63,42 @@ function fixtureHtml(fixture: ProblemFixture): string {
   const editor =
     fixture.code === null
       ? ''
-      : `<div class="editor"><div class="monaco-editor"><div class="view-lines"></div></div></div>
+      : fixture.editor === 'codemirror'
+        ? `<div class="editor" data-track-load="code_editor"><div class="cm-editor"><div class="cm-scroller"><div class="cm-content" role="textbox" data-language=${JSON.stringify(fixture.language)}></div></div></div></div>
+    <script>
+      (() => {
+        const state = {
+          code: ${JSON.stringify(fixture.code)},
+          languageId: ${JSON.stringify(fixture.language)},
+          rendered: ${fixture.renderedLines ?? -1},
+        };
+        const content = document.querySelector('[data-track-load="code_editor"] .cm-content');
+        const view = { state: { doc: { toString: () => state.code } } };
+        content.cmView = { view };
+        const render = () => {
+          const lines = state.code.split('\\n');
+          const shown = state.rendered < 0 ? lines : lines.slice(0, state.rendered);
+          content.replaceChildren(...shown.map((text) => {
+            const line = document.createElement('div');
+            line.className = 'cm-line';
+            line.textContent = text;
+            return line;
+          }));
+        };
+        window.__setModel = (code, languageId, rendered) => {
+          state.code = code;
+          if (languageId !== undefined) {
+            state.languageId = languageId;
+            content.dataset.language = languageId;
+          }
+          if (rendered !== undefined) state.rendered = rendered;
+          view.state = { doc: { toString: () => state.code } };
+          render();
+        };
+        render();
+      })();
+    </script>`
+        : `<div class="editor"><div class="monaco-editor"><div class="view-lines"></div></div></div>
     <script>
       (() => {
         const contentListeners = new Set();
@@ -112,17 +153,21 @@ function fixtureHtml(fixture: ProblemFixture): string {
       })();
     </script>`;
   return `<!doctype html>
-    <html lang="en"><head><meta charset="utf-8"><title>${fixture.number}. ${fixture.title} - LeetCode</title>
+    <html lang="en"><head><meta charset="utf-8"><title>${fixture.inactiveDescription ? '' : `${fixture.number}. `}${fixture.title} - LeetCode</title>
     <style>
       body { font-family: sans-serif; }
       [data-testid="question-title"], [data-testid="difficulty"], .topic, .editor { display: block; width: 480px; min-height: 24px; }
-      .monaco-editor { position: relative; width: 480px; height: 240px; }
+      .monaco-editor, .cm-editor { position: relative; width: 480px; height: 240px; }
       .view-line { min-height: 20px; white-space: pre; }
       #topics { margin-top: 1600px; }
     </style></head><body>
-      <h1 data-testid="question-title">${fixture.number}. ${fixture.title}</h1>
+      ${fixture.inactiveDescription ? '<div class="flexlayout__tab"><div class="text-difficulty-hard">Hard</div><a href="/tag/unrelated/">Unrelated</a></div>' : ''}
+      <div class="flexlayout__tab" ${fixture.inactiveDescription ? 'style="display:none"' : ''}>
+      <h1 data-testid="question-title"><a href="/problems/${fixture.slug}/">${fixture.number}. ${fixture.title}</a></h1>
       <div data-testid="difficulty">${fixture.difficulty}</div>
-      ${editor}<section id="topics">${topics}</section>
+      <section id="topics">${topics}</section></div>
+      ${editor}
+      ${fixture.animate ? '<script>let tick = 0; setInterval(() => document.body.className = `tick-${++tick}`, 16);</script>' : ''}
     </body></html>`;
 }
 
@@ -191,15 +236,21 @@ async function openProblem(fixture: ProblemFixture): Promise<Page> {
   const page = await context.newPage();
   await page.route('https://leetcode.com/**', async (route) => {
     const url = new URL(route.request().url());
-    if (route.request().isNavigationRequest() && url.pathname === `/problems/${fixture.slug}/`) {
+    if (
+      route.request().isNavigationRequest() &&
+      url.pathname.startsWith(`/problems/${fixture.slug}/`)
+    ) {
       await route.fulfill({ status: 200, contentType: 'text/html', body: fixtureHtml(fixture) });
       return;
     }
     await route.abort('blockedbyclient');
   });
-  await page.goto(`https://leetcode.com/problems/${fixture.slug}/`);
+  await page.goto(`https://leetcode.com/problems/${fixture.slug}/${fixture.route ?? ''}`);
   if (fixture.code === null) {
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.monaco-editor, .cm-editor')).toHaveCount(0);
+  } else if (fixture.editor === 'codemirror') {
+    await expect(page.locator('[data-track-load="code_editor"] .cm-content')).toBeAttached();
+    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
   } else {
     await expect(page.locator('.view-lines > .view-line').first()).toBeAttached();
     expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
@@ -516,6 +567,76 @@ test('recovers when the model becomes readable after the request timed out', asy
   await expect(panel.locator('#outcome-actions')).toBeVisible();
 });
 
+test('recognizes an accepted submission on opening Daily Reps without touching the page', async () => {
+  await closeCasePages();
+  bridge.reset();
+  await setStorage(null);
+  const problem = await openProblem({
+    ...twoSum,
+    slug: 'minimum-size-subarray-sum',
+    title: 'Minimum Size Subarray Sum',
+    number: 209,
+    difficulty: 'Medium',
+    topics: ['Array', 'Binary Search', 'Sliding Window', 'Prefix Sum'],
+    code: null,
+    inactiveDescription: true,
+    route: 'submissions/2128112423/?envType=problem-list-v2&envId=dy84w0tv',
+  });
+  const panel = await openPanel(problem, false);
+
+  await expect(panel.locator('#daily-problem-title')).toHaveText('Minimum Size Subarray Sum');
+  await expect(panel.locator('#daily-problem-number')).toHaveText('#209');
+  await expect(panel.locator('#daily-problem-difficulty')).toHaveText('Medium');
+  await expect(panel.locator('#daily-problem-topics li')).toHaveText([
+    'Array',
+    'Binary Search',
+    'Sliding Window',
+    'Prefix Sum',
+  ]);
+  await expect(problem.locator('[data-testid="question-title"]')).toBeHidden();
+  expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+  expect(await problem.evaluate(() => window.scrollY)).toBe(0);
+  expect(bridge.requests).toHaveLength(0);
+});
+
+test('reads inactive description metadata when opening after editor hydration without page clicks', async () => {
+  const { problem, panel } = await setupCase({
+    ...twoSum,
+    inactiveDescription: true,
+    lateModel: true,
+    animate: true,
+  });
+
+  await expect(panel.locator('#problem-title')).toHaveText(twoSum.title);
+  await expect(panel.locator('#problem-number')).toHaveText('#1');
+  await expect(panel.locator('#problem-difficulty')).toHaveText('Easy');
+  await expect(panel.locator('#problem-topics li')).toHaveText(['Array', 'Hash Table']);
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  await expect(problem.locator('[data-testid="question-title"]')).toBeHidden();
+  expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+  expect(bridge.posts()).toHaveLength(0);
+});
+
+test('keeps the same problem and exact code when Description changes to Accepted', async () => {
+  const { problem, panel } = await setupCase();
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  await problem.evaluate(() => {
+    history.pushState({}, '', '/problems/two-sum/submissions/2128112423/');
+    const description = document.querySelector<HTMLElement>('.flexlayout__tab');
+    if (description) description.style.display = 'none';
+    document.title = 'Two Sum - LeetCode';
+  });
+  // A fresh panel must read the submission URL too, independent of earlier publications.
+  await panel.reload();
+  await problem.bringToFront();
+  await expect(panel.locator('#daily-problem-number')).toHaveText('#1');
+  await expect(panel.locator('#daily-problem-title')).toHaveText('Two Sum');
+  await expect(panel.locator('#daily-problem-difficulty')).toHaveText('Easy');
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+  expect(bridge.posts()).toHaveLength(0);
+});
+
 test('captures the whole model when the view renders only part of it', async () => {
   const longSolution = Array.from(
     { length: 40 },
@@ -538,6 +659,36 @@ test('captures the whole model when the view renders only part of it', async () 
   const event = JSON.parse(bridge.posts()[0]!.body!) as { attempt: { code: string } };
   expect(event.attempt.code).toBe(longSolution);
   expect(event.attempt.code.split('\n')).toHaveLength(40);
+});
+
+test('captures and tracks the complete CodeMirror focus-mode model', async () => {
+  const longSolution = Array.from(
+    { length: 60 },
+    (_, index) => `focus_line_${index + 1} = ${index}`,
+  ).join('\n');
+  const { problem, panel } = await setupCase({
+    ...twoSum,
+    editor: 'codemirror',
+    language: 'python',
+    code: longSolution,
+    renderedLines: 4,
+  });
+
+  await expect(problem.locator('.cm-content > .cm-line')).toHaveCount(4);
+  await expect(problem.locator('.monaco-editor')).toHaveCount(0);
+  await expect(panel.locator('#code-language')).toHaveText('Python');
+  await expect(panel.locator('#code-line-count')).toHaveText('60 lines');
+  await expect(panel.locator('#captured-code')).toHaveText(longSolution);
+
+  const changed = `${longSolution}\nreturn answer`;
+  await setCode(problem, changed, false);
+  await expect(panel.locator('#code-line-count')).toHaveText('61 lines');
+  await expect(panel.locator('#captured-code')).toHaveText(changed);
+
+  await choose(panel, 'Solved');
+  await expect(panel.locator('#success-confirmation')).toBeVisible();
+  const event = JSON.parse(bridge.posts()[0]!.body!) as { attempt: { code: string } };
+  expect(event.attempt.code).toBe(changed);
 });
 
 test('renders a due status from the authenticated status endpoint without posting', async () => {

@@ -4,6 +4,8 @@ import type { EditorModelReading } from './leetcode-model-reader.js';
 export interface VisibleTextCandidate {
   text: string;
   visible: boolean;
+  /** Public metadata in the mounted description matched to the current URL's slug. */
+  inCurrentDescription?: boolean;
 }
 
 export interface TopicCandidate extends VisibleTextCandidate {
@@ -57,11 +59,7 @@ function problemLocation(locationUrl: string): { slug: string; url: string } | n
     return null;
   }
   if (parsed.protocol !== 'https:' || parsed.hostname !== 'leetcode.com') return null;
-  const match =
-    /^\/problems\/([a-z0-9-]+)\/(?:description\/?)?$|^\/problems\/([a-z0-9-]+)\/?$/.exec(
-      parsed.pathname,
-    );
-  const slug = match?.[1] ?? match?.[2];
+  const slug = /^\/problems\/([a-z0-9-]+)(?:\/.*)?$/.exec(parsed.pathname)?.[1];
   if (!slug) return null;
   return {
     slug,
@@ -79,7 +77,7 @@ function titleFromDocument(documentTitle: string): string {
 
 function extractDifficulty(candidates: VisibleTextCandidate[]): Difficulty {
   for (const candidate of candidates) {
-    if (!candidate.visible) continue;
+    if (!candidate.visible && !candidate.inCurrentDescription) continue;
     const value = candidate.text.trim();
     if (value === 'Easy' || value === 'Medium' || value === 'Hard') return value;
   }
@@ -104,7 +102,12 @@ function extractTopics(candidates: TopicCandidate[]): string[] {
   const seen = new Set<string>();
   for (const candidate of candidates) {
     const label = candidate.text.trim();
-    if (!candidate.visible || !label || !isLeetCodeTagHref(candidate.href) || seen.has(label)) {
+    if (
+      (!candidate.visible && !candidate.inCurrentDescription) ||
+      !label ||
+      !isLeetCodeTagHref(candidate.href) ||
+      seen.has(label)
+    ) {
       continue;
     }
     seen.add(label);
@@ -146,7 +149,7 @@ const LANGUAGES = new Map<string, string>([
   ['ts', 'TypeScript'],
 ]);
 
-/** Maps Monaco's language id, which on LeetCode is the site's own slug, to a display name. */
+/** Maps LeetCode's editor language id to a display name. */
 function normalizeLanguage(languageId: string): string {
   return LANGUAGES.get(languageId.trim().toLowerCase()) ?? 'Unknown';
 }
@@ -169,7 +172,7 @@ export async function extractLeetCodeSnapshot(
   if (!location) return null;
 
   const visibleTitle = candidates.titleCandidates.find(
-    (candidate) => candidate.visible && candidate.text.trim(),
+    (candidate) => (candidate.visible || candidate.inCurrentDescription) && candidate.text.trim(),
   )?.text;
   const normalized = normalizeProblemTitle(
     visibleTitle ?? titleFromDocument(candidates.documentTitle),

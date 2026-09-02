@@ -1,6 +1,7 @@
 import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 
-export const GET_LEETCODE_CONTEXT_MESSAGE = 'GET_LEETCODE_CONTEXT_V2';
+export const GET_LEETCODE_CONTEXT_MESSAGE = 'GET_LEETCODE_CONTEXT_V3';
+export const LEETCODE_CONTEXT_CHANGED_MESSAGE = 'LEETCODE_CONTEXT_CHANGED_V3';
 
 export interface GetLeetCodeContextMessage {
   type: typeof GET_LEETCODE_CONTEXT_MESSAGE;
@@ -11,7 +12,7 @@ export interface ContentScriptResponse {
 }
 
 export interface LeetCodeContextChangedMessage {
-  type: 'LEETCODE_CONTEXT_CHANGED';
+  type: typeof LEETCODE_CONTEXT_CHANGED_MESSAGE;
   context: LeetCodeSnapshot | null;
 }
 
@@ -44,6 +45,7 @@ function publicationKey(context: LeetCodeSnapshot | null): string {
 
 export class ContextChangePublisher {
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private maxWaitTimer: ReturnType<typeof setTimeout> | undefined;
   private revision = 0;
   private publishedKey: string | undefined;
   private running = false;
@@ -56,19 +58,29 @@ export class ContextChangePublisher {
   ) {}
 
   notifyChange(): void {
-    const revision = ++this.revision;
+    this.revision += 1;
     if (this.timer !== undefined) clearTimeout(this.timer);
-    this.timer = setTimeout(() => {
-      this.timer = undefined;
-      this.runOrQueue(revision);
-    }, this.debounceMs);
+    this.timer = setTimeout(() => this.flush(), this.debounceMs);
+    // Charts and other animations can mutate continuously while the editor is
+    // unfocused. Bound the debounce so they cannot postpone discovery forever.
+    this.maxWaitTimer ??= setTimeout(() => this.flush(), Math.max(500, this.debounceMs));
   }
 
   dispose(): void {
     this.revision += 1;
     if (this.timer !== undefined) clearTimeout(this.timer);
+    if (this.maxWaitTimer !== undefined) clearTimeout(this.maxWaitTimer);
     this.timer = undefined;
+    this.maxWaitTimer = undefined;
     this.queuedRevision = undefined;
+  }
+
+  private flush(): void {
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    if (this.maxWaitTimer !== undefined) clearTimeout(this.maxWaitTimer);
+    this.timer = undefined;
+    this.maxWaitTimer = undefined;
+    this.runOrQueue(this.revision);
   }
 
   private runOrQueue(revision: number): void {

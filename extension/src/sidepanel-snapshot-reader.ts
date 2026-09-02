@@ -18,12 +18,15 @@ export function createSnapshotReader(dependencies: SnapshotReaderDependencies) {
 
   return async (tabId: number): Promise<LeetCodeSnapshot | null> => {
     try {
-      return (await dependencies.sendMessage(tabId))?.context ?? null;
+      const response = await dependencies.sendMessage(tabId);
+      if (response !== undefined) return response.context;
+      if (injectedTabs.has(tabId)) return null;
     } catch (error) {
       if (!hasNoReceiver(error) || injectedTabs.has(tabId)) throw error;
-      injectedTabs.add(tabId);
-      await dependencies.injectContentScripts(tabId);
-      return (await dependencies.sendMessage(tabId))?.context ?? null;
     }
+
+    injectedTabs.add(tabId);
+    await dependencies.injectContentScripts(tabId);
+    return (await dependencies.sendMessage(tabId))?.context ?? null;
   };
 }

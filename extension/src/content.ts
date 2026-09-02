@@ -1,5 +1,6 @@
 import {
   ContextChangePublisher,
+  LEETCODE_CONTEXT_CHANGED_MESSAGE,
   createContentMessageHandler,
   type LeetCodeContextChangedMessage,
 } from './leetcode-context-runtime.js';
@@ -30,7 +31,7 @@ const publisher = new ContextChangePublisher(
   extractCurrentContext,
   async (context) => {
     const message: LeetCodeContextChangedMessage = {
-      type: 'LEETCODE_CONTEXT_CHANGED',
+      type: LEETCODE_CONTEXT_CHANGED_MESSAGE,
       context,
     };
     await chrome.runtime.sendMessage(message).catch(() => undefined);

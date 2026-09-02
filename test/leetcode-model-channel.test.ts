@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   MODEL_CHANNEL,
+  MODEL_PROTOCOL_VERSION,
   createModelRequester,
   createModelResponder,
   listenForModelChanges,
@@ -39,14 +40,36 @@ class FakeWindow implements ChannelWindow {
 }
 
 const reading = { code: 'class Solution:', languageId: 'python3' };
+const currentMessage = (message: Record<string, unknown>) => ({
+  channel: MODEL_CHANNEL,
+  protocolVersion: MODEL_PROTOCOL_VERSION,
+  ...message,
+});
 
 describe('model requester', () => {
+  it('ignores a stale unversioned response and accepts the current bridge response', async () => {
+    const win = new FakeWindow();
+    const request = createModelRequester(win, 'https://leetcode.com', () => 'id-1');
+    const pending = request();
+
+    win.deliver({ channel: MODEL_CHANNEL, kind: 'response', id: 'id-1', reading: null });
+    win.deliver({
+      channel: MODEL_CHANNEL,
+      protocolVersion: MODEL_PROTOCOL_VERSION,
+      kind: 'response',
+      id: 'id-1',
+      reading,
+    });
+
+    await expect(pending).resolves.toEqual(reading);
+  });
+
   it('posts a request carrying the channel and a fresh id', async () => {
     const win = new FakeWindow();
     const request = createModelRequester(win, 'https://leetcode.com', () => 'id-1');
     const pending = request();
-    expect(win.sent).toEqual([{ channel: MODEL_CHANNEL, kind: 'request', id: 'id-1' }]);
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'response', id: 'id-1', reading });
+    expect(win.sent).toEqual([currentMessage({ kind: 'request', id: 'id-1' })]);
+    win.deliver(currentMessage({ kind: 'response', id: 'id-1', reading }));
     await expect(pending).resolves.toEqual(reading);
   });
 
@@ -54,7 +77,7 @@ describe('model requester', () => {
     const win = new FakeWindow();
     const request = createModelRequester(win, 'https://leetcode.com', () => 'id-1');
     const pending = request();
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'response', id: 'id-1', reading: null });
+    win.deliver(currentMessage({ kind: 'response', id: 'id-1', reading: null }));
     await expect(pending).resolves.toBeNull();
   });
 
@@ -63,7 +86,7 @@ describe('model requester', () => {
     const request = createModelRequester(win, 'https://leetcode.com', () => 'id-1');
     const pending = request();
     expect(win.listenerCount).toBe(1);
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'response', id: 'id-1', reading });
+    win.deliver(currentMessage({ kind: 'response', id: 'id-1', reading }));
     await pending;
     expect(win.listenerCount).toBe(0);
   });
@@ -79,13 +102,13 @@ describe('model requester', () => {
   });
 
   it.each([
-    ['a foreign source', { channel: MODEL_CHANNEL, kind: 'response', id: 'id-1', reading }, {}],
-    ['a mismatched id', { channel: MODEL_CHANNEL, kind: 'response', id: 'other', reading }, null],
+    ['a foreign source', currentMessage({ kind: 'response', id: 'id-1', reading }), {}],
+    ['a mismatched id', currentMessage({ kind: 'response', id: 'other', reading }), null],
     ['a foreign channel', { channel: 'evil', kind: 'response', id: 'id-1', reading }, null],
     ['a non-object payload', 'nonsense', null],
     [
       'a malformed reading',
-      { channel: MODEL_CHANNEL, kind: 'response', id: 'id-1', reading: { code: 5 } },
+      currentMessage({ kind: 'response', id: 'id-1', reading: { code: 5 } }),
       null,
     ],
   ])('ignores %s', async (_label, data, source) => {
@@ -103,21 +126,19 @@ describe('model responder', () => {
   it('replies to a request with the current reading', () => {
     const win = new FakeWindow();
     createModelResponder(win, 'https://leetcode.com', () => reading);
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'request', id: 'id-9' });
-    expect(win.sent).toEqual([{ channel: MODEL_CHANNEL, kind: 'response', id: 'id-9', reading }]);
+    win.deliver(currentMessage({ kind: 'request', id: 'id-9' }));
+    expect(win.sent).toEqual([currentMessage({ kind: 'response', id: 'id-9', reading })]);
   });
 
   it('replies with a null reading when no model is readable', () => {
     const win = new FakeWindow();
     createModelResponder(win, 'https://leetcode.com', () => null);
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'request', id: 'id-9' });
-    expect(win.sent).toEqual([
-      { channel: MODEL_CHANNEL, kind: 'response', id: 'id-9', reading: null },
-    ]);
+    win.deliver(currentMessage({ kind: 'request', id: 'id-9' }));
+    expect(win.sent).toEqual([currentMessage({ kind: 'response', id: 'id-9', reading: null })]);
   });
 
   it.each([
-    ['a response message', { channel: MODEL_CHANNEL, kind: 'response', id: 'x', reading: null }],
+    ['a response message', currentMessage({ kind: 'response', id: 'x', reading: null })],
     ['a foreign channel', { channel: 'evil', kind: 'request', id: 'x' }],
     ['a request without an id', { channel: MODEL_CHANNEL, kind: 'request' }],
   ])('does not reply to %s', (_label, data) => {
@@ -131,7 +152,7 @@ describe('model responder', () => {
     const win = new FakeWindow();
     const dispose = createModelResponder(win, 'https://leetcode.com', () => reading);
     dispose();
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'request', id: 'id-9' });
+    win.deliver(currentMessage({ kind: 'request', id: 'id-9' }));
     expect(win.sent).toEqual([]);
   });
 });
@@ -140,19 +161,19 @@ describe('change notifications', () => {
   it('publishes a changed message', () => {
     const win = new FakeWindow();
     publishModelChanged(win, 'https://leetcode.com');
-    expect(win.sent).toEqual([{ channel: MODEL_CHANNEL, kind: 'changed' }]);
+    expect(win.sent).toEqual([currentMessage({ kind: 'changed' })]);
   });
 
   it('invokes the callback for a changed message from this window', () => {
     const win = new FakeWindow();
     const onChange = vi.fn();
     listenForModelChanges(win, onChange);
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'changed' });
+    win.deliver(currentMessage({ kind: 'changed' }));
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it.each([
-    ['a foreign source', { channel: MODEL_CHANNEL, kind: 'changed' }, {}],
+    ['a foreign source', currentMessage({ kind: 'changed' }), {}],
     ['a foreign channel', { channel: 'evil', kind: 'changed' }, null],
     ['another kind', { channel: MODEL_CHANNEL, kind: 'request', id: 'x' }, null],
   ])('ignores %s', (_label, data, source) => {
@@ -167,7 +188,7 @@ describe('change notifications', () => {
     const win = new FakeWindow();
     const onChange = vi.fn();
     listenForModelChanges(win, onChange)();
-    win.deliver({ channel: MODEL_CHANNEL, kind: 'changed' });
+    win.deliver(currentMessage({ kind: 'changed' }));
     expect(onChange).not.toHaveBeenCalled();
   });
 });

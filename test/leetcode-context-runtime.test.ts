@@ -77,6 +77,28 @@ describe('content-script context runtime', () => {
     expect(extract).not.toHaveBeenCalled();
   });
 
+  it('ignores the old extraction protocol after an extension reload', () => {
+    const extract = vi.fn(async () => unavailable('two-sum'));
+    const handler = createContentMessageHandler(extract);
+
+    expect(handler({ type: 'GET_LEETCODE_CONTEXT_V2' }, vi.fn())).toBe(false);
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  it('publishes without waiting for continuous page animations to stop', async () => {
+    vi.useFakeTimers();
+    const publish = vi.fn();
+    const publisher = new ContextChangePublisher(async () => unavailable('two-sum'), publish, 25);
+
+    for (let elapsed = 0; elapsed < 600; elapsed += 10) {
+      publisher.notifyChange();
+      await vi.advanceTimersByTimeAsync(10);
+    }
+
+    expect(publish).toHaveBeenCalledWith(unavailable('two-sum'));
+    publisher.dispose();
+  });
+
   it('debounces changes and publishes only when the fingerprint changes', async () => {
     vi.useFakeTimers();
     let current = available('two-sum', 'first');

@@ -58,6 +58,29 @@ describe('LeetCode public-DOM extraction', () => {
     });
   });
 
+  it.each([
+    'submissions/',
+    'submissions/2128112423/?envType=problem-list-v2&envId=dy84w0tv',
+    'solutions/',
+    'editorial/',
+  ])('recognizes the problem on the %s tab without an editor reading', async (route) => {
+    await expect(
+      extractLeetCodeSnapshot(
+        candidates({
+          locationUrl: `https://leetcode.com/problems/minimum-size-subarray-sum/${route}`,
+          documentTitle: 'Minimum Size Subarray Sum - LeetCode',
+        }),
+      ),
+    ).resolves.toMatchObject({
+      codeAvailable: false,
+      problem: {
+        slug: 'minimum-size-subarray-sum',
+        title: 'Minimum Size Subarray Sum',
+        url: 'https://leetcode.com/problems/minimum-size-subarray-sum/',
+      },
+    });
+  });
+
   it('falls back to the document title and then the slug', async () => {
     const fromDocument = await extractLeetCodeSnapshot(
       candidates({ documentTitle: 'LeetCode | 42. Trapping Rain Water' }),
@@ -77,6 +100,15 @@ describe('LeetCode public-DOM extraction', () => {
     await expect(
       extractLeetCodeSnapshot(candidates({ locationUrl: 'https://leetcode.cn/problems/two-sum/' })),
     ).resolves.toBeNull();
+  });
+
+  it.each([
+    'https://leetcode.com/problems/',
+    'https://leetcode.com/problems/two-sum-invalid_slug/submissions/123/',
+    'https://leetcode.com.evil.example/problems/two-sum/submissions/123/',
+    'http://leetcode.com/problems/two-sum/',
+  ])('rejects invalid or foreign problem URL %s', async (locationUrl) => {
+    await expect(extractLeetCodeSnapshot(candidates({ locationUrl }))).resolves.toBeNull();
   });
 
   it('extracts a recognized visible difficulty and otherwise uses Unknown', async () => {

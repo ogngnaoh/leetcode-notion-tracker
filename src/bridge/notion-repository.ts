@@ -12,8 +12,14 @@ import {
 import { attemptTitle } from '../shared/keys.js';
 import { unicodeSafeTextChunks } from '../shared/text-chunks.js';
 import { NOTION_API_VERSION } from '../notion/schema.js';
-import type { CaptureRepository, ProblemRecord, StoredAttempt } from './repository.js';
+import type {
+  CaptureRepository,
+  ProblemRecord,
+  ProblemUpdate,
+  StoredAttempt,
+} from './repository.js';
 import type { DashboardRow } from './dashboard.js';
+import { LatestAttemptStore } from './latest-attempt.js';
 
 function richText(content: string) {
   return [{ type: 'text' as const, text: { content } }];
@@ -173,9 +179,37 @@ export async function loadNotionManifest(path: string): Promise<NotionManifest> 
 }
 
 export class NotionCaptureRepository implements CaptureRepository {
+  private store: LatestAttemptStore | undefined;
+  private readonly problems = new Map<string, ProblemRecord>();
+
+  captureSession(existing: StoredAttempt | null): CaptureRepository {
+    return new NotionCaptureRepository(this.notion, this.manifest, { existing });
+  }
+
+  async completeCapture(): Promise<void> {
+    await this.store?.complete();
+  }
+
+  private latestStore(): LatestAttemptStore {
+    if (this.store) return this.store;
+    const store = new LatestAttemptStore(
+      this.notion,
+      this.manifest,
+      parseStoredAttempt,
+      attemptProperties,
+      Boolean(this.session),
+    );
+    if (this.session) this.store = store;
+    return store;
+  }
+
+  async findLatestAttemptByProblemKey(problemKey: string): Promise<StoredAttempt | null> {
+    return this.latestStore().latest(problemKey);
+  }
   constructor(
     private readonly notion: Client,
     private readonly manifest: NotionManifest,
+    private readonly session?: { existing: StoredAttempt | null },
   ) {}
 
   static async create(token: string, manifestPath: string): Promise<NotionCaptureRepository> {
@@ -241,7 +275,23 @@ export class NotionCaptureRepository implements CaptureRepository {
     return { newProblemCount: newProblems.length, due };
   }
 
-  async findAttemptByEventId(clientEventId: string): Promise<StoredAttempt | null> {
+  async findAttemptByEventId(
+    clientEventId: string,
+    problemKey?: string,
+  ): Promise<StoredAttempt | null> {
+    if (problemKey) {
+      const receipt = await this.latestStore().find(clientEventId, problemKey);
+      if (receipt) return receipt;
+      // The exact-ID query already ran before the lock. Reuse only that result;
+      // newly written receipts are found in the fresh, locked snapshot above.
+      if (this.session) {
+        const existing = this.session.existing;
+        if (!existing || existing.problemKey !== problemKey) return null;
+        if (!(await this.latestStore().page(problemKey)))
+          throw new Error('Recorded capture is missing from the latest lookup; retry to recover.');
+        return { ...existing, superseded: true };
+      }
+    }
     const response = await this.notion.dataSources.query({
       data_source_id: this.manifest.attempts.dataSourceId,
       page_size: 1,
@@ -253,28 +303,13 @@ export class NotionCaptureRepository implements CaptureRepository {
     const page = response.results.find((result) => isFullPage(result));
     if (!page || !isFullPage(page)) return null;
 
-    try {
-      const properties = propertyMap(page);
-      const attemptedAt = requiredDate(properties, 'Attempted At');
-      IsoTimestampSchema.parse(attemptedAt);
-      const review = ReviewStateSchema.parse({
-        practiceState: requiredSelect(properties, 'Resulting State'),
-        solvedStreak: requiredNumber(properties, 'Resulting Solved Streak'),
-        nextReview: nullableDate(properties, 'Resulting Next Review'),
-      });
-      return {
-        pageId: page.id,
-        problemPageId: requiredRelationId(properties, 'Problem'),
-        problemKey: requiredRichText(properties, 'Problem Key'),
-        attemptedAt,
-        result: AttemptResultSchema.parse(requiredSelect(properties, 'Result')),
-        review,
-      };
-    } catch {
-      throw new Error(
-        `Attempt ${page.id} is missing or invalid extension-managed idempotency fields.`,
-      );
+    const record = parseStoredAttempt(page);
+    if (problemKey) {
+      const latest = await this.latestStore().page(problemKey);
+      // A legacy historical page is a receipt only, never the canonical review state.
+      return { ...record, superseded: latest !== null && latest.id !== page.id };
     }
+    return record;
   }
 
   async findProblemByExternalKey(externalKey: string): Promise<ProblemRecord | null> {
@@ -291,8 +326,11 @@ export class NotionCaptureRepository implements CaptureRepository {
   }
 
   async findProblemByPageId(pageId: string): Promise<ProblemRecord | null> {
+    if (this.session && this.problems.has(pageId)) return this.problems.get(pageId)!;
     const page = await this.notion.pages.retrieve({ page_id: pageId });
-    return isFullPage(page) ? parseProblem(page) : null;
+    const problem = isFullPage(page) ? parseProblem(page) : null;
+    if (this.session && problem) this.problems.set(pageId, problem);
+    return problem;
   }
 
   async createProblem(event: CaptureEvent, externalKey: string): Promise<ProblemRecord> {
@@ -333,20 +371,74 @@ export class NotionCaptureRepository implements CaptureRepository {
   }
 
   async updateProblemMetadata(problemPageId: string, event: CaptureEvent): Promise<void> {
-    await this.notion.pages.update({
-      page_id: problemPageId,
-      properties: {
+    await this.updateProblem(problemPageId, { event });
+  }
+
+  async updateProblem(problemPageId: string, update: ProblemUpdate): Promise<void> {
+    const properties: Record<string, any> = {};
+    const event = update.event;
+    if (event)
+      Object.assign(properties, {
         Problem: { title: richText(event.problem.title) },
         Slug: { rich_text: richText(event.problem.slug) },
         Number: { number: event.problem.number ?? null },
         URL: { url: event.problem.url },
         Difficulty: { select: { name: event.problem.difficulty } },
         Topics: { multi_select: event.problem.topics.map((name) => ({ name })) },
-      },
-    });
+      });
+    if (update.firstAttempt) properties['First Attempt'] = { date: { start: update.firstAttempt } };
+    if (update.review) {
+      const { attemptedAt, state: review } = update.review;
+      Object.assign(properties, {
+        'Practice State': { select: { name: review.practiceState } },
+        'Solved Streak': { number: review.solvedStreak },
+        'Next Review': review.nextReview ? { date: { start: review.nextReview } } : { date: null },
+        'Last Attempt': { date: { start: attemptedAt } },
+      });
+    }
+    if (!Object.keys(properties).length) return;
+    const page = await this.notion.pages.update({ page_id: problemPageId, properties });
+    if (this.session) {
+      const problem = parseProblem(page);
+      const expected = update.event?.problem;
+      const review = update.review;
+      if (
+        problem.pageId !== problemPageId ||
+        (update.firstAttempt &&
+          Date.parse(problem.firstAttempt ?? '') !== Date.parse(update.firstAttempt)) ||
+        (review &&
+          (Date.parse(problem.lastAttempt ?? '') !== Date.parse(review.attemptedAt) ||
+            problem.practiceState !== review.state.practiceState ||
+            problem.solvedStreak !== review.state.solvedStreak ||
+            problem.nextReview !== review.state.nextReview)) ||
+        (expected &&
+          (problem.externalKey !== `leetcode:${expected.slug}` ||
+            problem.title !== expected.title ||
+            problem.slug !== expected.slug ||
+            problem.number !== (expected.number ?? null) ||
+            problem.url !== expected.url ||
+            problem.difficulty !== expected.difficulty ||
+            JSON.stringify([...problem.topics].sort()) !==
+              JSON.stringify([...expected.topics].sort())))
+      ) {
+        throw new Error('Unexpected Problem update response; retry to recover.');
+      }
+      this.problems.set(problemPageId, problem);
+    }
   }
 
   async createAttempt(
+    problem: ProblemRecord,
+    event: CaptureEvent,
+    externalKey: string,
+    review: ReviewState,
+  ): Promise<StoredAttempt> {
+    return this.latestStore().save(problem.pageId, event, review, () =>
+      this.createNewAttempt(problem, event, externalKey, review),
+    );
+  }
+
+  private async createNewAttempt(
     problem: ProblemRecord,
     event: CaptureEvent,
     externalKey: string,
@@ -357,22 +449,7 @@ export class NotionCaptureRepository implements CaptureRepository {
         type: 'data_source_id',
         data_source_id: this.manifest.attempts.dataSourceId,
       },
-      properties: {
-        Attempt: { title: richText(attemptTitle(event.problem.title, event.attempt.attemptedAt)) },
-        'Client Event ID': { rich_text: richText(event.clientEventId) },
-        Problem: { relation: [{ id: problem.pageId }] },
-        'Problem Key': { rich_text: richText(externalKey) },
-        'Attempted At': { date: { start: event.attempt.attemptedAt } },
-        'Source URL': { url: event.problem.url },
-        Language: { rich_text: richText(event.attempt.language) },
-        Result: { select: { name: event.attempt.result } },
-        'Resulting State': { select: { name: review.practiceState } },
-        'Resulting Solved Streak': { number: review.solvedStreak },
-        'Resulting Next Review': review.nextReview
-          ? { date: { start: review.nextReview } }
-          : { date: null },
-        'Extension Managed': { checkbox: true },
-      },
+      properties: attemptProperties(problem.pageId, event, review),
       children: pageChildren(event) as never,
     });
 
@@ -391,21 +468,53 @@ export class NotionCaptureRepository implements CaptureRepository {
     attemptedAt: string,
     review: ReviewState,
   ): Promise<void> {
-    await this.notion.pages.update({
-      page_id: problemPageId,
-      properties: {
-        'Practice State': { select: { name: review.practiceState } },
-        'Solved Streak': { number: review.solvedStreak },
-        'Next Review': review.nextReview ? { date: { start: review.nextReview } } : { date: null },
-        'Last Attempt': { date: { start: attemptedAt } },
-      },
-    });
+    await this.updateProblem(problemPageId, { review: { attemptedAt, state: review } });
   }
 
   async applyFirstAttempt(problemPageId: string, attemptedAt: string): Promise<void> {
-    await this.notion.pages.update({
-      page_id: problemPageId,
-      properties: { 'First Attempt': { date: { start: attemptedAt } } },
+    await this.updateProblem(problemPageId, { firstAttempt: attemptedAt });
+  }
+}
+
+export function attemptProperties(problemId: string, event: CaptureEvent, review: ReviewState) {
+  return {
+    Attempt: { title: richText(attemptTitle(event.problem.title, event.attempt.attemptedAt)) },
+    'Client Event ID': { rich_text: richText(event.clientEventId) },
+    Problem: { relation: [{ id: problemId }] },
+    'Problem Key': { rich_text: richText(`leetcode:${event.problem.slug}`) },
+    'Attempted At': { date: { start: event.attempt.attemptedAt } },
+    'Source URL': { url: event.problem.url },
+    Language: { rich_text: richText(event.attempt.language) },
+    Result: { select: { name: event.attempt.result } },
+    'Resulting State': { select: { name: review.practiceState } },
+    'Resulting Solved Streak': { number: review.solvedStreak },
+    'Resulting Next Review': review.nextReview
+      ? { date: { start: review.nextReview } }
+      : { date: null },
+    'Extension Managed': { checkbox: true },
+  };
+}
+
+export function parseStoredAttempt(page: any): StoredAttempt {
+  try {
+    const properties = propertyMap(page);
+    const attemptedAt = IsoTimestampSchema.parse(requiredDate(properties, 'Attempted At'));
+    const review = ReviewStateSchema.parse({
+      practiceState: requiredSelect(properties, 'Resulting State'),
+      solvedStreak: requiredNumber(properties, 'Resulting Solved Streak'),
+      nextReview: nullableDate(properties, 'Resulting Next Review'),
     });
+    return {
+      pageId: page.id,
+      problemPageId: requiredRelationId(properties, 'Problem'),
+      problemKey: requiredRichText(properties, 'Problem Key'),
+      attemptedAt,
+      result: AttemptResultSchema.parse(requiredSelect(properties, 'Result')),
+      review,
+    };
+  } catch {
+    throw new Error(
+      `Attempt ${page.id} is missing or invalid extension-managed idempotency fields.`,
+    );
   }
 }

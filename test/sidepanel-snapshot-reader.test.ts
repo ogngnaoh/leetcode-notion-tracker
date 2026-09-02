@@ -2,6 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 import { createSnapshotReader } from '../extension/src/sidepanel-snapshot-reader.js';
 
 describe('side-panel startup snapshot reader', () => {
+  it('reinjects once when a stale content script returns no protocol response', async () => {
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ context: null });
+    const injectContentScripts = vi.fn(async () => undefined);
+    const readSnapshot = createSnapshotReader({ sendMessage, injectContentScripts });
+
+    await expect(readSnapshot(41)).resolves.toBeNull();
+
+    expect(injectContentScripts).toHaveBeenCalledOnce();
+    expect(injectContentScripts).toHaveBeenCalledWith(41);
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+  });
+
   it('injects both world scripts once and retries immediately when no receiver exists', async () => {
     const sendMessage = vi
       .fn()

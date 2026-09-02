@@ -64,8 +64,12 @@ function elements(document: Document, selectors: string[]): Element[] {
   return values;
 }
 
-function textCandidate(element: Element, text = element.textContent ?? ''): VisibleTextCandidate {
-  return { text, visible: isPubliclyVisible(element) };
+function textCandidate(element: Element, currentDescription: Element | null): VisibleTextCandidate {
+  return {
+    text: element.textContent ?? '',
+    visible: isPubliclyVisible(element),
+    ...(currentDescription?.contains(element) ? { inCurrentDescription: true } : {}),
+  };
 }
 
 export function collectExtractionCandidates(
@@ -82,6 +86,20 @@ export function collectExtractionCandidates(
     `a[href="/problems/${slug}/"]`,
     `a[href="/problems/${slug}/description/"]`,
   ]);
+  // LeetCode leaves Description mounted but display:none after submission. Only
+  // trust that pane when its own title link identifies the current problem; a
+  // previous problem or a recommendations pane must not supply this metadata.
+  const titleLink = titleElements
+    .flatMap((element) =>
+      element.matches('a[href]') ? [element] : Array.from(element.querySelectorAll('a[href]')),
+    )
+    .find((element) => {
+      const href = element.getAttribute('href');
+      return href === `/problems/${slug}/` || href === `/problems/${slug}/description/`;
+    });
+  const currentDescription = titleLink?.closest('.flexlayout__tab') ?? null;
+  const scoped = (values: Element[]) =>
+    currentDescription ? values.filter((element) => currentDescription.contains(element)) : values;
   const stableDifficulty = elements(document, [
     '[data-degree]',
     '[diff]',
@@ -95,10 +113,14 @@ export function collectExtractionCandidates(
   return {
     locationUrl,
     documentTitle: document.title,
-    titleCandidates: titleElements.map((element) => textCandidate(element)),
-    difficultyCandidates: stableDifficulty.map((element) => textCandidate(element)),
-    topicCandidates: topicElements.map((element) => ({
-      ...textCandidate(element),
+    titleCandidates: scoped(titleLink ? [titleLink, ...titleElements] : titleElements).map(
+      (element) => textCandidate(element, currentDescription),
+    ),
+    difficultyCandidates: scoped(stableDifficulty).map((element) =>
+      textCandidate(element, currentDescription),
+    ),
+    topicCandidates: scoped(topicElements).map((element) => ({
+      ...textCandidate(element, currentDescription),
       href: element.getAttribute('href') ?? '',
     })),
     model,

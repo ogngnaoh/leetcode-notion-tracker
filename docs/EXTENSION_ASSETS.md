@@ -23,8 +23,10 @@ rules are redistributed. Inter and IBM Plex Mono are free, open-licensed fonts u
 License 1.1. The license and copyright notices are distributed beside the font files in
 `extension/vendor/fonts/OFL.txt` and copied into the built extension.
 
-The extension logo uses Lucide SquareTerminal, the standard Lucide icon available through shadcn/ui.
+LCTrack's logo uses Lucide SquareTerminal, the standard Lucide icon available through shadcn/ui.
 Lucide is distributed under the ISC License; its notice is included at
 `extension/icons/LICENSE-lucide.txt`. Chrome does not support SVG files declared as extension icons,
 so `extension/square-terminal.svg` is rendered at exactly 16, 32, 48, and 128 pixels under
-`extension/icons/` and copied into the production build.
+`extension/icons/` and copied into the production extension build. The macOS builder renders that
+same canonical SVG into every required `.icns` representation and bundles the vector itself for the
+menu-bar mark; it does not introduce a separately drawn application logo.

@@ -46,7 +46,9 @@ function fullPage(id: string, properties: Record<string, unknown>) {
 
 function fakeNotion() {
   return {
-    dataSources: { query: vi.fn() },
+    dataSources: {
+      query: vi.fn().mockResolvedValue({ results: [], next_cursor: null, has_more: false }),
+    },
     pages: { create: vi.fn(), update: vi.fn(), retrieve: vi.fn() },
   };
 }

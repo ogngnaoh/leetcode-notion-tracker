@@ -15,7 +15,7 @@ should update the two Notion databases and their review schedule.
 
 ## Why this shape
 
-- **Two Notion databases:** one current `Problem` record and many immutable `Attempt` records.
+- **Two Notion databases:** one current `Problem` record and one stable latest `Attempt` page per problem key.
 - **Standalone daily reps:** repeated questions count independently in browser-local extension data.
 - **Local bridge:** the Notion token never enters the extension.
 - **Exact schema:** the extension is for this personal tracker, not every arbitrary Notion database.
@@ -38,7 +38,8 @@ docs/             Architecture, schema, security, and manual QA
 
 - Node.js 22+
 - Chrome 116+
-- macOS Terminal.app for the default deliberate daily launcher
+- macOS 13+ with Xcode Command Line Tools for the on-demand menu-bar launcher
+- macOS Terminal.app only when using the visible fallback launcher
 - Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
 - A Notion workspace
 - A Notion internal integration with read, insert, and update content capabilities
@@ -151,16 +152,96 @@ only after conversion, verifies exact v4 plus untouched row properties and Attem
 then writes manifest version 4. Recovery is accepted only with a strictly validated journal bound to
 its original apply backup; an exact completed v4 rerun is a no-op.
 
-## 3. Configure the one-click bridge launcher
+### Latest Attempt retention and Grind links
 
-The tracker deliberately does not start a hidden service at login. Configure the visible launcher
-once:
+Captures now update the newest existing Attempt page in place, preserving its page link and any
+notes outside the managed `Captured code` block. `Needed help` can replace `Solved`: latest means
+newest timestamp, not latest successful solution. Older arriving events retain a small retry receipt
+but do not replace the current solution. A collapsed managed receipt section preserves retry safety;
+do not manually edit that section. Interrupted writes are recovered before the next capture.
+
+Existing historical pages are **not automatically removed**. Prepare a local, token-free backup and
+cleanup preview with:
+
+```bash
+npm run notion:latest
+```
+
+The backup includes all Attempt page bodies (including nested blocks), properties, Problem properties,
+schema, selected survivors and compact event receipts. Review it before separately approving cleanup.
+This command has no page-deletion mode.
+
+After separately approving the preview, keep the bridge stopped and pass that backup and its printed
+SHA-256 to the dedicated cleanup command:
+
+```bash
+npm run notion:latest:cleanup -- --backup build/notion-latest-preview-<timestamp>.json --sha256 <digest>
+```
+
+Cleanup recomputes the backed-up plan, rejects changed targets or older pages with extra notes,
+preserves and verifies compact receipts on retained pages, and only then moves the approved older
+pages to Notion Trash. It never permanently deletes them. Page IDs, current solutions, first-attempt
+dates, review state and Grind settings stay intact; reciprocal relations shed the trashed pages.
+Keep the backup and local audit. If interrupted, rerun with the same backup/hash: already-preserved
+receipts and trashed pages are recognized without expanding the deletion set. Stop for new approval
+if captures or other changes invalidate that backup.
+
+To update existing Grind links after a fresh backup:
+
+```bash
+npm run notion:latest -- --apply-grind-link
+```
+
+This updates `Solution` (or the legacy `Grind Open` property) to a native Attempt page chip and adds
+a one-way `Grind Attempt` relation only for
+Grind-only duplicate checklist rows. It preserves canonical capture relations, checkbox state,
+day/block assignments and reset buttons. Click the chip to peek at the saved code within Notion.
+Rows without a saved attempt have an empty solution cell; no external-tab fallback is used.
+Timestamp ties use creation time, then stable page ID; ambiguous differing bodies are flagged.
+If Notion rejects the relation formula through its API, paste `GRIND_OPEN_FORMULA` from
+`src/notion/latest-attempt-maintenance.ts` into the existing `Solution` / `Grind Open` formula editor in Notion,
+then rerun the command. A successfully saved identical formula is verified without rewriting it.
+Restart the bridge explicitly to load code changes; this command does not restart it.
+
+Outcome saves reuse a request-local Notion snapshot and combine Problem metadata/review updates.
+With one page of receipts, a normal replacement uses 10 Notion requests (previously 21); first
+captures use 6. Success still means the Notion writes finished, not merely that work was queued.
+Retries reload durable state, and pending receipts remain until both the Attempt and Problem are
+updated. Notion latency, retries, and extra pages of notes/receipts still affect elapsed time.
+
+## 3. Build the on-demand menu-bar launcher
+
+LCTrack never starts at login. Build the local menu-bar app once, then open it only when you want the
+bridge running:
+
+```bash
+npm run build:menu-bar
+```
+
+Open `build/LCTrack.app` in Finder. You may keep it there, drag it to `/Applications`, or add it to the
+Dock. The app bundle records only this repository path, the Node executable path, and the configured
+port; it contains no Notion or bridge token. Rebuild it after moving the repository or changing Node
+installations.
+
+Opening **LCTrack** is the explicit start action. It starts the localhost bridge, opens the dashboard,
+and places the same shadcn/Lucide Square Terminal mark used by the Chrome extension in the macOS menu
+bar. The menu provides **Open Dashboard**, **Stop Bridge**, **Start Bridge**, **View Log**, and **Quit
+LCTrack**. Stopping or quitting terminates only a bridge started by that app instance. It does not
+install a LaunchAgent or login item, start after login, or restart a stopped bridge. Logs stay in
+ignored `build/lc-menu-bar.log`.
+
+If the bridge is already running from another launcher, the menu-bar app opens the dashboard and
+reports that the bridge is running elsewhere; it does not claim or terminate that process.
+
+### Visible Terminal fallback
+
+To keep using the original visible launcher, configure it once:
 
 1. In Finder, select `lc-log.command` and open **Get Info**.
 2. Under **Open with**, choose **Terminal.app**, then select **Change All**.
 3. Drag `lc-log.command` to the Dock's document area, to the right of the divider.
 
-After each login, click that Dock item once. A titled Terminal window starts the local bridge and stays
+When needed, click that Dock item once. A titled Terminal window starts the local bridge and stays
 visible for its entire lifetime. Leave it open while using the extension; press Ctrl-C or close the
 window to stop the bridge. A second click opens the dashboard from the already-running bridge without
 creating another process. An unexpected port owner is reported and never terminated automatically.
@@ -271,33 +352,39 @@ with a blank shortcut, and you would assign it again.
 4. Expand **History** to inspect locally archived problems. This history is profile-local, is not
    synced, and is removed if Chrome clears the extension's data or the extension is uninstalled.
 
-For the optional Notion workflow, start the local bridge, switch to **Notion Log**, and confirm
-`Needed help` or `Solved`. The bridge is not contacted while the panel remains on Daily Reps.
+For the optional Notion workflow, open **LCTrack.app** explicitly (or use `lc-log.command`), switch
+to **Notion Log**, and confirm `Needed help` or `Solved`. The bridge is not contacted while the panel
+remains on Daily Reps.
 
-No Notion credential enters Chrome: the launcher starts the same localhost bridge, which reads the
-ignored local `.env` from the repository.
+No Notion credential enters Chrome or the menu-bar bundle: both launchers start the same localhost
+bridge, which reads the ignored local `.env` from the repository.
 
 On panel startup, the extension reads the problem page without focusing or scrolling LeetCode.
+Recognition also works on Accepted/submission, Solutions, and Editorial routes. When LeetCode keeps
+Description mounted behind another tab, metadata is read from that pane only after its title link
+matches the current problem slug. Opening the panel does not switch LeetCode tabs or focus its editor.
 Problem metadata comes from the public DOM:
 
 - Problem slug
-- Problem title and number when visible
+- Problem title and number when available
 - Canonical URL
-- Difficulty when visible
-- Topic links that are rendered in the DOM, including links below the viewport
+- Difficulty when available
+- Topic links in the current description, including those below the viewport or in its inactive pane
 
-Code and language come from Monaco's editor model, read by a second content script running in the
-page's own JavaScript world. The model holds the entire buffer regardless of how much the editor has
-rendered, so a solution longer than the editor viewport is captured in full rather than truncated to
-the visible lines. The language is the model's own language id, not a scraped label.
+Code comes from the active Monaco or CodeMirror editor model, read by a second content script running
+in the page's own JavaScript world. Both models hold the entire buffer regardless of how much the
+editor has rendered, so a solution longer than the editor viewport is captured in full rather than
+truncated to visible lines. Monaco supplies its model language id; focus mode supplies the language
+on the scoped CodeMirror editor element. Rendered editor text is never used as a capture fallback.
 
 The code disclosure starts expanded. When no editor model can be read, the panel reports code
 unavailable and blocks capture rather than logging a fragment; it recovers automatically once the
-editor finishes hydrating. If an extension reload left the tab without a content-script receiver, the
-panel reinjects both scripts once and retries immediately.
+editor finishes hydrating. Requests carry a small protocol version so an extension reload cannot use
+a stale content script or page-world reply. If the current receiver is missing or stale, the panel
+reinjects both scripts once and retries immediately.
 
-Each deliberate outcome click creates a new immutable Attempt and Client Event ID, even when the
-code is unchanged. The last successful outcome remains selected until another success or fingerprint
+Each deliberate outcome click creates a new Client Event ID and updates the stable latest Attempt,
+even when the code is unchanged. The last successful outcome remains selected until another success or fingerprint
 change. Only an uncertain write reuses its frozen body and Client Event ID through `Retry same
 attempt`.
 

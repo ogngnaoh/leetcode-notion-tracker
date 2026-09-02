@@ -16,7 +16,10 @@ import type {
   ContentScriptResponse,
   LeetCodeContextChangedMessage,
 } from './leetcode-context-runtime.js';
-import { GET_LEETCODE_CONTEXT_MESSAGE } from './leetcode-context-runtime.js';
+import {
+  GET_LEETCODE_CONTEXT_MESSAGE,
+  LEETCODE_CONTEXT_CHANGED_MESSAGE,
+} from './leetcode-context-runtime.js';
 import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 import { SidePanelController, type SidePanelView } from './sidepanel-controller.js';
 import { SidePanelTabCoordinator, type VisibleTab } from './sidepanel-tab-coordinator.js';
@@ -622,7 +625,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
     typeof message !== 'object' ||
     message === null ||
     !('type' in message) ||
-    message.type !== 'LEETCODE_CONTEXT_CHANGED'
+    message.type !== LEETCODE_CONTEXT_CHANGED_MESSAGE
   ) {
     return;
   }

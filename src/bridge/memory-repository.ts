@@ -1,8 +1,24 @@
 import type { CaptureEvent, ReviewState } from '../shared/contract.js';
-import type { CaptureRepository, ProblemRecord, StoredAttempt } from './repository.js';
+import type {
+  CaptureRepository,
+  ProblemRecord,
+  ProblemUpdate,
+  StoredAttempt,
+} from './repository.js';
 
 export class MemoryCaptureRepository implements CaptureRepository {
+  captureSession(): CaptureRepository {
+    return this;
+  }
+  async completeCapture(): Promise<void> {}
+  async updateProblem(pageId: string, update: ProblemUpdate): Promise<void> {
+    if (update.event) await this.updateProblemMetadata(pageId, update.event);
+    if (update.firstAttempt) await this.applyFirstAttempt(pageId, update.firstAttempt);
+    if (update.review)
+      await this.applyReview(pageId, update.review.attemptedAt, update.review.state);
+  }
   readonly attempts = new Map<string, StoredAttempt>();
+  readonly latestAttempts = new Map<string, StoredAttempt>();
   readonly problems = new Map<string, ProblemRecord>();
   readonly operations: string[] = [];
   readonly metadataUpdates: Array<{ problemPageId: string; event: CaptureEvent }> = [];
@@ -13,7 +29,18 @@ export class MemoryCaptureRepository implements CaptureRepository {
   }> = [];
 
   async findAttemptByEventId(clientEventId: string): Promise<StoredAttempt | null> {
-    return this.attempts.get(clientEventId) ?? null;
+    const receipt = this.attempts.get(clientEventId);
+    if (!receipt) return null;
+    return { ...receipt, superseded: this.latestAttempts.get(receipt.problemKey) !== receipt };
+  }
+
+  async findLatestAttemptByProblemKey(problemKey: string): Promise<StoredAttempt | null> {
+    const latest = this.latestAttempts.get(problemKey);
+    if (!latest) return null;
+    const firstAttempt = [...this.attempts.values()]
+      .filter((attempt) => attempt.problemKey === problemKey)
+      .sort((a, b) => Date.parse(a.attemptedAt) - Date.parse(b.attemptedAt))[0]!.attemptedAt;
+    return { ...latest, firstAttempt };
   }
 
   async findProblemByExternalKey(externalKey: string): Promise<ProblemRecord | null> {
@@ -67,7 +94,8 @@ export class MemoryCaptureRepository implements CaptureRepository {
   ): Promise<StoredAttempt> {
     this.operations.push('createAttempt');
     const record: StoredAttempt = {
-      pageId: `attempt-${this.attempts.size + 1}`,
+      pageId:
+        this.latestAttempts.get(externalKey)?.pageId ?? `attempt-${this.latestAttempts.size + 1}`,
       problemPageId: problem.pageId,
       problemKey: externalKey,
       attemptedAt: event.attempt.attemptedAt,
@@ -75,6 +103,10 @@ export class MemoryCaptureRepository implements CaptureRepository {
       review,
     };
     this.attempts.set(event.clientEventId, record);
+    const previous = this.latestAttempts.get(externalKey);
+    if (!previous || Date.parse(record.attemptedAt) >= Date.parse(previous.attemptedAt)) {
+      this.latestAttempts.set(externalKey, record);
+    }
     return record;
   }
 
