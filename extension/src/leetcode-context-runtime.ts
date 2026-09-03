@@ -1,7 +1,8 @@
 import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 
-export const GET_LEETCODE_CONTEXT_MESSAGE = 'GET_LEETCODE_CONTEXT_V3';
-export const LEETCODE_CONTEXT_CHANGED_MESSAGE = 'LEETCODE_CONTEXT_CHANGED_V3';
+export const GET_LEETCODE_CONTEXT_MESSAGE = 'GET_LEETCODE_CONTEXT_V4';
+export const GET_LEETCODE_MODEL_MESSAGE = 'GET_LEETCODE_MODEL_V4';
+export const LEETCODE_CONTEXT_CHANGED_MESSAGE = 'LEETCODE_CONTEXT_CHANGED_V4';
 
 export interface GetLeetCodeContextMessage {
   type: typeof GET_LEETCODE_CONTEXT_MESSAGE;
@@ -19,19 +20,35 @@ export interface LeetCodeContextChangedMessage {
 export type ExtractLeetCodeContext = () => Promise<LeetCodeSnapshot | null>;
 export type PublishLeetCodeContext = (context: LeetCodeSnapshot | null) => void | Promise<void>;
 
-export function createContentMessageHandler(extract: ExtractLeetCodeContext) {
+export function metadataOnlyContext(context: LeetCodeSnapshot | null): LeetCodeSnapshot | null {
+  return context
+    ? {
+        problem: context.problem,
+        codeAvailable: false,
+        language: 'Unknown',
+        codeUnavailable: { reason: 'NO_READABLE_EDITOR_MODEL' },
+        fingerprint: null,
+      }
+    : null;
+}
+
+export function createContentMessageHandler(
+  extract: ExtractLeetCodeContext,
+  extractModel: ExtractLeetCodeContext = extract,
+) {
   return (message: unknown, sendResponse: (response: ContentScriptResponse) => void): boolean => {
     if (
       typeof message !== 'object' ||
       message === null ||
       !('type' in message) ||
-      message.type !== GET_LEETCODE_CONTEXT_MESSAGE
+      (message.type !== GET_LEETCODE_CONTEXT_MESSAGE && message.type !== GET_LEETCODE_MODEL_MESSAGE)
     ) {
       return false;
     }
 
-    void extract().then(
-      (context) => sendResponse({ context }),
+    const full = message.type === GET_LEETCODE_MODEL_MESSAGE;
+    void (full ? extractModel() : extract()).then(
+      (context) => sendResponse({ context: full ? context : metadataOnlyContext(context) }),
       () => sendResponse({ context: null }),
     );
     return true;
@@ -50,6 +67,7 @@ export class ContextChangePublisher {
   private publishedKey: string | undefined;
   private running = false;
   private queuedRevision: number | undefined;
+  private modelRevision = 0;
 
   constructor(
     private readonly extract: ExtractLeetCodeContext,
@@ -57,7 +75,8 @@ export class ContextChangePublisher {
     private readonly debounceMs = 100,
   ) {}
 
-  notifyChange(): void {
+  notifyChange(modelChanged = false): void {
+    if (modelChanged) this.modelRevision += 1;
     this.revision += 1;
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = setTimeout(() => this.flush(), this.debounceMs);
@@ -94,10 +113,10 @@ export class ContextChangePublisher {
   private async extractAndPublish(revision: number): Promise<void> {
     this.running = true;
     try {
-      const context = await this.extract();
+      const context = metadataOnlyContext(await this.extract());
       if (revision !== this.revision) return;
 
-      const key = publicationKey(context);
+      const key = `${this.modelRevision}:${publicationKey(context)}`;
       if (key === this.publishedKey) return;
 
       await this.publish(context);

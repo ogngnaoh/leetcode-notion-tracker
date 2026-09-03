@@ -9,6 +9,7 @@ import {
   type CodeMirrorContentLike,
 } from './leetcode-codemirror-reader.js';
 import { readEditorModel, type MonacoLike } from './leetcode-model-reader.js';
+import { ModelDiscovery } from './leetcode-model-discovery.js';
 
 interface ObservableModel {
   onDidChangeContent?: (listener: () => void) => unknown;
@@ -35,7 +36,7 @@ createModelResponder(channelWindow, origin, readActiveEditorModel);
 const observedModels = new WeakSet<object>();
 const observedEditors = new WeakSet<object>();
 const observedCodeMirrorContents = new WeakSet<object>();
-let announcedReadingKey: string | null | undefined;
+const discovery = new ModelDiscovery();
 
 /**
  * Monaco replaces the model when the user switches language, and LeetCode replaces its
@@ -50,6 +51,7 @@ let announcedReadingKey: string | null | undefined;
  */
 function observeEditors(): void {
   const editors = namespace()?.editor?.getEditors?.();
+  const contents = codeMirrorContents();
   if (Array.isArray(editors)) {
     for (const editor of editors as unknown as ObservableEditor[]) {
       if (!editor) continue;
@@ -64,7 +66,7 @@ function observeEditors(): void {
     }
   }
 
-  for (const content of codeMirrorContents()) {
+  for (const content of contents) {
     if (observedCodeMirrorContents.has(content)) continue;
     observedCodeMirrorContents.add(content);
     (content as unknown as EventTarget).addEventListener('input', () =>
@@ -72,10 +74,7 @@ function observeEditors(): void {
     );
   }
 
-  const reading = readActiveEditorModel();
-  const readingKey = reading ? JSON.stringify([reading.languageId, reading.code]) : null;
-  if (readingKey === announcedReadingKey) return;
-  announcedReadingKey = readingKey;
+  if (!discovery.changed(Array.isArray(editors) ? editors : [], contents)) return;
   publishModelChanged(channelWindow, origin);
 }
 

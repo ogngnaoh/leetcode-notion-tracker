@@ -1,7 +1,7 @@
 # LCTrack
 
-A lean personal Chrome extension for counting daily LeetCode repetitions, with the original
-spaced-repetition capture available through an optional local Notion bridge.
+A personal Chrome extension for daily LeetCode repetitions, confirmed Notion saves, and a compact
+review queue. Notion connects directly from the extension: no running bridge or hosted service.
 
 The default workflow is standalone:
 
@@ -10,16 +10,16 @@ The default workflow is standalone:
 3. Set a goal once, then select **Log rep** after each question.
 4. Finish and archive the session manually when the day is done.
 
-The secondary **Notion Log** tab retains the existing confirmed-outcome workflow for attempts that
-should update the two Notion databases and their review schedule.
+The **Log** tab saves an attempt only after you choose an outcome. **Review** shows the current
+Notion review queue in the same sidebar. Connection and recovery controls live in **Settings**.
 
 ## Why this shape
 
 - **Two Notion databases:** one current `Problem` record and one stable latest `Attempt` page per problem key.
 - **Standalone daily reps:** repeated questions count independently in browser-local extension data.
-- **Local bridge:** the Notion token never enters the extension.
+- **Local encrypted connection:** save your token encrypted with a passphrase; unlock once per Chrome session.
 - **Exact schema:** the extension is for this personal tracker, not every arbitrary Notion database.
-- **Manual confirmation:** nothing is sent until you choose `Needed help` or `Solved`.
+- **Manual confirmation:** code and attempt writes require choosing `Needed help` or `Solved`.
 - **No provisioning framework:** one setup command creates the databases once.
 
 ## Repository layout
@@ -27,7 +27,8 @@ should update the two Notion databases and their review schedule.
 ```text
 src/shared/       Capture contract, stable keys, review schedule
 src/notion/       One-time setup, migrations, safe dashboard rollback, and exact verification
-src/bridge/       Local Hono bridge and Notion repository
+src/tracker/      Portable capture, repository, review, and receipt logic
+src/bridge/       Legacy local bridge adapters and maintenance dashboard
 extension/        Manifest V3 side-panel extension
 scripts/          Extension build script
 test/             Unit and bridge route tests
@@ -37,9 +38,7 @@ docs/             Architecture, schema, security, and manual QA
 ## Prerequisites
 
 - Node.js 22+
-- Chrome 116+
-- macOS 13+ with Xcode Command Line Tools for the on-demand menu-bar launcher
-- macOS Terminal.app only when using the visible fallback launcher
+- Chrome 142+
 - Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
 - A Notion workspace
 - A Notion internal integration with read, insert, and update content capabilities
@@ -52,7 +51,9 @@ npm install
 cp .env.example .env
 ```
 
-Fill in `.env`:
+The `.env` file is used only by the one-time setup and advanced maintenance commands. An existing
+v4 tracker can skip setup and import its token-free manifest in the sidebar. Never import `.env`
+into the extension. For CLI setup, fill in `.env`:
 
 ```dotenv
 NOTION_TOKEN=ntn_...
@@ -171,7 +172,7 @@ The backup includes all Attempt page bodies (including nested blocks), propertie
 schema, selected survivors and compact event receipts. Review it before separately approving cleanup.
 This command has no page-deletion mode.
 
-After separately approving the preview, keep the bridge stopped and pass that backup and its printed
+After separately approving the preview, keep every tracker writer stopped and pass that backup and its printed
 SHA-256 to the dedicated cleanup command:
 
 ```bash
@@ -201,7 +202,7 @@ Timestamp ties use creation time, then stable page ID; ambiguous differing bodie
 If Notion rejects the relation formula through its API, paste `GRIND_OPEN_FORMULA` from
 `src/notion/latest-attempt-maintenance.ts` into the existing `Solution` / `Grind Open` formula editor in Notion,
 then rerun the command. A successfully saved identical formula is verified without rewriting it.
-Restart the bridge explicitly to load code changes; this command does not restart it.
+Keep the extension locked during maintenance; this command does not resume captures.
 
 Outcome saves reuse a request-local Notion snapshot and combine Problem metadata/review updates.
 With one page of receipts, a normal replacement uses 10 Notion requests (previously 21); first
@@ -209,79 +210,12 @@ captures use 6. Success still means the Notion writes finished, not merely that 
 Retries reload durable state, and pending receipts remain until both the Attempt and Problem are
 updated. Notion latency, retries, and extra pages of notes/receipts still affect elapsed time.
 
-## 3. Build the on-demand menu-bar launcher
+## 3. Prepare an existing tracker for direct connection
 
-LCTrack never starts at login. Build the local menu-bar app once, then open it only when you want the
-bridge running:
-
-```bash
-npm run build:menu-bar
-```
-
-Open `build/LCTrack.app` in Finder. You may keep it there, drag it to `/Applications`, or add it to the
-Dock. The app bundle records only this repository path, the Node executable path, and the configured
-port; it contains no Notion or bridge token. Rebuild it after moving the repository or changing Node
-installations.
-
-Opening **LCTrack** is the explicit start action. It starts the localhost bridge, opens the dashboard,
-and places the same shadcn/Lucide Square Terminal mark used by the Chrome extension in the macOS menu
-bar. The menu provides **Open Dashboard**, **Stop Bridge**, **Start Bridge**, **View Log**, and **Quit
-LCTrack**. Stopping or quitting terminates only a bridge started by that app instance. It does not
-install a LaunchAgent or login item, start after login, or restart a stopped bridge. Logs stay in
-ignored `build/lc-menu-bar.log`.
-
-If the bridge is already running from another launcher, the menu-bar app opens the dashboard and
-reports that the bridge is running elsewhere; it does not claim or terminate that process.
-
-### Visible Terminal fallback
-
-To keep using the original visible launcher, configure it once:
-
-1. In Finder, select `lc-log.command` and open **Get Info**.
-2. Under **Open with**, choose **Terminal.app**, then select **Change All**.
-3. Drag `lc-log.command` to the Dock's document area, to the right of the divider.
-
-When needed, click that Dock item once. A titled Terminal window starts the local bridge and stays
-visible for its entire lifetime. Leave it open while using the extension; press Ctrl-C or close the
-window to stop the bridge. A second click opens the dashboard from the already-running bridge without
-creating another process. An unexpected port owner is reported and never terminated automatically.
-Terminal.app is only the documented Finder default: `lc-log.command` also supports direct shell
-execution and other terminal hosts.
-
-For development, the direct command remains available:
-
-```bash
-npm run dev:bridge
-```
-
-Notion remains the only source for new-Problem counts and review rows. The new-problem maximum and
-optional session boundary are tracker-wide local bridge preferences stored atomically in ignored
-`build/dashboard-settings.json`. `DAILY_NEW_PROBLEM_GOAL` supplies only the first-run maximum. Use
-the maximum button in **NEW PROBLEMS THIS SESSION** to choose an integer from 1 through 100. Enter
-saves the inline edit, Escape cancels it, and leaving the field saves a changed value. The masthead’s
-**Settings** dialog is reset-only: it deliberately restarts the current count after confirmation.
-Resetting records only a local timestamp; it never changes Problems, Attempts, solved state, streaks,
-or review dates in Notion.
-
-To review the dashboard’s normal, empty, stale, loading, and unavailable design states locally:
-
-```bash
-npm run dev:dashboard:fixtures
-```
-
-Open `http://127.0.0.1:8791/dashboard/normal` and replace `normal` with another state name.
-
-Verify it:
-
-```bash
-curl http://127.0.0.1:8787/health
-```
-
-Expected response:
-
-```json
-{ "ok": true, "service": "leetcode-notion-bridge" }
-```
+Resolve any pending saves in the old extension before reloading it. Stop the legacy bridge and
+keep only one writer profile for this tracker. Preserve the existing token-free
+`build/notion-manifest.json` and optional `build/dashboard-settings.json`; the latter keeps your
+Notion goal and exact count-reset timestamp. Follow [the cutover guide](docs/DIRECT_NOTION_CUTOVER.md).
 
 ## 4. Build and load the Chrome extension
 
@@ -298,12 +232,14 @@ Then:
 5. Open a page matching `https://leetcode.com/problems/<slug>/`.
 6. Select the extension icon to open the side panel.
 7. Set a Daily Reps goal and log the current question as often as needed.
-8. Optional for Notion capture: open **Details → Extension options** and save the bridge URL/token.
+8. For Notion, open the sidebar **Settings**, import the v4 manifest and optional preferences,
+   enter a dedicated integration token, and choose a passphrase of at least 16 characters.
+   Confirm the import preview, then connect. Connection verification performs no Notion writes.
 9. Optional: assign a keyboard shortcut at `chrome://extensions/shortcuts` (see below).
 
-The **Notion Log** tab’s **Dashboard ↗** button derives `/dashboard` from the saved Bridge URL. It
-focuses an existing exact dashboard tab and its Chrome window when possible, or opens one new tab.
-The bottom **Bridge settings** action remains the place to edit the Bridge URL and token.
+Chrome’s **Extension options** page is a launcher for sidebar Settings. It contains no credential
+form. Keep your integration shared only with the two tracker databases and their contents.
+
 The extension icon can open LCTrack from any tab, but the panel belongs only to the tab where it was
 clicked. Moving to another tab does not carry the side panel with it; click the icon there if you also
 want LCTrack on that tab.
@@ -352,12 +288,19 @@ with a blank shortcut, and you would assign it again.
 4. Expand **History** to inspect locally archived problems. This history is profile-local, is not
    synced, and is removed if Chrome clears the extension's data or the extension is uninstalled.
 
-For the optional Notion workflow, open **LCTrack.app** explicitly (or use `lc-log.command`), switch
-to **Notion Log**, and confirm `Needed help` or `Solved`. The bridge is not contacted while the panel
-remains on Daily Reps.
+For Notion, unlock in Settings, open **Log**, and confirm `Needed help` or `Solved`. The worker
+can stop and restart without requiring another unlock during the same Chrome session. Fully exiting
+Chrome, reloading, updating, or disabling the extension clears the unlock key. Closing the last
+window may leave Chrome running; use **Lock now** when you want to lock immediately.
 
-No Notion credential enters Chrome or the menu-bar bundle: both launchers start the same localhost
-bridge, which reads the ignored local `.env` from the repository.
+**Review** loads when opened or explicitly refreshed. Daily Reps and idle panels make no Notion
+requests. Review preferences are separate from the Daily Reps goal; resetting the new-problem count
+changes only a local timestamp, not Notion records.
+
+The saved token and pending code are encrypted locally. While unlocked, the extension holds the
+usable key in session storage. This protects a copied locked profile subject to passphrase strength;
+it cannot protect a compromised browser, operating system, or malicious extension update. See the
+[security model](docs/SECURITY-MODEL.md).
 
 On panel startup, the extension reads the problem page without focusing or scrolling LeetCode.
 Recognition also works on Accepted/submission, Solutions, and Editorial routes. When LeetCode keeps
@@ -384,9 +327,11 @@ a stale content script or page-world reply. If the current receiver is missing o
 reinjects both scripts once and retries immediately.
 
 Each deliberate outcome click creates a new Client Event ID and updates the stable latest Attempt,
-even when the code is unchanged. The last successful outcome remains selected until another success or fingerprint
-change. Only an uncertain write reuses its frozen body and Client Event ID through `Retry same
-attempt`.
+even when code is unchanged. One encrypted pending save is shared across all panels. An interrupted
+save keeps its original code, timestamp, and ID even if you navigate away. Use **Check saved result**
+when verification is required, then **Retry same attempt** to finish. Neither unlocking nor worker
+startup submits a save. An empty Notion lookup does not prove a previous write failed; ambiguous
+results remain blocked for inspection instead of risking a duplicate.
 
 Review scheduling is intentionally small:
 
@@ -397,14 +342,14 @@ Review scheduling is intentionally small:
 | Solved, streak 5   | Mastered / 5              | None             |
 
 The managed Notion views are `Review queue`, `All problems`, and `Recent attempts`.
-Before the first manual reset, the local dashboard counts each Problem once on
+Before the first manual reset, the sidebar Review view counts each Problem once on
 `First Attempt = today` for backward compatibility. After reset, it counts immutable First Attempts
 strictly after the saved session boundary and shows `NEW PROBLEMS THIS SESSION`; the configurable
-maximum is an inline button beside the count, while Settings remains dedicated to resetting the
-session. The compact review queue uses direct LeetCode URLs and includes every Problem whose `Next Review` is today or
+maximum is an inline button beside the count. Review includes the explicit count reset; Settings
+manages the connection and recovery. The compact review queue uses direct LeetCode URLs and includes every Problem whose `Next Review` is today or
 earlier and defensively excludes future-dated rows even if an upstream response contains one. Use
 the `All due`, `Today`, `Overdue`, and `Needed help` local views with title search; matching
-rows appear in batches of 50. These controls filter the in-memory snapshot only and never mutate
+rows appear in batches of 20. These controls filter the in-memory snapshot only and never mutate
 Notion. Difficulty remains visible on each row, including Hard badges. Setup creates the managed
 Notion views with the intended visible columns, filters, sorts,
 widths, wrapping, date formatting, frozen title column, disabled subtasks, and hidden vertical grid
@@ -427,11 +372,10 @@ dependencies:
 npx playwright install chromium
 ```
 
-The MV3 suite starts its own authenticated mock bridge and must claim `127.0.0.1:8787`; stop the
-visible launcher bridge with Ctrl-C (or stop any other process using that port) before running it. A port collision fails immediately
-with an actionable error rather than allowing tests to reach a real bridge. LeetCode-shaped pages
-are fulfilled in-memory at matching `https://leetcode.com/problems/<slug>/` navigation URLs; the
-suite does not contact LeetCode or Notion.
+The MV3 suite uses an isolated Chromium profile and a synthetic Notion REST fixture. Worker
+requests are intercepted before they can reach a real service; LeetCode-shaped navigation pages are
+fulfilled in memory. No `.env`, real credential, existing browser profile, or live tracker is used.
+The legacy dashboard fixture suite remains separate.
 
 ## Scope boundaries
 

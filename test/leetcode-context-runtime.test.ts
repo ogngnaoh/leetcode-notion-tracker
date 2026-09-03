@@ -6,6 +6,7 @@ import type {
 import {
   ContextChangePublisher,
   GET_LEETCODE_CONTEXT_MESSAGE,
+  GET_LEETCODE_MODEL_MESSAGE,
   createContentMessageHandler,
   type ContentScriptResponse,
 } from '../extension/src/leetcode-context-runtime.js';
@@ -57,6 +58,23 @@ afterEach(() => {
 });
 
 describe('content-script context runtime', () => {
+  it('never publishes captured code or its fingerprint and permits explicit model invalidation', async () => {
+    vi.useFakeTimers();
+    const publish = vi.fn();
+    const publisher = new ContextChangePublisher(
+      async () => available('two-sum', 'private'),
+      publish,
+      10,
+    );
+    publisher.notifyChange();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(publish.mock.calls[0]?.[0]).not.toHaveProperty('code');
+    expect(publish.mock.calls[0]?.[0].fingerprint).toBeNull();
+    publisher.notifyChange(true);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(publish).toHaveBeenCalledTimes(2);
+  });
+
   it('performs a fresh extraction for every GET_LEETCODE_CONTEXT request', async () => {
     let calls = 0;
     const handler = createContentMessageHandler(async () => {
@@ -67,6 +85,19 @@ describe('content-script context runtime', () => {
     expect((await request(handler)).context?.problem.slug).toBe('problem-1');
     expect((await request(handler)).context?.problem.slug).toBe('problem-2');
     expect(calls).toBe(2);
+  });
+
+  it('requests a full model only with the explicit V4 model operation', async () => {
+    const metadata = vi.fn(async () => unavailable('two-sum'));
+    const model = vi.fn(async () => available('two-sum', 'private'));
+    const handler = createContentMessageHandler(metadata, model);
+    await request(handler);
+    expect(model).not.toHaveBeenCalled();
+    const response = await new Promise<ContentScriptResponse>((resolve) => {
+      expect(handler({ type: GET_LEETCODE_MODEL_MESSAGE }, resolve)).toBe(true);
+    });
+    expect(response.context).toHaveProperty('code', 'code');
+    expect(handler({ type: 'GET_LEETCODE_CONTEXT_V3' }, vi.fn())).toBe(false);
   });
 
   it('ignores unrelated messages without extracting', () => {
@@ -99,7 +130,7 @@ describe('content-script context runtime', () => {
     publisher.dispose();
   });
 
-  it('debounces changes and publishes only when the fingerprint changes', async () => {
+  it('deduplicates metadata until explicitly invalidated after a model edit', async () => {
     vi.useFakeTimers();
     let current = available('two-sum', 'first');
     const published: LeetCodeSnapshot[] = [];
@@ -114,16 +145,16 @@ describe('content-script context runtime', () => {
     publisher.notifyChange();
     publisher.notifyChange();
     await vi.advanceTimersByTimeAsync(25);
-    expect(published.map((item) => item.fingerprint)).toEqual(['first']);
+    expect(published.map((item) => item.fingerprint)).toEqual([null]);
 
     publisher.notifyChange();
     await vi.advanceTimersByTimeAsync(25);
     expect(published).toHaveLength(1);
 
     current = available('two-sum', 'second');
-    publisher.notifyChange();
+    publisher.notifyChange(true);
     await vi.advanceTimersByTimeAsync(25);
-    expect(published.map((item) => item.fingerprint)).toEqual(['first', 'second']);
+    expect(published.map((item) => item.fingerprint)).toEqual([null, null]);
   });
 
   it('publishes metadata changes alongside an edited code fingerprint', async () => {
@@ -152,9 +183,10 @@ describe('content-script context runtime', () => {
     expect(published).toHaveLength(2);
     expect(published[1]).toMatchObject({
       problem: { topics: ['Array', 'Hash Table'] },
-      code: 'edited = True',
-      fingerprint: 'edited-fingerprint',
+      codeAvailable: false,
+      fingerprint: null,
     });
+    expect(published[1]).not.toHaveProperty('code');
   });
 
   it('publishes SPA slug changes even while code remains unavailable', async () => {
@@ -178,7 +210,7 @@ describe('content-script context runtime', () => {
     expect(published.map((item) => item.problem.slug)).toEqual(['two-sum', 'three-sum']);
   });
 
-  it('publishes transitions to and from unavailable code', async () => {
+  it('publishes model invalidations without code availability disclosure', async () => {
     vi.useFakeTimers();
     let current = unavailable('two-sum');
     const published: LeetCodeSnapshot[] = [];
@@ -193,13 +225,13 @@ describe('content-script context runtime', () => {
     publisher.notifyChange();
     await vi.advanceTimersByTimeAsync(10);
     current = available('two-sum', 'fingerprint');
-    publisher.notifyChange();
+    publisher.notifyChange(true);
     await vi.advanceTimersByTimeAsync(10);
     current = unavailable('two-sum');
-    publisher.notifyChange();
+    publisher.notifyChange(true);
     await vi.advanceTimersByTimeAsync(10);
 
-    expect(published.map((item) => item.codeAvailable)).toEqual([false, true, false]);
+    expect(published.map((item) => item.codeAvailable)).toEqual([false, false, false]);
   });
 
   it('does not publish an older extraction after a newer change was requested', async () => {

@@ -1,6 +1,6 @@
 # Notion schema contract
 
-The bridge expects exact v4 property names and types. This is intentional: a personal tracker does
+The shared tracker repository expects exact v4 property names and types. This is intentional: a personal tracker does
 not need a generalized field-mapping engine. There are exactly two databases with reciprocal
 `Problem`/`Attempts` relations.
 
@@ -25,26 +25,32 @@ One row is one canonical LeetCode problem.
 | Extension Managed | Checkbox     | Created by this integration              |
 | Attempts          | Relation     | Reciprocal relation to Attempts          |
 
+Pre-seeded Grind rows can have a null Practice State and Solved Streak before the first capture.
+The repository reads these as `New` / `0` only when First Attempt, Last Attempt and Next Review are
+also null. A missing Difficulty reads as `Unknown`. Reads never fill these values in Notion;
+the user's next confirmed capture updates the existing row, preserving Grind controls and links.
+Partially populated review state remains an error rather than resetting existing progress.
+
 ## LeetCode Attempts
 
 One retained row is the latest captured Attempt for a canonical problem key. Its page ID stays stable
 across captures. Legacy historical rows remain until an explicitly approved cleanup.
 
-| Property                | Type         | Meaning                              |
-| ----------------------- | ------------ | ------------------------------------ |
-| Attempt                 | Title        | Problem plus attempt timestamp       |
-| Client Event ID         | Rich text    | UUID used for idempotency            |
-| Problem                 | Relation     | Canonical Problem row                |
-| Problem Key             | Rich text    | Redundant `leetcode:<slug>` key      |
-| Attempted At            | Date         | Exact attempt timestamp              |
-| Source URL              | URL          | LeetCode problem URL                 |
-| Language                | Rich text    | Visible implementation language      |
-| Result                  | Select       | Needed help or Solved                |
-| Resulting State         | Select       | State applied to the Problem         |
-| Resulting Solved Streak | Number       | Solved streak applied to the Problem |
-| Resulting Next Review   | Date         | Calendar date applied to the Problem |
-| Extension Managed       | Checkbox     | Created by this integration          |
-| Created Time            | Created time | Native Notion timestamp              |
+| Property                | Type         | Meaning                                    |
+| ----------------------- | ------------ | ------------------------------------------ |
+| Attempt                 | Title        | Problem plus attempt timestamp             |
+| Client Event ID         | Rich text    | UUID used for idempotency                  |
+| Problem                 | Relation     | Canonical Problem row                      |
+| Problem Key             | Rich text    | Redundant `leetcode:<slug>` key            |
+| Attempted At            | Date         | Attempt timestamp at Notion date precision |
+| Source URL              | URL          | LeetCode problem URL                       |
+| Language                | Rich text    | Visible implementation language            |
+| Result                  | Select       | Needed help or Solved                      |
+| Resulting State         | Select       | State applied to the Problem               |
+| Resulting Solved Streak | Number       | Solved streak applied to the Problem       |
+| Resulting Next Review   | Date         | Calendar date applied to the Problem       |
+| Extension Managed       | Checkbox     | Created by this integration                |
+| Created Time            | Created time | Native Notion timestamp                    |
 
 Difficulty options use green `Easy`, yellow `Medium`, red `Hard`, and gray `Unknown`. State options
 use gray `New`, yellow `Needed help`, green `Solved`, and blue `Mastered`.
@@ -52,12 +58,16 @@ use gray `New`, yellow `Needed help`, green `Solved`, and blue `Mastered`.
 
 Captured code is written in the Attempt page body under `Captured code`.
 
-On the first replacement, the page gains a collapsed `LCTrack retry receipts — managed` toggle.
+The page gains a collapsed `LCTrack retry receipts — managed` toggle on its first replacement,
+or at creation when the capture timestamp includes seconds or milliseconds.
 Each JSON code block stores one version-1 receipt: `clientEventId`, `attemptedAt`, `result`, and
 `review`. A `pending` capture payload remains until both the Attempt and Problem writes finish. Never
 manually edit these blocks; they replace immutable history as the retry/recovery record. Completed
 receipts contain no historical solution code. `Client Event ID` remains the current event's UUID.
 `First Attempt` means the earliest recorded capture, even after older Attempt pages are removed.
+Notion date properties can truncate timestamps to the minute. Write verification accepts only the
+exact instant or that minute-truncated representation. Receipts preserve exact capture timestamps
+for ordering within a minute; legacy pages without a receipt retain their available date precision.
 
 Existing Grind workspaces may additionally contain exactly these optional Problem properties:
 `Grind Day` (select), `Grind Block` (select), `Grind Order` (number), `Grind Done` (checkbox),
@@ -105,8 +115,8 @@ The setup and verifier share the exact visible-property order, widths, wrapping,
 format, 12-hour attempt timestamps, frozen title column, disabled subtasks, and hidden vertical lines.
 Technical properties remain in the schema but are hidden in these views. Unrelated views are allowed.
 
-The former `Daily plan` was retired because it required a Notion Business plan. The local bridge
-dashboard reads these properties without adding another database, relation, or property.
+The former `Daily plan` was retired because it required a Notion Business plan. The extension Review
+view and optional legacy dashboard read these properties without another database, relation, or property.
 
 ## v2→v3 migration contract
 

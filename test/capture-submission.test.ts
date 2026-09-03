@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getProblemStatus, sendCapture } from '../extension/src/api.js';
+import { getProblemStatus, sendCapture } from '../extension/src/legacy-api.js';
 import {
   CaptureRequestError,
   CaptureSubmissionCoordinator,

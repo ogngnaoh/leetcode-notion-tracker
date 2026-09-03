@@ -16,6 +16,22 @@
           <img src="icons/square-terminal-32.png" width="20" height="20" alt="" />
           <span>LC TRACK</span>
         </h1>
+        <button id="open-settings" class="btn icon-button" type="button" aria-label="Settings">
+          <svg
+            viewBox="0 0 24 24"
+            width="23"
+            height="23"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <path
+              d="m9 3 .7-1h4.6l.7 3 2 .9 2.6-.8 2.2 3.8-2.1 2v2.2l2.1 2-2.2 3.8-2.6-.8-2 .9-.7 3H9.7l-.7-3-2-.9-2.6.8-2.2-3.8 2.1-2v-2.2l-2.1-2 2.2-3.8L7 6l2-.9Z"
+            />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
       </header>
 
       <nav class="tracker-tabs" role="tablist" aria-label="Tracker mode">
@@ -39,7 +55,18 @@
           aria-controls="notion-log-panel"
           tabindex="-1"
         >
-          Notion Log
+          Log
+        </button>
+        <button
+          id="review-tab"
+          class="tracker-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="review-panel"
+          tabindex="-1"
+        >
+          Review
         </button>
       </nav>
 
@@ -173,68 +200,364 @@
         aria-labelledby="notion-log-tab"
         hidden
       >
-        <div class="notion-actions">
-          <p class="section-label">SPACED-REPETITION CAPTURE</p>
-          <button id="open-dashboard" class="btn dashboard-action" type="button">
-            Dashboard ↗
+        <section class="problem-panel" aria-labelledby="problem-title">
+          <h2 class="section-title">Current problem</h2>
+          <div class="log-problem-heading">
+            <span id="problem-number">—</span>
+            <div>
+              <h2 id="problem-title" class="problem-title">Open a LeetCode problem</h2>
+              <span id="problem-difficulty">Unknown</span>
+            </div>
+          </div>
+          <p id="review-state" class="review-state">Connect Notion to check review status.</p>
+          <ul id="problem-topics" class="topics" aria-label="Current problem topics"></ul>
+        </section>
+        <div id="log-private" hidden>
+          <section class="code-section" aria-labelledby="capture-code-heading">
+            <h2 id="capture-code-heading" class="section-title">Captured code</h2>
+            <p class="code-meta">
+              <span id="code-language">Unknown</span> · <span id="code-line-count">0 lines</span>
+            </p>
+            <details id="code-disclosure" class="code-disclosure" open>
+              <summary aria-label="Toggle code preview">
+                <span class="sr-only">Code preview</span>
+              </summary>
+              <pre
+                id="captured-code"
+                class="captured-code"
+                tabindex="0"
+                aria-label="Captured code preview"
+              ></pre>
+            </details>
+            <button
+              id="expand-code"
+              class="btn btn--quiet text-action"
+              type="button"
+              aria-expanded="false"
+              aria-controls="captured-code"
+            >
+              Expand preview
+            </button>
+          </section>
+          <section class="capture-section" aria-labelledby="capture-heading">
+            <h2 id="capture-heading" class="section-title">How did this attempt go?</h2>
+            <div id="outcome-actions" class="outcome-actions">
+              <button
+                class="btn outcome"
+                type="button"
+                data-result="Needed help"
+                aria-pressed="false"
+                disabled
+              >
+                Needed help
+              </button>
+              <button
+                class="btn outcome"
+                type="button"
+                data-result="Solved"
+                aria-pressed="false"
+                disabled
+              >
+                Solved
+              </button>
+            </div>
+            <p id="success-confirmation" class="success-confirmation" role="status" hidden></p>
+          </section>
+          <p class="privacy-note">
+            Each confirmed outcome records a repetition and updates the saved solution.
+          </p>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite">
+          Open Log to check the current problem.
+        </p>
+        <button id="log-connect" class="btn btn--block" type="button">Connect Notion</button>
+      </section>
+
+      <section
+        id="review-panel"
+        class="tracker-tab-panel"
+        role="tabpanel"
+        aria-labelledby="review-tab"
+        hidden
+      >
+        <div class="section-heading-row">
+          <div>
+            <h2 class="view-heading">Review</h2>
+            <p id="review-updated" class="muted">Waiting for data</p>
+          </div>
+          <button
+            id="refresh-review"
+            class="btn icon-button"
+            type="button"
+            aria-label="Refresh reviews"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <path d="M20 7v5h-5M4 17v-5h5M19.5 11a8 8 0 0 0-14-5M4.5 13a8 8 0 0 0 14 5" />
+            </svg>
           </button>
         </div>
-
-        <section class="problem-panel" aria-labelledby="problem-title">
-          <div class="problem-kicker">
-            <span id="problem-number">—</span>
-            <span id="problem-difficulty" class="badge">UNKNOWN</span>
+        <p id="review-message" class="status" role="status" aria-live="polite"></p>
+        <button id="review-connect" class="btn btn--block" type="button">Connect Notion</button>
+        <div id="review-private" hidden>
+          <div class="review-summary">
+            <div>
+              <span>New this session</span>
+              <div class="summary-value">
+                <span id="new-problem-count">—</span><span>/</span
+                ><span id="review-goal-value">10</span>
+                <button
+                  id="edit-review-goal"
+                  class="text-action goal-edit"
+                  type="button"
+                  aria-label="Edit new-problem goal"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="22"
+                    height="22"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    aria-hidden="true"
+                  >
+                    <path d="m15 4 5 5M4 20l5-1L20 8a2.1 2.1 0 0 0-4-4L5 15l-1 5Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div><span>Reviews due</span><strong id="reviews-due">—</strong></div>
           </div>
-          <h2 id="problem-title" class="problem-title">OPEN A LEETCODE PROBLEM</h2>
-          <div class="review-row">
-            <span>REVIEW</span>
-            <span id="review-state" class="badge badge--muted">READING…</span>
-          </div>
-          <ul id="problem-topics" class="topics" aria-label="Problem topics"></ul>
-        </section>
-
-        <section class="capture-section" aria-labelledby="capture-heading">
-          <h2 id="capture-heading" class="section-label">HOW DID THIS ATTEMPT GO?</h2>
-          <div id="outcome-actions" class="outcome-actions" hidden>
-            <button
-              class="btn outcome"
-              type="button"
-              data-result="Needed help"
-              aria-pressed="false"
+          <form id="review-goal-form" class="inline-form" hidden>
+            <label for="review-goal">New-problem goal</label
+            ><input id="review-goal" type="number" min="1" max="100" required />
+            <div class="dialog-actions">
+              <button class="btn" type="submit">Save goal</button
+              ><button id="cancel-review-goal" class="btn btn--quiet" type="button">Cancel</button>
+            </div>
+          </form>
+          <label class="sr-only" for="review-search">Search problems</label>
+          <div class="review-search-field">
+            <svg
+              viewBox="0 0 24 24"
+              width="21"
+              height="21"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
             >
-              Needed help
-            </button>
-            <button class="btn outcome" type="button" data-result="Solved" aria-pressed="false">
-              Solved
-            </button>
+              <circle cx="10" cy="10" r="7" />
+              <path d="m15 15 6 6" />
+            </svg>
+            <input
+              id="review-search"
+              type="search"
+              placeholder="Search problems"
+              autocomplete="off"
+            />
           </div>
-          <button id="retry-attempt" class="btn btn--block retry" type="button" hidden>
-            Retry same attempt
+          <label class="sr-only" for="review-filter">Review filter</label
+          ><select id="review-filter">
+            <option value="all">All due</option>
+            <option value="today">Today</option>
+            <option value="overdue">Overdue</option>
+            <option value="needed-help">Needed help</option>
+          </select>
+          <ol id="review-list" class="review-list"></ol>
+          <p id="review-empty" class="empty-message" hidden></p>
+          <div class="section-heading-row">
+            <p id="review-count" class="muted"></p>
+            <button id="review-more" class="btn" type="button" hidden>Show more</button>
+          </div>
+          <button id="reset-review" class="btn btn--critical btn--block" type="button">
+            Reset session count
           </button>
-          <p id="success-confirmation" class="success-confirmation" hidden></p>
-        </section>
-
-        <details id="code-disclosure" class="code-disclosure" open>
-          <summary>
-            <span>CODE SNAPSHOT</span>
-            <span class="code-summary-meta">
-              <span id="code-language">UNKNOWN</span>
-              <span aria-hidden="true">·</span>
-              <span id="code-line-count">0 LINES</span>
-            </span>
-          </summary>
-          <pre id="captured-code" class="captured-code" tabindex="0"></pre>
-        </details>
-
-        <section class="feedback" aria-label="Capture status">
-          <p id="status" class="status" role="status" aria-live="polite">
-            Open Notion Log to check the current problem…
-          </p>
-          <button id="open-options" class="btn btn--quiet settings-action" type="button">
-            Bridge settings
-          </button>
-        </section>
+        </div>
       </section>
+
+      <section
+        id="settings-panel"
+        class="tracker-tab-panel settings-panel"
+        aria-labelledby="settings-heading"
+        hidden
+      >
+        <button id="settings-back" class="btn btn--quiet text-action" type="button">← Back</button>
+        <h2 id="settings-heading" class="view-heading">Settings</h2>
+        <p id="connection-state" class="status" role="status">Loading connection…</p>
+        <form id="connection-form" class="settings-form" hidden>
+          <h3>Connect Notion</h3>
+          <p>
+            Use a dedicated internal integration shared only with Problems and Attempts, with read,
+            insert and update content permissions.
+          </p>
+          <label for="manifest-file">Tracker manifest</label
+          ><input id="manifest-file" type="file" accept=".json,application/json" required />
+          <p class="field-help">
+            Choose your existing notion-manifest.json. Never import a .env file.
+          </p>
+          <label for="preferences-file">Existing review preferences (optional)</label
+          ><input id="preferences-file" type="file" accept=".json,application/json" />
+          <p id="import-preview" class="field-help">
+            Without a preferences file: goal 10; count first attempts today. Your Daily Reps goal
+            stays separate.
+          </p>
+          <label for="notion-token">Notion integration token</label
+          ><input
+            id="notion-token"
+            type="password"
+            maxlength="4096"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+          <label for="new-passphrase">New local passphrase</label
+          ><input
+            id="new-passphrase"
+            type="password"
+            minlength="16"
+            autocomplete="new-password"
+            required
+          />
+          <label for="confirm-passphrase">Confirm passphrase</label
+          ><input
+            id="confirm-passphrase"
+            type="password"
+            minlength="16"
+            autocomplete="new-password"
+            required
+          />
+          <p class="field-help">
+            Use at least 16 characters, ideally several random words. This protects your saved
+            connection on this browser. It is not your Notion password.
+          </p>
+          <label class="checkbox-label"
+            ><input id="migration-confirm" type="checkbox" required /><span
+              >I resolved old pending saves, stopped the bridge and other writer profiles, and
+              accept the reviewed goal/session preferences.</span
+            ></label
+          >
+          <button class="btn btn--block primary-action" type="submit">Connect Notion</button>
+        </form>
+        <form id="unlock-form" class="settings-form" hidden>
+          <h3>Unlock Notion</h3>
+          <label for="unlock-passphrase">Local passphrase</label
+          ><input
+            id="unlock-passphrase"
+            type="password"
+            autocomplete="current-password"
+            required
+          /><button class="btn btn--block primary-action" type="submit">Unlock Notion</button
+          ><button id="forgot-passphrase" class="btn btn--quiet text-action" type="button">
+            Forgot passphrase?
+          </button>
+        </form>
+        <div id="connected-settings" hidden>
+          <p class="field-help">
+            Unlocked until Chrome fully exits, or this extension reloads, updates or is disabled.
+            Closing a window may leave Chrome running.
+          </p>
+          <button id="lock-notion" class="btn btn--block" type="button">Lock now</button>
+          <details class="settings-disclosure">
+            <summary>Change passphrase</summary>
+            <form id="change-passphrase-form" class="settings-form">
+              <label for="old-passphrase">Current passphrase</label
+              ><input
+                id="old-passphrase"
+                type="password"
+                autocomplete="current-password"
+                required
+              /><label for="replacement-passphrase">New passphrase</label
+              ><input
+                id="replacement-passphrase"
+                type="password"
+                minlength="16"
+                autocomplete="new-password"
+                required
+              /><label for="replacement-confirm">Confirm new passphrase</label
+              ><input
+                id="replacement-confirm"
+                type="password"
+                minlength="16"
+                autocomplete="new-password"
+                required
+              /><button class="btn" type="submit">Change passphrase</button>
+            </form>
+          </details>
+          <details class="settings-disclosure">
+            <summary>Replace Notion token</summary>
+            <form id="replace-token-form" class="settings-form">
+              <label for="replacement-token">Replacement integration token</label
+              ><input
+                id="replacement-token"
+                type="password"
+                maxlength="4096"
+                autocomplete="off"
+                required
+              />
+              <p class="field-help">
+                The replacement must access the same two databases. Pending recovery stays intact.
+              </p>
+              <button class="btn" type="submit">Replace token</button>
+            </form>
+          </details>
+        </div>
+        <button id="disconnect-notion" class="btn btn--critical btn--block" type="button" hidden>
+          Disconnect Notion
+        </button>
+        <p id="settings-status" class="status" role="status" aria-live="polite"></p>
+        <div id="manual-reconciliation" class="recovery-panel" hidden>
+          <h3>Inspect the uncertain save</h3>
+          <p>
+            Before logging again, inspect and reconcile the uncertain result in Notion. Removing
+            local recovery does not undo a save.
+          </p>
+          <label class="checkbox-label"
+            ><input id="reconciled-confirm" type="checkbox" /><span
+              >I inspected Notion and reconciled the uncertain result.</span
+            ></label
+          ><button id="acknowledge-reconciliation" class="btn" type="button">
+            Confirm reconciliation
+          </button>
+        </div>
+      </section>
+
+      <section
+        id="pending-recovery"
+        class="recovery-panel"
+        aria-labelledby="pending-heading"
+        hidden
+      >
+        <h2 id="pending-heading" class="section-title">Save needs verification</h2>
+        <p id="pending-message" class="status"></p>
+        <p id="pending-detail"></p>
+        <details id="pending-code-disclosure" hidden>
+          <summary>Original captured code</summary>
+          <pre id="pending-code" class="captured-code" tabindex="0"></pre>
+        </details>
+        <button id="retry-attempt" class="btn btn--block" type="button">Retry same attempt</button>
+      </section>
+      <dialog
+        id="notion-confirm-dialog"
+        class="confirmation-dialog"
+        aria-labelledby="notion-confirm-title"
+      >
+        <h2 id="notion-confirm-title"></h2>
+        <p id="notion-confirm-message"></p>
+        <div class="dialog-actions">
+          <button id="notion-confirm-cancel" class="btn btn--quiet" type="button">Cancel</button
+          ><button id="notion-confirm-accept" class="btn btn--critical" type="button">
+            Confirm
+          </button>
+        </div>
+      </dialog>
 
       <dialog id="finish-session-dialog" class="confirmation-dialog">
         <h2>Finish this session?</h2>

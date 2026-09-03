@@ -18,11 +18,14 @@ const requestModel = createModelRequester(channelWindow, window.location.origin,
 );
 
 const extractCurrentContext = async () =>
+  extractLeetCodeSnapshot(collectExtractionCandidates(document, window.location.href, null));
+
+const extractCurrentModel = async () =>
   extractLeetCodeSnapshot(
     collectExtractionCandidates(document, window.location.href, await requestModel()),
   );
 
-const handleMessage = createContentMessageHandler(extractCurrentContext);
+const handleMessage = createContentMessageHandler(extractCurrentContext, extractCurrentModel);
 chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =>
   handleMessage(message, sendResponse),
 );
@@ -40,5 +43,5 @@ const publisher = new ContextChangePublisher(
 );
 
 observeLeetCodePageChanges(document, window, () => publisher.notifyChange());
-listenForModelChanges(channelWindow, () => publisher.notifyChange());
+listenForModelChanges(channelWindow, () => publisher.notifyChange(true));
 publisher.notifyChange();

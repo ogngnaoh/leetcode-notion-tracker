@@ -21,7 +21,7 @@ await build({
   bundle: true,
   format: 'esm',
   platform: 'browser',
-  target: 'chrome114',
+  target: 'chrome142',
   sourcemap: true,
   logLevel: 'info',
 });

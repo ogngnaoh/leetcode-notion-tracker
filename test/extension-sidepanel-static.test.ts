@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
-  it('opens on an accessible standalone Daily Reps tab with Notion Log secondary', async () => {
+  it('opens on an accessible standalone Daily Reps tab with Log and Review secondary', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     expect(html).toMatch(/role="tablist"[\s\S]*id="daily-reps-tab"[\s\S]*Daily Reps/);
@@ -19,7 +19,7 @@ describe('one-click side panel artifact', () => {
     expect(html).toContain('id="daily-history"');
   });
 
-  it('ships synchronized LCTrack version 0.2.13 with consistent user-facing identity', async () => {
+  it('ships synchronized LCTrack versions with consistent user-facing identity', async () => {
     const [manifestText, packageText, lockfileText, sidePanel, options] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
       readFile(resolve(root, 'package.json'), 'utf8'),
@@ -41,7 +41,6 @@ describe('one-click side panel artifact', () => {
 
     expect(manifest).toMatchObject({
       name: 'LCTrack',
-      version: '0.2.13',
       description: 'Daily LeetCode reps with optional Notion capture',
     });
     expect(packageJson.version).toBe(manifest.version);
@@ -54,16 +53,17 @@ describe('one-click side panel artifact', () => {
     expect(options).toMatch(/<h1>LCTrack<\/h1>/);
   });
 
-  it('keeps exactly two compact Notion outcomes and only the bounded Daily Reps goal input', async () => {
+  it('keeps exactly two compact outcomes and separates local, review, and credential inputs', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     const outcomes = [...html.matchAll(/data-result="([^"]+)"/g)].map((match) => match[1]);
     expect(outcomes).toEqual(['Needed help', 'Solved']);
-    expect(html).not.toMatch(/<form\b/i);
+    expect(html).toContain('id="connection-form"');
     expect(html).not.toMatch(/id="reload"/i);
-    expect([...html.matchAll(/<input\b/g)]).toHaveLength(1);
+    expect(html).toContain('id="review-goal"');
     expect(html).toMatch(/<input[^>]*id="daily-goal-input"[^>]*min="1"[^>]*max="100"/);
-    expect(html).not.toMatch(/<select\b|<textarea\b/i);
+    expect(html).toContain('id="review-filter"');
+    expect(html).not.toMatch(/<textarea\b/i);
     expect(html).toContain('<details');
     expect(html).toContain('id="code-language"');
     expect(html).toContain('id="code-line-count"');
@@ -73,13 +73,13 @@ describe('one-click side panel artifact', () => {
   it('color-codes outcomes semantically and uses a result-neutral log confirmation', async () => {
     const [styles, runtime] = await Promise.all([
       readFile(resolve(root, 'extension/styles.css'), 'utf8'),
-      readFile(resolve(root, 'extension/src/sidepanel.ts'), 'utf8'),
+      readFile(resolve(root, 'extension/src/notion-panel.ts'), 'utf8'),
     ]);
 
     expect(styles).toContain(".outcome[data-result='Needed help']");
     expect(styles).toContain(".outcome[data-result='Solved']");
     expect(styles).not.toContain(".outcome[data-result='Couldn’t solve']");
-    expect(runtime).toContain("view.loggedResult ? 'Attempt logged.' : ''");
+    expect(runtime).toContain('Saved to Notion');
     expect(runtime).not.toContain('logged for this exact code');
   });
 
@@ -92,8 +92,8 @@ describe('one-click side panel artifact', () => {
     expect(html.indexOf('class="problem-panel"')).toBeLessThan(
       html.indexOf('class="capture-section"'),
     );
-    expect(html.indexOf('class="capture-section"')).toBeLessThan(
-      html.indexOf('id="code-disclosure"'),
+    expect(html.indexOf('id="code-disclosure"')).toBeLessThan(
+      html.indexOf('class="capture-section"'),
     );
     expect(html).toMatch(/<details[^>]*id="code-disclosure"[^>]*\bopen\b/);
     expect([...html.matchAll(/aria-pressed="false"/g)]).toHaveLength(2);
@@ -112,16 +112,16 @@ describe('one-click side panel artifact', () => {
     expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*gap:\s*var\(--space-2\)/);
   });
 
-  it('keeps the Dashboard shortcut inside Notion Log without new permissions', async () => {
+  it('integrates Review and Settings without broad browser permissions', async () => {
     const [html, manifestText] = await Promise.all([
       readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
     ]);
     const manifest = JSON.parse(manifestText) as { permissions?: string[] };
 
-    expect(html).toMatch(
-      /id="notion-log-panel"[\s\S]*id="open-dashboard"[\s\S]*Dashboard ↗[\s\S]*id="open-options"/,
-    );
+    expect(html).toContain('id="review-panel"');
+    expect(html).toContain('id="settings-panel"');
+    expect(html).not.toContain('id="open-dashboard"');
     expect(manifest.permissions).toEqual(['activeTab', 'scripting', 'sidePanel', 'storage']);
   });
 
