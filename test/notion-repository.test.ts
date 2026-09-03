@@ -303,7 +303,15 @@ describe('NotionCaptureRepository v4 mapping', () => {
       });
     fake.dataSources.query.mockImplementation(async (request: any) => {
       if (request.start_cursor === 's2')
-        return { results: [{ id: 'solve-2' }], has_more: false, next_cursor: null };
+        return {
+          results: [
+            fullPage('solve-2', {
+              'First Attempt': { type: 'date', date: { start: '2026-07-21T19:00:00.000Z' } },
+            }),
+          ],
+          has_more: false,
+          next_cursor: null,
+        };
       if (request.start_cursor === 'd2')
         return {
           results: [
@@ -314,7 +322,15 @@ describe('NotionCaptureRepository v4 mapping', () => {
           next_cursor: null,
         };
       if (request.filter.property === 'First Attempt')
-        return { results: [{ id: 'solve-1' }], has_more: true, next_cursor: 's2' };
+        return {
+          results: [
+            fullPage('solve-1', {
+              'First Attempt': { type: 'date', date: { start: '2026-07-21T18:45:00.000Z' } },
+            }),
+          ],
+          has_more: true,
+          next_cursor: 's2',
+        };
       return {
         results: [duePage('zeta', 'Zeta', '2026-07-20')],
         has_more: true,

@@ -1,61 +1,84 @@
 # Security and privacy
 
-## Secrets
+## Direct connection boundary
 
-`NOTION_TOKEN` exists only in `.env` on the machine running the bridge and setup script.
+The extension stores a dedicated Notion internal-integration token only in an encrypted local vault.
+The approved direct-connection overhaul replaces the old token-never-in-extension boundary; the
+session exception and limits are documented in [the specification](DIRECT_NOTION_SPEC.md).
+No token, passphrase, or unwrapped key belongs in source, builds, logs, diagnostics, sync storage,
+or persistent plaintext records. Enter credentials only in sidebar Settings. Chrome options is a
+credential-free launcher; no OAuth, hosting account, remote key service, or native helper is used.
 
-The v1→v2 migration uses that same local token and never prints or serializes it. Dry-run and apply
-write JSON backups only under ignored `build/`; backups contain manifest/shape metadata, page IDs,
-and legacy field values, but never environment variables, headers, auth objects, clients, or tokens.
-Console output is limited to the backup path, counts, and planned/applied operation counts.
-Apply also writes an atomic token-free recovery journal under ignored `build/`. The journal contains
-only the original backup path, manifest/API identifiers, schema shapes, page IDs, original legacy
-values, and prepared backfill expectations; it is deleted after the version-2 manifest succeeds.
-Those expectations are validated against exact migration-owned keys and value shapes, and the
-journal's SHA-256 binding plus the backup's exact structure are verified before recovery writes.
-The v2→v3 path uses the same token-free boundary for page IDs and `First Solved` recovery values.
-The v3→v4 path also stores only schema metadata, page IDs, captured field values, and expected
-first-Attempt/reclassification values. Its SHA-256-bound backup and journal remain local under ignored
-`build/` and the journal is retained until the version-4 manifest is durable.
+Awaited `TRUSTED_CONTEXTS` access restrictions protect both local and session storage from content
+scripts. They include packaged extension pages and do not imply worker-only secrecy. Only the
+extension's own exact sidebar URL can issue the versioned narrow Notion commands. Incognito is
+unsupported and disabled by the manifest. Production requests use fixed Notion HTTPS endpoints,
+omit ambient credentials, reject redirects, and pass no caller-selected URL/header through a proxy.
 
-The extension stores:
+## Vault and unlock
 
-- Bridge URL
-- Personal bridge token
-- Per-tab, session-scoped pending retry bodies and last-success presentation records
-- A versioned Daily Reps record containing the 1–100 goal, public problem metadata, timestamps, the
-  active repetition list, and manually completed session archives
+A random 256-bit data key encrypts the connection and recovery data using AES-256-GCM, fresh 12-byte
+IVs, and a 128-bit tag. PBKDF2-HMAC-SHA-256 with 600,000 iterations and a random 16-byte salt derives
+the wrapping key from the user's passphrase. Password changes rewrap the same data key with fresh
+salt and IV. Authenticated metadata binds record purpose/version, vault identity, immutable tracker
+IDs, and the pending event. Removing/swapping recovery ciphertext fails authentication.
 
-Daily Reps never stores captured code, language, outcomes, bridge credentials, or Notion IDs. It is
-kept in `chrome.storage.local`, is not cloud-synced, and is removed when extension storage is cleared
-or the extension is uninstalled. Mutations are serialized by the background worker and accepted only
-from extension-owned pages; a malformed stored record is reported without being overwritten.
+The passphrase is not saved. Inputs require at least 16 Unicode characters and no more than 1,024
+UTF-8 bytes; tokens are bounded to 4 KiB. Confirmed events are at most 128 KiB UTF-8 with the existing
+20,000-character code limit, and the encrypted aggregate is at most 1 MiB. Unsupported formats,
+excessive derivation parameters, unexpected fields, and invalid encodings fail before expensive work.
+Wrong passwords or corrupted data never overwrite a valid saved connection with defaults.
 
-The bridge token authorizes only the narrow bridge endpoint. It is not a Notion credential.
+Session storage contains the unwrapped data-key bytes, vault binding, and a random grant identity.
+These bytes are credential-equivalent. They survive worker retirement but disappear after full
+Chrome exit, extension reload, update, or disable. The plaintext token is never saved to session
+storage. Private Review snapshots may be cached there while unlocked; pending code stays encrypted
+in local storage. The browser may remain running after its last window closes.
 
-The public dashboard HTML contains no bridge or Notion credential. Its settings form receives one
-random anti-forgery token for the lifetime of the bridge process and must echo it in the custom
-`X-LC-Dashboard-Token` header to `POST /dashboard/settings`. The route has no CORS policy, so a
-cross-origin page cannot read the token or send the custom header. CSP remains default-deny and allows
-only same-origin scripts, styles, images, fonts, and the settings connection. The route can change only
-the integer `dailyNewProblemGoal` from 1 through 100; it is not a generic file or Notion proxy.
+**Lock now** immediately fences dispatch, best-effort aborts active requests, revokes the grant, and
+purges authority/private caches. Cache writes are serialized ahead of purge and removal is checked
+before success. Epoch and private-view revisions reject late results and hydration. If key removal
+fails, durable grant revocation prevents a restarted worker from accepting the old key. If both
+revocation and key removal fail, durable locking cannot be guaranteed; the UI reports Lock failed
+and requires retry or full Chrome exit. It never presents that condition as a successful lock.
 
-The saved dashboard preference lives in ignored `build/dashboard-settings.json`. It contains no
-token or Notion data, is replaced atomically, and is never copied into extension storage or output.
+No vault scheme can protect against malicious packaged extension code, a compromised browser/OS,
+or memory inspection while unlocked. JavaScript cannot guarantee physical memory erasure. Offline
+password guessing resistance depends on passphrase strength. Changing the passphrase cannot secure
+old vault copies; revoke a compromised token separately in Notion. There is no passphrase recovery,
+token reveal/export button, automatic clipboard copy, or permanent auto-unlock.
 
-## Local-first default
+## Least access and recovery
 
-The bridge binds to `127.0.0.1`, not every network interface. The extension manifest grants bridge access only to localhost on port 8787.
-The generated menu-bar app stores only the repository path, Node executable path, and configured port.
-It invokes the existing launcher, which reads `.env` itself; neither Notion nor bridge token enters the
-app bundle or its log. Opening the app is the explicit start action. Stop and Quit terminate only its
-owned launcher, crashes are not restarted, and there is no LaunchAgent, login item, cloud secret, or
-Notion token in extension storage. A healthy bridge started elsewhere is detected but never stopped.
+Use a dedicated internal integration with read/insert/update capabilities and sharing restricted to
+Problems/Attempts and their contents. Parent sharing includes children. Read-only Connect verifies
+the v4 schema, two database/data-source bindings, and reciprocal relations; it cannot prove write
+capability or detect all unrelated sharing. It creates no dummy pages and imports no `.env` file.
 
-The visible Dock fallback stores no credentials, sources no shell environment file, and prints no
-secret values. Finder documents Terminal.app as the default handler for `lc-log.command`, while direct
-shell and alternate-terminal launches remain supported. Both launch paths use the same temporary
-startup claim, which contains only a process ID and is never used to transport credentials.
+One encrypted pending save is durable before mutation. A lost response or abort can mean Notion
+already accepted the write. Check performs read-only positive reconciliation; negative discovery
+does not justify another create/append. Explicit retry preserves the exact original event and
+validated targets. The most recent code-free completed receipt survives a lost panel reply.
+
+Disconnect/reset removes only Notion local state and preserves Daily Reps and remote pages. If
+pending recovery exists or cannot be inspected, a warning and explicit confirmation are required.
+A nonsecret reconciliation-required flag must persist before recovery is deleted; otherwise deletion
+fails. A newly configured connection cannot capture until the user confirms manual reconciliation.
+Token replacement is validated against the same tracker binding and does not retry pending work.
+
+## Daily Reps and legacy tools
+
+Daily Reps stores public metadata, timestamps, goals, and manually archived sessions under its own
+versioned local key. It contains no code, outcomes, Notion IDs, or credentials and is not cloud synced.
+Vault operations never globally clear extension storage. Uninstalling or clearing extension storage
+removes browser-local data. Legacy bridge settings, if present from an older release, are unused.
+
+One-time setup and legacy maintenance commands still read the ignored local `.env`. They do not
+transfer it to Chrome. Migration backups/journals exclude tokens, headers, clients, and environment
+variables, but can contain personal page data or code and must remain under ignored local `build/`.
+The optional legacy bridge binds to loopback and keeps its narrow API; the direct extension has no
+localhost permission. Never run legacy and direct writers together. See
+[legacy tools](LEGACY_BRIDGE.md) and [cutover](DIRECT_NOTION_CUTOVER.md).
 
 ## LeetCode access
 
@@ -82,17 +105,16 @@ It does not:
 - Intercept network traffic
 - Call undocumented LeetCode APIs
 - Crawl other problems
-- Send data without a user-confirmed outcome click
+- Write captured code or attempts without a user-confirmed outcome click
 
 ## Deterministic browser tests
 
-The Playwright MV3 suite uses a synthetic bridge token and binds its own mock exclusively to
-`127.0.0.1:8787`. If that port is unavailable, the suite fails with instructions to stop the real
-bridge; it never falls through to a live local service. The fixture substitutes only top-level
-LeetCode problem navigations with in-memory public-DOM-shaped HTML and does not read cookies, route
-application API traffic, contact LeetCode APIs, or load `.env` credentials. Temporary Chromium
-profiles and Playwright results live outside source control and are removed or kept under ignored
-`build/` paths.
+Tests use temporary Chromium profiles, synthetic credentials, public-DOM-shaped LeetCode pages,
+and a stateful synthetic Notion REST fixture. The harness intercepts worker traffic before dispatch
+and blocks unknown destinations; it never loads `.env` or falls through to a real tracker. Forced
+worker termination and browser restarts run only against this disposable profile. Test outputs and
+screenshots contain synthetic data and live under ignored `build/` or temporary directories.
+Production code has no interception or test endpoint path.
 
 ## Migration review
 
@@ -108,7 +130,7 @@ Attempt relation and that relation's values on Grind-only duplicate rows, with r
 Historical removal requires separate approval after review and preservation of retry receipts.
 `notion:latest:cleanup` requires that approved backup and its SHA-256, writes a token-free local audit,
 and moves only the exact checked older pages to recoverable Notion Trash. It refuses changed
-properties, bodies, unapproved pages, or extra notes on deletion candidates. Run it with the bridge
+properties, bodies, unapproved pages, or extra notes on deletion candidates. Run it with every tracker writer
 stopped; Notion does not provide a transaction spanning capture writes and cleanup.
 
 Run `npm run notion:migrate:v2` without flags first. Inspect the reported backup path and counts before
@@ -117,15 +139,3 @@ personal notes or code-adjacent reflections, so keep `build/` local and ignored 
 token-free.
 Use the same review-before-apply sequence for `npm run notion:migrate:v3` and
 `npm run notion:migrate:v4`.
-
-## Before remote deployment
-
-Remote deployment is outside the MVP. Before exposing the bridge publicly, add:
-
-- HTTPS
-- Origin allowlisting
-- Rotatable device credentials
-- Request-size limits
-- Rate limiting
-- Structured secret-safe logging
-- Deployment-specific host permissions in `manifest.json`

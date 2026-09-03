@@ -1,4 +1,5 @@
 import { configureTabScopedSidePanel, openSidePanelForTab } from './side-panel-launcher.js';
+import { NotionRuntime } from './notion-runtime.js';
 import {
   createOpenPanels,
   forgetOpenPanel,
@@ -15,6 +16,27 @@ import {
 } from './daily-reps.js';
 
 export const TOGGLE_COMMAND = 'toggle-side-panel';
+
+const notionRuntime = new NotionRuntime(
+  { local: chrome.storage.local, session: chrome.storage.session },
+  {
+    changed: async (message) => {
+      await chrome.runtime.sendMessage(message).catch(() => undefined);
+    },
+  },
+);
+
+chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+  if (
+    !message ||
+    typeof message !== 'object' ||
+    !('type' in message) ||
+    message.type !== 'lctrack.notion'
+  )
+    return false;
+  void notionRuntime.handle(message, sender, chrome.runtime.id).then(sendResponse);
+  return true;
+});
 
 const openPanels = createOpenPanels();
 const dailyRepsStore = new DailyRepsStore(

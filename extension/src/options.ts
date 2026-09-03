@@ -1,35 +1,19 @@
-import { getSettings, saveSettings } from './storage.js';
-
-function element<T extends HTMLElement>(id: string): T {
-  const value = document.getElementById(id);
-  if (!value) throw new Error(`Missing element #${id}`);
-  return value as T;
-}
-
-const form = element<HTMLFormElement>('settings-form');
-const bridgeUrl = element<HTMLInputElement>('bridge-url');
-const bridgeToken = element<HTMLInputElement>('bridge-token');
-const status = element<HTMLParagraphElement>('settings-status');
-
-async function load(): Promise<void> {
-  const settings = await getSettings();
-  bridgeUrl.value = settings.bridgeUrl;
-  bridgeToken.value = settings.bridgeToken;
-}
-
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  void (async () => {
-    await saveSettings({
-      bridgeUrl: bridgeUrl.value.trim().replace(/\/$/, ''),
-      bridgeToken: bridgeToken.value,
+const launch = document.getElementById('launch-settings') as HTMLButtonElement;
+const status = document.getElementById('settings-status') as HTMLParagraphElement;
+launch.addEventListener('click', () => {
+  void chrome.tabs
+    .getCurrent()
+    .then(async (tab) => {
+      if (tab?.id === undefined) throw new Error();
+      await chrome.sidePanel.setOptions({
+        tabId: tab.id,
+        path: 'sidepanel.html?view=settings',
+        enabled: true,
+      });
+      await chrome.sidePanel.open({ tabId: tab.id });
+    })
+    .catch(() => {
+      status.textContent =
+        'Select LCTrack’s toolbar icon, then Settings. Credentials are entered only in the side panel.';
     });
-    status.textContent = 'Settings saved.';
-    status.className = 'status success';
-  })().catch((error: unknown) => {
-    status.textContent = error instanceof Error ? error.message : 'Unable to save settings.';
-    status.className = 'status error';
-  });
 });
-
-void load();

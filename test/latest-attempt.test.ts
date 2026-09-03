@@ -44,7 +44,7 @@ const newer: CaptureEvent = {
 };
 
 // Stateful Notion double: persisted mutations survive repository/service recreation.
-function workspace(pageSize = 2) {
+function workspace(pageSize = 2, truncateDates = false) {
   let sequence = 0;
   const pages = new Map<string, any>();
   const blocks = new Map<string, any>();
@@ -67,6 +67,11 @@ function workspace(pageSize = 2) {
       Object.entries(props).map(([key, val]) => {
         const value = structuredClone(val) as any;
         const type = Object.keys(value)[0]!;
+        if (truncateDates && type === 'date' && value.date?.start.includes('T')) {
+          value.date.start = new Date(
+            Math.floor(Date.parse(value.date.start) / 60_000) * 60_000,
+          ).toISOString();
+        }
         if (type === 'title' || type === 'rich_text')
           value[type].forEach((t: any) => {
             t.plain_text = t.text.content;
@@ -161,6 +166,173 @@ const content = (block: any) =>
   block?.code?.rich_text.map((r: any) => r.text?.content ?? r.plain_text).join('');
 
 describe('latest Attempt persistence', () => {
+  it('accepts minute-precision Notion dates for first saves, replacements and retries', async () => {
+    const w = workspace(100, true);
+    const firstEvent = {
+      ...event,
+      attempt: { ...event.attempt, attemptedAt: '2026-09-01T18:00:12.345+08:00' },
+    };
+    const nextEvent = {
+      ...newer,
+      attempt: { ...newer.attempt, attemptedAt: '2026-09-02T10:00:45.678Z' },
+    };
+    const first = await w.service().capture(firstEvent);
+    const next = await w.service().capture(nextEvent);
+    expect(next.attemptPageId).toBe(first.attemptPageId);
+    w.notion.pages.update.mockClear();
+    expect((await w.service().capture(nextEvent)).duplicate).toBe(true);
+    expect((await w.service().capture(firstEvent)).duplicate).toBe(true);
+    expect(w.notion.pages.update).not.toHaveBeenCalled();
+    expect(w.pages.size).toBe(2);
+  });
+
+  it('does not replace a newer capture with an older event in the same rounded minute', async () => {
+    const w = workspace(100, true);
+    const first = await w.service().capture({
+      ...event,
+      attempt: { ...event.attempt, attemptedAt: '2026-09-01T10:00:45.678Z' },
+    });
+    const older = {
+      ...newer,
+      attempt: {
+        ...newer.attempt,
+        attemptedAt: '2026-09-01T10:00:12.345Z',
+        attemptedOn: '2026-09-01',
+      },
+    };
+    await w.service().capture(older);
+    expect((await w.service().capture(older)).duplicate).toBe(true);
+    expect(content(w.blocks.get(w.children.get(first.attemptPageId)![1]!))).toBe(
+      event.attempt.code,
+    );
+    expect(w.pages.get(first.problemPageId).properties['Practice State'].select.name).toBe(
+      'Solved',
+    );
+    expect(w.pages.get(first.problemPageId).properties['Solved Streak'].number).toBe(1);
+  });
+
+  it('recovers a rounded-date replacement after its Problem write fails without counting twice', async () => {
+    const w = workspace(100, true);
+    const first = await w.service().capture(event);
+    const update = w.notion.pages.update.getMockImplementation()!;
+    w.notion.pages.update.mockImplementation(async (req) => {
+      if (req.page_id === first.problemPageId) throw new Error('offline');
+      return update(req);
+    });
+    const next = {
+      ...newer,
+      attempt: {
+        ...newer.attempt,
+        attemptedAt: '2026-09-02T10:00:45.678Z',
+        result: 'Solved' as const,
+      },
+    };
+    await expect(w.service().capture(next)).rejects.toThrow('offline');
+    w.notion.pages.update.mockImplementation(update);
+    await expect(w.service().capture(next)).resolves.toMatchObject({
+      duplicate: true,
+      attemptPageId: first.attemptPageId,
+      review: { solvedStreak: 2 },
+    });
+    expect(w.pages.get(first.problemPageId).properties['Solved Streak'].number).toBe(2);
+  });
+
+  it.each(['problem', 'attempt'] as const)(
+    'still rejects a %s response with a different precise timestamp in the same minute',
+    async (target) => {
+      const w = workspace(100);
+      const first = await w.service().capture(event);
+      const update = w.notion.pages.update.getMockImplementation()!;
+      w.notion.pages.update.mockImplementation(async (req) => {
+        const page = await update(req);
+        const targetId = target === 'problem' ? first.problemPageId : first.attemptPageId;
+        if (req.page_id === targetId) {
+          const field = target === 'problem' ? 'Last Attempt' : 'Attempted At';
+          page.properties[field].date.start = '2026-09-02T10:00:01.000Z';
+        }
+        return page;
+      });
+      const next = {
+        ...newer,
+        attempt: { ...newer.attempt, attemptedAt: '2026-09-02T10:00:45.678Z' },
+      };
+      await expect(w.service().capture(next)).rejects.toThrow(/update response/);
+      w.notion.pages.update.mockImplementation(update);
+      expect((await w.service().capture(next)).duplicate).toBe(true);
+    },
+  );
+
+  it.each(['Needed help', 'Solved'] as const)(
+    'captures %s into an existing blank Grind row without creating another Problem',
+    async (result) => {
+      const w = workspace(100);
+      const problem = await w.repository().createProblem(event, 'leetcode:two-sum');
+      const properties = w.pages.get(problem.pageId).properties;
+      properties['Practice State'].select = null;
+      properties['Solved Streak'].number = null;
+      properties.Difficulty.select = null;
+      properties['Extension Managed'].checkbox = false;
+      properties['Grind Day'] = { type: 'select', select: { name: 'Day 1' } };
+      properties['Grind Done'] = { type: 'checkbox', checkbox: true };
+      properties.Solution = { type: 'formula', formula: { type: 'array', array: [] } };
+      const service = w.service();
+      await expect(service.getProblemStatus('two-sum')).resolves.toMatchObject({
+        found: true,
+        practiceState: 'New',
+        solvedStreak: 0,
+        lastAttempt: null,
+      });
+      const capture = { ...event, attempt: { ...event.attempt, result } };
+      const saved = await service.capture(capture);
+      expect(saved.problemPageId).toBe(problem.pageId);
+      expect((await service.capture(capture)).duplicate).toBe(true);
+      expect(w.pages.size).toBe(2);
+      expect(properties['Grind Day'].select.name).toBe('Day 1');
+      expect(properties['Grind Done'].checkbox).toBe(true);
+      expect(properties.Solution.formula).toEqual({ type: 'array', array: [] });
+      expect(properties.Difficulty.select.name).toBe('Easy');
+      expect(properties['Practice State'].select.name).toBe(
+        result === 'Solved' ? 'Solved' : 'Needed help',
+      );
+    },
+  );
+
+  it('recovers the first Attempt after a blank Grind row update fails', async () => {
+    const w = workspace(100);
+    const problem = await w.repository().createProblem(event, 'leetcode:two-sum');
+    const properties = w.pages.get(problem.pageId).properties;
+    properties['Practice State'].select = null;
+    properties['Solved Streak'].number = null;
+    properties.Difficulty.select = null;
+    properties['Extension Managed'].checkbox = false;
+    w.notion.pages.update.mockRejectedValueOnce(new Error('offline'));
+    await expect(w.service().capture(event)).rejects.toThrow('offline');
+    await expect(w.service().capture(event)).resolves.toMatchObject({
+      duplicate: true,
+      problemPageId: problem.pageId,
+      review: { solvedStreak: 1 },
+    });
+    expect(w.pages.size).toBe(2);
+    expect(properties['First Attempt'].date.start).toBe(event.attempt.attemptedAt);
+    expect(properties['Solved Streak'].number).toBe(1);
+  });
+
+  it.each(['Solved Streak', 'Last Attempt', 'First Attempt', 'Next Review'])(
+    'does not treat a missing state as New when %s contains progress',
+    async (field) => {
+      const w = workspace(100);
+      const problem = await w.repository().createProblem(event, 'leetcode:two-sum');
+      const properties = w.pages.get(problem.pageId).properties;
+      properties['Practice State'].select = null;
+      properties['Solved Streak'].number = null;
+      if (field === 'Solved Streak') properties[field].number = 2;
+      else properties[field].date = { start: event.attempt.attemptedAt };
+      await expect(w.service().capture(event)).rejects.toThrow();
+      expect(w.pages.size).toBe(1);
+      expect(w.notion.pages.update).not.toHaveBeenCalled();
+    },
+  );
+
   it('validates write responses independently of input object property order', async () => {
     const w = workspace(100);
     await w.service().capture(event);

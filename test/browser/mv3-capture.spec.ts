@@ -1,403 +1,63 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { MockBridge, TEST_BRIDGE_TOKEN, type BridgeReply } from './mock-bridge.js';
+import { expect, test, type Page } from '@playwright/test';
+import {
+  DirectExtensionFixture,
+  TEST_NOTION_TOKEN,
+  TEST_PASSPHRASE,
+} from './direct-extension-fixture.js';
+import { twoSum, secondProblem, type ProblemFixture } from './problem-fixtures.js';
+import { directManifest } from '../../scripts/benchmark/direct-fixture.js';
 
-test.describe.configure({ mode: 'serial' });
+let fixture: DirectExtensionFixture;
+test.beforeEach(async () => {
+  fixture = new DirectExtensionFixture();
+  await fixture.launch();
+});
+test.afterEach(async () => {
+  const errors = [...fixture.errors];
+  await fixture.close();
+  expect(errors).toEqual([]);
+});
 
-interface ProblemFixture {
-  slug: string;
-  title: string;
-  number: number;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  topics: string[];
-  /** LeetCode editor language id. */
-  language: string;
-  code: string | null;
-  /** How many logical lines the fake view renders. Omit to render all of them. */
-  renderedLines?: number;
-  /** Installs `window.monaco` well after the model request timeout, mimicking slow hydration. */
-  lateModel?: boolean;
-  /** Editor runtime used by the page. Focus mode currently uses CodeMirror. */
-  editor?: 'monaco' | 'codemirror';
-  /** Accepted submissions keep the description mounted in an inactive layout tab. */
-  inactiveDescription?: boolean;
-  route?: string;
-  animate?: boolean;
-}
-
-const twoSum: ProblemFixture = {
-  slug: 'two-sum',
-  title: 'Two Sum',
-  number: 1,
-  difficulty: 'Easy',
-  topics: ['Array', 'Hash Table', 'Array'],
-  language: 'python3',
-  code: 'def twoSum(nums, target):\n    seen = {}\n    return []',
-};
-
-const secondProblem: ProblemFixture = {
-  slug: 'longest-substring-without-repeating-characters',
-  title: 'Longest Substring Without Repeating Characters',
-  number: 3,
-  difficulty: 'Medium',
-  topics: ['Hash Table', 'String', 'Sliding Window'],
-  language: 'typescript',
-  code: 'function lengthOfLongestSubstring(s: string): number {\n  return s.length;\n}',
-};
-
-const bridge = new MockBridge();
-const extensionPath = resolve('dist/extension');
-let context: BrowserContext;
-let userDataDir: string;
-let extensionId: string;
-
-function fixtureHtml(fixture: ProblemFixture): string {
-  const topics = fixture.topics
-    .map((topic) => {
-      const slug = topic.toLowerCase().replaceAll(' ', '-');
-      return `<a class="topic" href="/tag/${slug}/">${topic}</a>`;
-    })
-    .join('');
-  const editor =
-    fixture.code === null
-      ? ''
-      : fixture.editor === 'codemirror'
-        ? `<div class="editor" data-track-load="code_editor"><div class="cm-editor"><div class="cm-scroller"><div class="cm-content" role="textbox" data-language=${JSON.stringify(fixture.language)}></div></div></div></div>
-    <script>
-      (() => {
-        const state = {
-          code: ${JSON.stringify(fixture.code)},
-          languageId: ${JSON.stringify(fixture.language)},
-          rendered: ${fixture.renderedLines ?? -1},
-        };
-        const content = document.querySelector('[data-track-load="code_editor"] .cm-content');
-        const view = { state: { doc: { toString: () => state.code } } };
-        content.cmView = { view };
-        const render = () => {
-          const lines = state.code.split('\\n');
-          const shown = state.rendered < 0 ? lines : lines.slice(0, state.rendered);
-          content.replaceChildren(...shown.map((text) => {
-            const line = document.createElement('div');
-            line.className = 'cm-line';
-            line.textContent = text;
-            return line;
-          }));
-        };
-        window.__setModel = (code, languageId, rendered) => {
-          state.code = code;
-          if (languageId !== undefined) {
-            state.languageId = languageId;
-            content.dataset.language = languageId;
-          }
-          if (rendered !== undefined) state.rendered = rendered;
-          view.state = { doc: { toString: () => state.code } };
-          render();
-        };
-        render();
-      })();
-    </script>`
-        : `<div class="editor"><div class="monaco-editor"><div class="view-lines"></div></div></div>
-    <script>
-      (() => {
-        const contentListeners = new Set();
-        const languageListeners = new Set();
-        const state = {
-          code: ${JSON.stringify(fixture.code)},
-          languageId: ${JSON.stringify(fixture.language)},
-          rendered: ${fixture.renderedLines ?? -1},
-        };
-        const node = document.querySelector('.monaco-editor');
-        const view = node.querySelector('.view-lines');
-        const render = () => {
-          const lines = state.code.split('\\n');
-          const shown = state.rendered < 0 ? lines : lines.slice(0, state.rendered);
-          view.replaceChildren(...shown.map((text) => {
-            const line = document.createElement('div');
-            line.className = 'view-line';
-            line.textContent = text;
-            return line;
-          }));
-        };
-        const model = {
-          getValue: () => state.code,
-          getLineCount: () => state.code.split('\\n').length,
-          getLanguageId: () => state.languageId,
-          onDidChangeContent: (listener) => {
-            contentListeners.add(listener);
-            return { dispose: () => contentListeners.delete(listener) };
-          },
-        };
-        const editorInstance = {
-          getModel: () => model,
-          getDomNode: () => node,
-          onDidChangeModelLanguage: (listener) => {
-            languageListeners.add(listener);
-            return { dispose: () => languageListeners.delete(listener) };
-          },
-        };
-        const install = () => {
-          window.monaco = { editor: { getEditors: () => [editorInstance] } };
-        };
-        if (${fixture.lateModel === true}) setTimeout(install, 900); else install();
-        window.__setModel = (code, languageId, rendered) => {
-          state.code = code;
-          if (languageId !== undefined) state.languageId = languageId;
-          if (rendered !== undefined) state.rendered = rendered;
-          render();
-          for (const listener of contentListeners) listener();
-          for (const listener of languageListeners) listener();
-        };
-        render();
-      })();
-    </script>`;
-  return `<!doctype html>
-    <html lang="en"><head><meta charset="utf-8"><title>${fixture.inactiveDescription ? '' : `${fixture.number}. `}${fixture.title} - LeetCode</title>
-    <style>
-      body { font-family: sans-serif; }
-      [data-testid="question-title"], [data-testid="difficulty"], .topic, .editor { display: block; width: 480px; min-height: 24px; }
-      .monaco-editor, .cm-editor { position: relative; width: 480px; height: 240px; }
-      .view-line { min-height: 20px; white-space: pre; }
-      #topics { margin-top: 1600px; }
-    </style></head><body>
-      ${fixture.inactiveDescription ? '<div class="flexlayout__tab"><div class="text-difficulty-hard">Hard</div><a href="/tag/unrelated/">Unrelated</a></div>' : ''}
-      <div class="flexlayout__tab" ${fixture.inactiveDescription ? 'style="display:none"' : ''}>
-      <h1 data-testid="question-title"><a href="/problems/${fixture.slug}/">${fixture.number}. ${fixture.title}</a></h1>
-      <div data-testid="difficulty">${fixture.difficulty}</div>
-      <section id="topics">${topics}</section></div>
-      ${editor}
-      ${fixture.animate ? '<script>let tick = 0; setInterval(() => document.body.className = `tick-${++tick}`, 16);</script>' : ''}
-    </body></html>`;
-}
-
-async function launchExtension(): Promise<void> {
-  userDataDir = await mkdtemp(join(tmpdir(), 'leetcode-tracker-playwright-'));
-  context = await chromium.launchPersistentContext(userDataDir, {
-    channel: 'chromium',
-    headless: true,
-    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
-  });
-  const serviceWorker =
-    context.serviceWorkers()[0] ??
-    (await context.waitForEvent('serviceworker', { timeout: 10_000 }).catch(() => null));
-  if (!serviceWorker) {
-    throw new Error(
-      'The built MV3 extension service worker did not appear. Run npm run build:extension and ensure Playwright bundled Chromium is installed.',
-    );
-  }
-  extensionId = new URL(serviceWorker.url()).host;
-  if (!extensionId) throw new Error(`Could not derive extension ID from ${serviceWorker.url()}.`);
-}
-
-async function closeCasePages(): Promise<void> {
-  await Promise.all(context.pages().map((page) => page.close().catch(() => undefined)));
-}
-
-async function setStorage(token: string | null): Promise<void> {
-  const worker = context.serviceWorkers()[0];
-  if (!worker) throw new Error('MV3 service worker is unavailable.');
-  await worker.evaluate(
-    async ({ tokenValue, bridgeUrl }) => {
-      await chrome.storage.local.clear();
-      await chrome.storage.session.clear();
-      if (tokenValue !== null) {
-        await chrome.storage.local.set({
-          trackerSettings: { bridgeUrl, bridgeToken: tokenValue },
-        });
-      }
-    },
-    { tokenValue: token, bridgeUrl: 'http://127.0.0.1:8787' },
-  );
-}
-
-async function readSessionForPage(page: Page): Promise<unknown> {
-  const worker = context.serviceWorkers()[0];
-  if (!worker) throw new Error('MV3 service worker is unavailable.');
-  return worker.evaluate(async (url) => {
-    const tabs = await chrome.tabs.query({ url });
-    const tabId = tabs[0]?.id;
-    if (tabId === undefined) return null;
-    const key = `leetcodeTracker.capture.tab.${tabId}`;
-    return (await chrome.storage.session.get(key))[key] ?? null;
-  }, page.url());
-}
-
-async function activeChromeTabUrl(): Promise<string | undefined> {
-  const worker = context.serviceWorkers()[0];
-  if (!worker) throw new Error('MV3 service worker is unavailable.');
-  return worker.evaluate(async () => {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    return tab?.url;
-  });
-}
-
-async function openProblem(fixture: ProblemFixture): Promise<Page> {
-  const page = await context.newPage();
-  await page.route('https://leetcode.com/**', async (route) => {
-    const url = new URL(route.request().url());
-    if (
-      route.request().isNavigationRequest() &&
-      url.pathname.startsWith(`/problems/${fixture.slug}/`)
-    ) {
-      await route.fulfill({ status: 200, contentType: 'text/html', body: fixtureHtml(fixture) });
-      return;
-    }
-    await route.abort('blockedbyclient');
-  });
-  await page.goto(`https://leetcode.com/problems/${fixture.slug}/${fixture.route ?? ''}`);
-  if (fixture.code === null) {
-    await expect(page.locator('.monaco-editor, .cm-editor')).toHaveCount(0);
-  } else if (fixture.editor === 'codemirror') {
-    await expect(page.locator('[data-track-load="code_editor"] .cm-content')).toBeAttached();
-    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
-  } else {
-    await expect(page.locator('.view-lines > .view-line').first()).toBeAttached();
-    expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('TEXTAREA');
-  }
-  return page;
-}
-
-async function openPanel(activeProblem: Page, openNotion = true): Promise<Page> {
-  const panel = await context.newPage();
-  await panel.goto(`chrome-extension://${extensionId}/sidepanel.html`);
-  await activeProblem.bringToFront();
-  await expect(panel.locator('#problem-title')).not.toHaveText('OPEN A LEETCODE PROBLEM');
-  if (openNotion) await panel.locator('#notion-log-tab').click();
-  return panel;
-}
-
-async function setupCase(
-  fixture: ProblemFixture = twoSum,
-  token: string | null = TEST_BRIDGE_TOKEN,
-  configureBridge: (() => void) | null = null,
+async function setup(
+  problemFixture: ProblemFixture = twoSum,
+  connect = true,
 ): Promise<{ problem: Page; panel: Page }> {
-  await closeCasePages();
-  bridge.reset();
-  configureBridge?.();
-  await setStorage(token);
-  const problem = await openProblem(fixture);
-  const panel = await openPanel(problem);
+  const problem = await fixture.problem(problemFixture);
+  const panel = await fixture.panel(problem);
+  if (connect) {
+    await fixture.connect(panel);
+    await problem.bringToFront();
+  }
+  await panel.locator('#notion-log-tab').click();
   return { problem, panel };
 }
-
-async function choose(panel: Page, result: string): Promise<void> {
-  const button = panel.locator(`button[data-result=${JSON.stringify(result)}]`);
-  await expect(button).toHaveCount(1);
-  await expect(button).toBeVisible();
+async function choose(panel: Page, result = 'Solved'): Promise<void> {
+  const button = panel.locator(`button[data-result="${result}"]`);
   await expect(button).toBeEnabled();
   await button.click();
 }
-
-async function retry(panel: Page): Promise<void> {
-  const button = panel.locator('#retry-attempt');
-  await expect(button).toHaveCount(1);
-  await expect(button).toBeVisible();
-  await expect(button).toBeEnabled();
-  await button.click();
-}
-
-async function expectSoleRetry(panel: Page, disabled = false): Promise<void> {
-  await expect(panel.locator('#outcome-actions')).toBeHidden();
-  await expect(panel.locator('#success-confirmation')).toBeHidden();
-  await expect(panel.locator('#retry-attempt')).toBeVisible();
-  if (disabled) {
-    await expect(panel.locator('#retry-attempt')).toBeDisabled();
-  } else {
-    await expect(panel.locator('#retry-attempt')).toBeEnabled();
-  }
-}
-
-async function expectOnlyStatusPathSince(requestMark: number, expectedPath: string): Promise<void> {
-  await expect
-    .poll(() => {
-      const paths = bridge.requests
-        .slice(requestMark)
-        .filter((request) => request.method === 'GET')
-        .map((request) => request.path);
-      return paths.length > 0 && paths.every((path) => path === expectedPath);
-    })
-    .toBe(true);
-}
-
-async function replaceProblem(page: Page, fixture: ProblemFixture): Promise<void> {
-  await page.evaluate(
-    ({ next }) => {
-      history.pushState({}, '', `/problems/${next.slug}/`);
-      document.title = `${next.number}. ${next.title} - LeetCode`;
-      const title = document.querySelector('[data-testid="question-title"]');
-      const difficulty = document.querySelector('[data-testid="difficulty"]');
-      const topics = document.querySelector('#topics');
-      if (title) title.textContent = `${next.number}. ${next.title}`;
-      if (difficulty) difficulty.textContent = next.difficulty;
-      if (topics) {
-        topics.replaceChildren(
-          ...next.topics.map((topic) => {
-            const anchor = document.createElement('a');
-            anchor.className = 'topic';
-            anchor.href = `/tag/${topic.toLowerCase().replaceAll(' ', '-')}/`;
-            anchor.textContent = topic;
-            return anchor;
-          }),
-        );
-      }
-      if (next.code !== null) {
-        (
-          window as unknown as { __setModel: (code: string, languageId?: string) => void }
-        ).__setModel(next.code, next.language);
-      }
-    },
-    { next: fixture },
+async function setCode(problem: Page, code: string): Promise<void> {
+  await problem.evaluate(
+    (value) => (window as unknown as { __setModel(code: string): void }).__setModel(value),
+    code,
   );
 }
-
-async function setCode(page: Page, code: string, _publish: boolean): Promise<void> {
-  await page.evaluate((value) => {
-    (window as unknown as { __setModel: (code: string) => void }).__setModel(value);
-  }, code);
-}
-
-function successReply(duplicate = false): BridgeReply {
-  return {
-    kind: 'response',
-    status: 200,
-    body: {
-      duplicate,
-      problemPageId: 'problem-page',
-      attemptPageId: 'attempt-page',
-      review: { practiceState: 'Solved', solvedStreak: 1, nextReview: '2026-07-21' },
-    },
+function codes(): string[] {
+  const output: string[] = [];
+  const visit = (value: any): void => {
+    if (!value || typeof value !== 'object') return;
+    if (value.type === 'code' && Array.isArray(value.code?.rich_text))
+      output.push(value.code.rich_text.map((part: any) => part.text?.content ?? '').join(''));
+    for (const child of Object.values(value))
+      if (Array.isArray(child)) child.forEach(visit);
+      else visit(child);
   };
+  for (const request of fixture.network) if (request.body) visit(JSON.parse(request.body));
+  return output;
 }
-
-test.beforeAll(async () => {
-  await bridge.start();
-  try {
-    await launchExtension();
-  } catch (error) {
-    await bridge.stop();
-    if (userDataDir) await rm(userDataDir, { recursive: true, force: true });
-    throw error;
-  }
-});
-
-test.afterEach(async () => {
-  bridge.reset();
-  await closeCasePages();
-});
-
-test.afterAll(async () => {
-  await context?.close().catch(() => undefined);
-  await bridge.stop();
-  if (userDataDir) await rm(userDataDir, { recursive: true, force: true });
-});
-
 test('logs repeated daily reps without code, bridge settings, or Notion traffic and archives below goal', async () => {
-  await closeCasePages();
-  bridge.reset();
-  await setStorage(null);
-  const problem = await openProblem({ ...twoSum, code: null });
-  const panel = await openPanel(problem, false);
+  const problem = await fixture.problem({ ...twoSum, code: null });
+  const panel = await fixture.panel(problem);
 
   await expect(panel.locator('#daily-reps-tab')).toHaveAttribute('aria-selected', 'true');
   await expect(panel.locator('#daily-reps-panel')).toBeVisible();
@@ -408,7 +68,7 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await expect(panel.locator('#log-daily-rep')).toBeDisabled();
   await expect(panel.locator('.current-reps')).toBeHidden();
   await expect(panel.locator('.daily-history-section')).toBeHidden();
-  expect(bridge.requests).toHaveLength(0);
+  expect(fixture.network).toHaveLength(0);
 
   await panel.locator('#daily-goal-input').fill('3');
   await panel.locator('#save-daily-goal').click();
@@ -429,7 +89,7 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await expect(panel.locator('#daily-rep-count')).toHaveText('1');
   await panel.locator('#log-daily-rep').click();
   await expect(panel.locator('#daily-rep-count')).toHaveText('2');
-  expect(bridge.requests).toHaveLength(0);
+  expect(fixture.network).toHaveLength(0);
 
   await panel.locator('#finish-daily-session').click();
   await expect(panel.locator('#finish-session-message')).toContainText('2 of 3 reps, 1 short');
@@ -442,7 +102,7 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await expect(panel.locator('#daily-history .history-session')).toContainText('2/3');
 
   await panel.close();
-  const reopened = await openPanel(problem, false);
+  const reopened = await fixture.panel(problem);
   await expect(reopened.locator('#daily-goal-display')).toHaveText('3');
   await expect(reopened.locator('#daily-history .history-session')).toHaveCount(1);
   await reopened.locator('#daily-history .history-session summary').click();
@@ -456,521 +116,407 @@ test('logs repeated daily reps without code, bridge settings, or Notion traffic 
   await expect(reopened.locator('.daily-history-section')).toBeHidden();
 });
 
-test('keeps the bridge dormant on Daily Reps and activates the unchanged capture only on Notion Log', async () => {
-  await closeCasePages();
-  bridge.reset();
-  await setStorage(TEST_BRIDGE_TOKEN);
-  const problem = await openProblem(twoSum);
-  const panel = await openPanel(problem, false);
+test('connects in sidebar with explicit preferences, returns to Log after the grant broadcast, and never writes during setup', async () => {
+  const { problem, panel } = await setup(twoSum, false);
+  await panel.locator('#log-connect').click();
+  await panel.locator('#manifest-file').setInputFiles({
+    name: 'notion-manifest.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(directManifest)),
+  });
+  await panel.locator('#preferences-file').setInputFiles({
+    name: 'dashboard-settings.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        dailyNewProblemGoal: 7,
+        newProblemSessionStartedAt: '2026-09-01T04:00:00.000Z',
+      }),
+    ),
+  });
+  await expect(panel.locator('#import-preview')).toContainText('Imported goal: 7');
+  await panel.locator('#notion-token').fill(TEST_NOTION_TOKEN);
+  await panel.locator('#new-passphrase').fill(TEST_PASSPHRASE);
+  await panel.locator('#confirm-passphrase').fill(TEST_PASSPHRASE);
+  await panel.locator('#migration-confirm').check();
+  await panel.locator('#connection-form button[type="submit"]').click();
+  await expect(panel.locator('#notion-log-panel')).toBeVisible();
+  await problem.bringToFront();
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  expect(fixture.notion.counts.mutations).toBe(0);
+  const state = await fixture.rpc(panel, { op: 'connection.state' });
+  expect(state.preferences).toEqual({
+    dailyNewProblemGoal: 7,
+    newProblemSessionStartedAt: '2026-09-01T04:00:00.000Z',
+  });
+  await expect(panel.locator('#notion-token')).toHaveValue('');
+});
 
-  await panel.locator('#daily-goal-input').fill('1');
-  await panel.locator('#save-daily-goal').click();
-  await panel.locator('#log-daily-rep').click();
-  await panel.locator('#log-daily-rep').click();
-  await expect(panel.locator('#daily-rep-count')).toHaveText('2');
-  await expect(panel.locator('#daily-goal-message')).toContainText('1 rep over target');
-  expect(bridge.requests).toHaveLength(0);
-
-  await panel.locator('#notion-log-tab').click();
-  await expect(panel.locator('#outcome-actions')).toBeVisible();
-  await expect.poll(() => bridge.requests.some((request) => request.method === 'GET')).toBe(true);
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#success-confirmation')).toBeVisible();
-
+test('only reads metadata on Daily and reads the full editor on unlocked Log', async () => {
+  const { problem, panel } = await setup();
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
   await panel.locator('#daily-reps-tab').click();
-  await expect(panel.locator('#daily-rep-count')).toHaveText('2');
-});
-
-test('extracts and renders visible public-DOM problem, topics, language, and exact code', async () => {
-  const { panel } = await setupCase(twoSum, TEST_BRIDGE_TOKEN, () => {
-    bridge.statusReply = {
-      kind: 'response',
-      status: 200,
-      body: {
-        found: true,
-        practiceState: 'Solved',
-        solvedStreak: 2,
-        nextReview: '2999-07-24',
-        lastAttempt: '2026-07-20T12:30:00.000Z',
-      },
-    };
-  });
-
-  await expect(panel.locator('#problem-title')).toHaveText('Two Sum');
-  await expect(panel.locator('.tracker-title')).toHaveText('LC TRACK');
-  expect(
-    await panel
-      .locator('.tracker-title img')
-      .evaluate((image: HTMLImageElement) => image.naturalWidth),
-  ).toBeGreaterThan(0);
-  await expect(panel.locator('#problem-number')).toHaveText('#1');
-  await expect(panel.locator('#problem-difficulty')).toHaveText('Easy');
-  await expect(panel.locator('#problem-topics li')).toHaveText(['Array', 'Hash Table']);
-  await expect(panel.locator('#code-language')).toHaveText('Python');
-  await expect(panel.locator('#code-line-count')).toHaveText('3 lines');
-  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
-  await expect(panel.locator('#code-disclosure')).toHaveAttribute('open', '');
-  await expect(panel.locator('#review-state')).toHaveText('Review on 2999-07-24');
-  await expect(panel.locator('#outcome-actions button')).toHaveText(['Needed help', 'Solved']);
-  const verticalOrder = await panel
-    .locator('.problem-panel, .capture-section, #code-disclosure')
-    .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
-  expect(verticalOrder).toEqual([...verticalOrder].sort((left, right) => left - right));
-  const outcomeWidths = await panel
-    .locator('#outcome-actions button')
-    .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().width));
-  expect(new Set(outcomeWidths).size).toBe(1);
-  expect(bridge.posts()).toHaveLength(0);
-});
-
-test('focuses an existing dashboard tab and recreates it after closure', async () => {
-  const { problem, panel } = await setupCase();
-  const dashboard = await context.newPage();
-  await dashboard.goto('http://127.0.0.1:8787/dashboard');
-  await expect(dashboard).toHaveTitle('LC Log Daily');
-  await problem.bringToFront();
-
-  await panel.locator('#open-dashboard').click();
-  await expect.poll(activeChromeTabUrl).toBe('http://127.0.0.1:8787/dashboard');
-  expect(context.pages().filter((page) => page.url().endsWith('/dashboard'))).toHaveLength(1);
-
-  await dashboard.close();
-  await problem.bringToFront();
-  await panel.locator('#open-dashboard').click();
-  await expect
-    .poll(() => context.pages().filter((page) => page.url().endsWith('/dashboard')).length)
-    .toBe(1);
-  await expect.poll(activeChromeTabUrl).toBe('http://127.0.0.1:8787/dashboard');
-});
-
-test('shows an actionable shortcut error for an invalid Bridge URL', async () => {
-  const { panel } = await setupCase();
-  const worker = context.serviceWorkers()[0];
-  if (!worker) throw new Error('MV3 service worker is unavailable.');
-  await worker.evaluate(async () => {
-    await chrome.storage.local.set({
-      trackerSettings: { bridgeUrl: 'not a URL', bridgeToken: 'irrelevant-token-value' },
-    });
-  });
-
-  await panel.locator('#open-dashboard').click();
-
-  await expect(panel.locator('#status')).toContainText('valid HTTP or HTTPS Bridge URL');
-  await expect(panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
-});
-
-test('recovers when the model becomes readable after the request timed out', async () => {
-  const { panel } = await setupCase({ ...twoSum, lateModel: true });
-
-  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
-  await expect(panel.locator('#code-language')).toHaveText('Python');
-  await expect(panel.locator('#outcome-actions')).toBeVisible();
-});
-
-test('recognizes an accepted submission on opening Daily Reps without touching the page', async () => {
-  await closeCasePages();
-  bridge.reset();
-  await setStorage(null);
-  const problem = await openProblem({
-    ...twoSum,
-    slug: 'minimum-size-subarray-sum',
-    title: 'Minimum Size Subarray Sum',
-    number: 209,
-    difficulty: 'Medium',
-    topics: ['Array', 'Binary Search', 'Sliding Window', 'Prefix Sum'],
-    code: null,
-    inactiveDescription: true,
-    route: 'submissions/2128112423/?envType=problem-list-v2&envId=dy84w0tv',
-  });
-  const panel = await openPanel(problem, false);
-
-  await expect(panel.locator('#daily-problem-title')).toHaveText('Minimum Size Subarray Sum');
-  await expect(panel.locator('#daily-problem-number')).toHaveText('#209');
-  await expect(panel.locator('#daily-problem-difficulty')).toHaveText('Medium');
-  await expect(panel.locator('#daily-problem-topics li')).toHaveText([
-    'Array',
-    'Binary Search',
-    'Sliding Window',
-    'Prefix Sum',
-  ]);
-  await expect(problem.locator('[data-testid="question-title"]')).toBeHidden();
-  expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
-  expect(await problem.evaluate(() => window.scrollY)).toBe(0);
-  expect(bridge.requests).toHaveLength(0);
-});
-
-test('reads inactive description metadata when opening after editor hydration without page clicks', async () => {
-  const { problem, panel } = await setupCase({
-    ...twoSum,
-    inactiveDescription: true,
-    lateModel: true,
-    animate: true,
-  });
-
-  await expect(panel.locator('#problem-title')).toHaveText(twoSum.title);
-  await expect(panel.locator('#problem-number')).toHaveText('#1');
-  await expect(panel.locator('#problem-difficulty')).toHaveText('Easy');
-  await expect(panel.locator('#problem-topics li')).toHaveText(['Array', 'Hash Table']);
-  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
-  await expect(problem.locator('[data-testid="question-title"]')).toBeHidden();
-  expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
-  expect(bridge.posts()).toHaveLength(0);
-});
-
-test('keeps the same problem and exact code when Description changes to Accepted', async () => {
-  const { problem, panel } = await setupCase();
-  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
-  await problem.evaluate(() => {
-    history.pushState({}, '', '/problems/two-sum/submissions/2128112423/');
-    const description = document.querySelector<HTMLElement>('.flexlayout__tab');
-    if (description) description.style.display = 'none';
-    document.title = 'Two Sum - LeetCode';
-  });
-  // A fresh panel must read the submission URL too, independent of earlier publications.
-  await panel.reload();
-  await problem.bringToFront();
-  await expect(panel.locator('#daily-problem-number')).toHaveText('#1');
+  const mark = fixture.network.length;
+  await setCode(problem, 'private changed code');
   await expect(panel.locator('#daily-problem-title')).toHaveText('Two Sum');
-  await expect(panel.locator('#daily-problem-difficulty')).toHaveText('Easy');
-  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
-  expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
-  expect(bridge.posts()).toHaveLength(0);
+  expect(fixture.network).toHaveLength(mark);
+  await panel.locator('#notion-log-tab').click();
+  await expect(panel.locator('#captured-code')).toHaveText('private changed code');
+  expect(fixture.notion.counts.mutations).toBe(0);
 });
 
-test('captures the whole model when the view renders only part of it', async () => {
-  const longSolution = Array.from(
-    { length: 40 },
-    (_, index) => `line_${index + 1} = ${index}`,
-  ).join('\n');
-  const { problem, panel } = await setupCase({
-    ...twoSum,
-    code: longSolution,
-    renderedLines: 5,
-  });
-
-  // The page really is showing a fraction of the solution.
-  await expect(problem.locator('.view-lines > .view-line')).toHaveCount(5);
-
-  await expect(panel.locator('#code-line-count')).toHaveText('40 lines');
-  await expect(panel.locator('#captured-code')).toHaveText(longSolution);
-
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#success-confirmation')).toBeVisible();
-  const event = JSON.parse(bridge.posts()[0]!.body!) as { attempt: { code: string } };
-  expect(event.attempt.code).toBe(longSolution);
-  expect(event.attempt.code.split('\n')).toHaveLength(40);
-});
-
-test('captures and tracks the complete CodeMirror focus-mode model', async () => {
-  const longSolution = Array.from(
-    { length: 60 },
-    (_, index) => `focus_line_${index + 1} = ${index}`,
-  ).join('\n');
-  const { problem, panel } = await setupCase({
-    ...twoSum,
-    editor: 'codemirror',
-    language: 'python',
-    code: longSolution,
-    renderedLines: 4,
-  });
-
-  await expect(problem.locator('.cm-content > .cm-line')).toHaveCount(4);
-  await expect(problem.locator('.monaco-editor')).toHaveCount(0);
-  await expect(panel.locator('#code-language')).toHaveText('Python');
-  await expect(panel.locator('#code-line-count')).toHaveText('60 lines');
-  await expect(panel.locator('#captured-code')).toHaveText(longSolution);
-
-  const changed = `${longSolution}\nreturn answer`;
-  await setCode(problem, changed, false);
-  await expect(panel.locator('#code-line-count')).toHaveText('61 lines');
-  await expect(panel.locator('#captured-code')).toHaveText(changed);
-
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#success-confirmation')).toBeVisible();
-  const event = JSON.parse(bridge.posts()[0]!.body!) as { attempt: { code: string } };
-  expect(event.attempt.code).toBe(changed);
-});
-
-test('renders a due status from the authenticated status endpoint without posting', async () => {
-  const { panel } = await setupCase(twoSum, TEST_BRIDGE_TOKEN, () => {
-    bridge.statusReply = {
-      kind: 'response',
-      status: 200,
-      body: {
-        found: true,
-        practiceState: 'Needed help',
-        solvedStreak: 0,
-        nextReview: '2000-01-01',
-        lastAttempt: '2000-01-01T12:30:00.000Z',
-      },
-    };
-  });
-
-  await expect(panel.locator('#review-state')).toHaveText('Due now');
-  expect(bridge.posts()).toHaveLength(0);
-});
-
-test('does not POST for loading, status checks, content updates, or SPA navigation', async () => {
-  const { problem, panel } = await setupCase();
-  await expect(panel.locator('#review-state')).toHaveText('New');
-  await setCode(problem, 'const changed = true;', true);
-  await expect(panel.locator('#captured-code')).toHaveText('const changed = true;');
-  const requestMark = bridge.requests.length;
-  await replaceProblem(problem, secondProblem);
-  await expect(panel.locator('#problem-title')).toHaveText(secondProblem.title);
-  expect(bridge.posts()).toHaveLength(0);
-  await expectOnlyStatusPathSince(requestMark, `/api/problems/${secondProblem.slug}/status`);
-});
-
-for (const result of ['Needed help', 'Solved'] as const) {
-  test(`${result} sends one exact v2 event after the click`, async () => {
-    const { panel } = await setupCase();
-    await choose(panel, result);
-    await expect(panel.locator('#success-confirmation')).toHaveText('Attempt logged.');
-    await expect(panel.locator('#outcome-actions')).toBeVisible();
-    await expect(panel.locator(`button[data-result=${JSON.stringify(result)}]`)).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(bridge.posts()).toHaveLength(1);
-    const body = bridge.posts()[0]?.body;
-    expect(body).not.toBeNull();
-    const event = JSON.parse(body!) as Record<string, Record<string, unknown> | string>;
-    expect(Object.keys(event).sort()).toEqual(['attempt', 'clientEventId', 'problem']);
-    expect(Object.keys(event.problem as Record<string, unknown>).sort()).toEqual([
-      'difficulty',
-      'number',
-      'slug',
-      'title',
-      'topics',
-      'url',
-    ]);
-    expect(Object.keys(event.attempt as Record<string, unknown>).sort()).toEqual([
-      'attemptedAt',
-      'attemptedOn',
-      'code',
-      'language',
-      'result',
-    ]);
-    expect(event.problem).toEqual({
-      slug: twoSum.slug,
-      title: twoSum.title,
-      number: twoSum.number,
-      url: `https://leetcode.com/problems/${twoSum.slug}/`,
-      difficulty: twoSum.difficulty,
-      topics: ['Array', 'Hash Table'],
+for (const variant of [
+  { name: 'Monaco model', overrides: {} },
+  { name: 'CodeMirror focus mode', overrides: { editor: 'codemirror' as const } },
+  { name: 'late hydration', overrides: { lateModel: true } },
+  {
+    name: 'Accepted inactive description',
+    overrides: { inactiveDescription: true, route: 'submissions/123/', animate: true },
+  },
+]) {
+  test(`extracts complete ${variant.name} without focusing or scrolling the source`, async () => {
+    const code = Array.from({ length: 75 }, (_, index) => `# full line ${index}`).join('\n');
+    const { problem, panel } = await setup({
+      ...twoSum,
+      code,
+      renderedLines: 4,
+      ...variant.overrides,
     });
-    expect(event.attempt).toEqual({
-      attemptedAt: expect.any(String),
-      attemptedOn: expect.any(String),
-      language: 'Python',
-      code: twoSum.code,
-      result,
-    });
-    expect(event.clientEventId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-    );
-    const attempt = event.attempt as Record<string, string>;
-    expect(new Date(attempt.attemptedAt!).toISOString()).toBe(attempt.attemptedAt);
-    const local = new Date(attempt.attemptedAt!);
-    expect(attempt.attemptedOn).toBe(
-      `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}`,
-    );
+    await expect(panel.locator('#captured-code')).toHaveText(code);
+    await expect(panel.locator('#problem-title')).toHaveText('Two Sum');
+    await expect(panel.locator('#problem-topics')).toContainText('Array');
+    expect(await problem.evaluate(() => scrollY)).toBe(0);
+    expect(await problem.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+    await choose(panel);
+    await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
+    expect(codes()).toContain(code);
   });
 }
 
-test('SPA publication rebinds status and logs only the current fingerprint', async () => {
-  const { problem, panel } = await setupCase();
-  const requestMark = bridge.requests.length;
-  bridge.statusReply = {
-    kind: 'response',
-    status: 200,
-    body: {
-      found: true,
-      practiceState: 'Mastered',
-      solvedStreak: 5,
-      nextReview: null,
-      lastAttempt: '2026-07-20T12:30:00.000Z',
-    },
-  };
-  await replaceProblem(problem, secondProblem);
-  await expect(panel.locator('#problem-title')).toHaveText(secondProblem.title);
-  await expect(panel.locator('#review-state')).toHaveText('Mastered');
-  await expectOnlyStatusPathSince(requestMark, `/api/problems/${secondProblem.slug}/status`);
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#success-confirmation')).toBeVisible();
-  const event = JSON.parse(bridge.posts()[0]!.body!) as Record<string, any>;
-  expect(event.problem.slug).toBe(secondProblem.slug);
-  expect(event.attempt.code).toBe(secondProblem.code);
-});
-
-test('missing/wrong token and unreachable status remain actionable without a POST', async () => {
-  let current = await setupCase(twoSum, null);
-  await expect(current.panel.locator('#status')).toContainText('save your bridge token');
-  await expect(current.panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
-  expect(bridge.posts()).toHaveLength(0);
-
-  current = await setupCase(twoSum, 'wrong-browser-suite-token-value');
-  await expect(current.panel.locator('#status')).toContainText('authorization failed');
-  await expect(current.panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
-  expect(bridge.posts()).toHaveLength(0);
-
-  current = await setupCase(twoSum, TEST_BRIDGE_TOKEN, () => {
-    bridge.statusReply = { kind: 'disconnect' };
-  });
-  await expect(current.panel.locator('#status')).toContainText('Start it');
-  expect(bridge.posts()).toHaveLength(0);
-});
-
-test('missing or blank model code blocks capture', async () => {
-  let current = await setupCase({ ...twoSum, code: null });
-  await expect(current.panel.locator('#status')).toContainText('Open the LeetCode code editor');
-  await expect(current.panel.locator('#outcome-actions')).toBeHidden();
-  expect(bridge.posts()).toHaveLength(0);
-
-  current = await setupCase({ ...twoSum, code: '   ' });
-  await expect(current.panel.locator('#status')).toContainText('non-blank code');
-  await expect(current.panel.locator('#outcome-actions')).toBeHidden();
-  expect(bridge.posts()).toHaveLength(0);
-});
-
-test('network, 5xx, and invalid-success uncertainty retain the exact serialized retry', async () => {
-  for (const uncertain of [
-    { kind: 'disconnect' },
-    { kind: 'response', status: 503, body: { error: 'Unavailable' } },
-    { kind: 'response', status: 200, body: { ok: true } },
-  ] satisfies BridgeReply[]) {
-    const { problem, panel } = await setupCase();
-    bridge.captureReplies.push(
-      uncertain,
-      ...(uncertain.kind === 'disconnect' ? ([{ kind: 'disconnect' }] as BridgeReply[]) : []),
-      successReply(),
+for (const outcome of ['Needed help', 'Solved']) {
+  test(`${outcome} saves one confirmed event and preserves the stable Attempt on repetition`, async () => {
+    const { panel } = await setup();
+    await choose(panel, outcome);
+    await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
+    const first = (await fixture.rpc(panel, { op: 'capture.pending' })).completed!;
+    await expect(panel.locator('#review-state')).toContainText(
+      `Solved streak ${first.result.review.solvedStreak}`,
     );
-    await choose(panel, 'Needed help');
-    await expectSoleRetry(panel);
-    const firstBody = bridge.posts()[0]!.body;
-    const automaticAttempts = bridge.posts().length;
-    expect(bridge.posts().every((request) => request.body === firstBody)).toBe(true);
-    await panel.close();
-    const reopened = await openPanel(problem);
-    await expectSoleRetry(reopened);
-    await retry(reopened);
-    await expect(reopened.locator('#success-confirmation')).toBeVisible();
-    expect(bridge.posts()).toHaveLength(automaticAttempts + 1);
-    expect(bridge.posts().at(-1)!.body).toBe(firstBody);
-  }
-});
-
-test('definitive validation clears pending, auth points to Settings, and duplicate locks success', async () => {
-  let current = await setupCase();
-  bridge.captureReplies.push(
-    { kind: 'response', status: 422, body: { error: 'Invalid capture' } },
-    successReply(),
-  );
-  await choose(current.panel, 'Solved');
-  await bridge.waitForPosts(1);
-  await expect(current.panel.locator('#status')).toContainText('rejected');
-  await expect(current.panel.locator('#outcome-actions')).toBeVisible();
-  const rejected = JSON.parse(bridge.posts()[0]!.body!);
-  await choose(current.panel, 'Solved');
-  await bridge.waitForPosts(2);
-  await expect(current.panel.locator('#success-confirmation')).toBeVisible();
-  const accepted = JSON.parse(bridge.posts()[1]!.body!);
-  expect(accepted.clientEventId).not.toBe(rejected.clientEventId);
-
-  current = await setupCase();
-  bridge.captureReplies.push({ kind: 'response', status: 403, body: { error: 'Forbidden' } });
-  await choose(current.panel, 'Solved');
-  await expect(current.panel.locator('#status')).toContainText('authorization failed');
-  await expect(current.panel.locator('#open-options')).toHaveAttribute('data-attention', 'true');
-
-  current = await setupCase();
-  bridge.captureReplies.push(successReply(true));
-  await choose(current.panel, 'Solved');
-  await expect(current.panel.locator('#status')).toContainText('Already logged');
-  await expect(current.panel.locator('#success-confirmation')).toBeVisible();
-});
-
-test('same-fingerprint attempts remain active across reload and use distinct event IDs', async () => {
-  const { problem, panel } = await setupCase();
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#success-confirmation')).toBeVisible();
-  await expect(panel.locator('#outcome-actions')).toBeVisible();
-  expect(await readSessionForPage(problem)).toMatchObject({
-    pending: null,
-    lastSuccess: { version: 2, result: 'Solved' },
+    await choose(panel, outcome);
+    await expect
+      .poll(async () => (await fixture.rpc(panel, { op: 'capture.pending' })).completed?.eventId)
+      .not.toBe(first.eventId);
+    const second = (await fixture.rpc(panel, { op: 'capture.pending' })).completed!;
+    expect(second.result.attemptPageId).toBe(first.result.attemptPageId);
+    expect(second.result.review.practiceState).toBe(outcome);
   });
-  await panel.close();
-  const reopened = await openPanel(problem);
-  expect(await readSessionForPage(problem)).toMatchObject({
-    pending: null,
-    lastSuccess: { version: 2, result: 'Solved' },
-  });
-  await expect(reopened.locator('#success-confirmation')).toBeVisible();
-  await expect(reopened.locator('#outcome-actions')).toBeVisible();
-  await choose(reopened, 'Needed help');
-  await bridge.waitForPosts(2);
-  const first = JSON.parse(bridge.posts()[0]!.body!);
-  const second = JSON.parse(bridge.posts()[1]!.body!);
-  expect(second.clientEventId).not.toBe(first.clientEventId);
-  expect(second.attempt.code).toBe(first.attempt.code);
-  await expect(reopened.locator('button[data-result="Needed help"]')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  expect(bridge.posts()).toHaveLength(2);
+}
 
-  await setCode(problem, `${twoSum.code}\n# changed`, true);
-  await expect(reopened.locator('#outcome-actions')).toBeVisible();
-  await expect(reopened.locator('#success-confirmation')).toBeHidden();
-  expect(bridge.posts()).toHaveLength(2);
+test('Lock clears code and Review across open panels; unlock returns to the chosen view', async () => {
+  const { problem, panel } = await setup();
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  const second = await fixture.panel(problem);
+  await second.locator('#notion-log-tab').click();
+  await expect(second.locator('#captured-code')).toHaveText(twoSum.code!);
+  await panel.locator('#open-settings').click();
+  await panel.locator('#lock-notion').click();
+  await expect(panel.locator('#unlock-form')).toBeVisible();
+  await expect(second.locator('#captured-code')).toHaveText('');
+  await expect(second.locator('#log-private')).toBeHidden();
+  await setCode(problem, 'never repopulate while locked');
+  await expect(second.locator('#captured-code')).toHaveText('');
+  await panel.locator('#unlock-passphrase').fill(TEST_PASSPHRASE);
+  await panel.locator('#unlock-form button[type="submit"]').click();
+  await expect(panel.locator('#notion-log-panel')).toBeVisible();
+  await expect(panel.locator('#captured-code')).toHaveText('never repopulate while locked');
 });
 
-test('pending uncertainty remains tab-scoped across page and active-tab changes', async () => {
-  const { problem: first, panel } = await setupCase();
-  bridge.captureReplies.push({ kind: 'disconnect' }, { kind: 'disconnect' }, successReply());
-  await choose(panel, 'Needed help');
-  await expectSoleRetry(panel);
-  const firstBody = bridge.posts()[0]!.body;
-  await replaceProblem(first, secondProblem);
-  await expectSoleRetry(panel);
-
-  const second = await openProblem(secondProblem);
-  await second.bringToFront();
+test('uncertain save remains globally frozen across source navigation and checking never creates another page', async () => {
+  const { problem, panel } = await setup();
+  let lose = true;
+  fixture.notion.afterRequest = (request) => {
+    if (lose && request.method === 'POST' && request.path === '/v1/pages') {
+      lose = false;
+      throw new Error('simulated lost response');
+    }
+  };
+  await choose(panel);
+  await expect(panel.locator('#retry-attempt')).toHaveText('Check saved result');
+  const pending = (await fixture.rpc(panel, { op: 'capture.pending' })).pending!;
+  const other = await fixture.problem(secondProblem);
+  await other.bringToFront();
   await expect(panel.locator('#problem-title')).toHaveText(secondProblem.title);
-  await expect(panel.locator('#outcome-actions')).toBeVisible();
-  await first.bringToFront();
-  await expectSoleRetry(panel);
-  await retry(panel);
-  await expect(panel.locator('#outcome-actions')).toBeVisible();
-  expect(bridge.posts().at(-1)!.body).toBe(firstBody);
+  await expect(panel.locator('#pending-detail')).toContainText('Two Sum');
+  await expect(panel.locator('button[data-result="Solved"]')).toBeDisabled();
+  const creates = fixture.network.filter(
+    (r) => r.method === 'POST' && new URL(r.url).pathname === '/v1/pages',
+  ).length;
+  await panel.locator('#retry-attempt').click();
+  await expect
+    .poll(async () => (await fixture.rpc(panel, { op: 'capture.pending' })).pending?.disposition)
+    .toBe('retry');
+  expect(
+    fixture.network.filter((r) => r.method === 'POST' && new URL(r.url).pathname === '/v1/pages'),
+  ).toHaveLength(creates);
+  const retained = (await fixture.rpc(panel, { op: 'capture.pending' })).pending!;
+  expect(retained.event).toEqual(pending.event);
+  await panel.locator('#retry-attempt').click();
+  await expect
+    .poll(async () => (await fixture.rpc(panel, { op: 'capture.pending' })).connection.hasPending)
+    .toBe(false);
+  expect((await fixture.rpc(panel, { op: 'capture.pending' })).completed?.eventId).toBe(
+    pending.event.clientEventId,
+  );
+  await problem.close();
 });
 
-test('click-time mismatch refreshes without POST and a second deliberate click succeeds', async () => {
-  const { problem, panel } = await setupCase();
-  await setCode(problem, 'fresh code at click time', false);
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#status')).toContainText('code changed');
-  await expect(panel.locator('#captured-code')).toHaveText('fresh code at click time');
-  expect(bridge.posts()).toHaveLength(0);
-  await choose(panel, 'Solved');
-  await expect(panel.locator('#success-confirmation')).toBeVisible();
-  expect(bridge.posts()).toHaveLength(1);
+test('Review loads without an external dashboard, filters locally and resets only its own preferences', async () => {
+  const { panel } = await setup();
+  await choose(panel, 'Needed help');
+  await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
+  await panel.locator('#review-tab').click();
+  await expect(panel.locator('#review-updated')).toContainText('Updated');
+  const mark = fixture.network.length;
+  await panel.locator('#review-search').fill('no such problem');
+  await panel.locator('#review-filter').selectOption('needed-help');
+  await expect(panel.locator('#review-list li')).toHaveCount(0);
+  expect(fixture.network).toHaveLength(mark);
+  await panel.locator('#edit-review-goal').click();
+  await panel.locator('#review-goal').fill('6');
+  await panel.locator('#review-goal-form button[type="submit"]').click();
+  await expect(panel.locator('#review-goal-value')).toHaveText('6');
+  const mutations = fixture.notion.counts.mutations;
+  await panel.locator('#reset-review').click();
+  await expect(panel.locator('#notion-confirm-dialog')).toBeVisible();
+  await panel.locator('#notion-confirm-cancel').click();
+  expect(
+    (await fixture.rpc(panel, { op: 'connection.state' })).preferences?.newProblemSessionStartedAt,
+  ).toBeUndefined();
+  await panel.locator('#reset-review').click();
+  await panel.locator('#notion-confirm-accept').click();
+  await expect
+    .poll(
+      async () =>
+        (await fixture.rpc(panel, { op: 'connection.state' })).preferences
+          ?.newProblemSessionStartedAt,
+    )
+    .toBeTruthy();
+  expect(fixture.notion.counts.mutations).toBe(mutations);
 });
 
-test('rapid double click plus context publication during an in-flight POST sends once', async () => {
-  const { problem, panel } = await setupCase();
-  bridge.captureReplies.push({ kind: 'deferred' });
-  const button = panel.locator('button[data-result="Solved"]');
-  await expect(button).toHaveCount(1);
-  await expect(button).toBeVisible();
-  await expect(button).toBeEnabled();
-  await button.click({ clickCount: 2 });
-  await bridge.waitForPosts(1);
-  await setCode(problem, `${twoSum.code}\n# during request`, true);
-  await expectSoleRetry(panel, true);
-  expect(bridge.posts()).toHaveLength(1);
-  bridge.resolveDeferred();
-  await expect(panel.locator('#outcome-actions')).toBeVisible();
-  expect(bridge.posts()).toHaveLength(1);
+for (const width of [320, 360, 400, 480]) {
+  test(`sidebar remains usable at ${width}px with keyboard tabs, expanded code and Settings`, async () => {
+    const { panel } = await setup({
+      ...secondProblem,
+      code: 'const longLine = "' + 'x'.repeat(500) + '";',
+    });
+    await panel.setViewportSize({ width, height: 480 });
+    await expect(panel.locator('#captured-code')).toContainText('const longLine');
+    await panel.locator('#expand-code').click();
+    await expect(panel.locator('#expand-code')).toHaveAttribute('aria-expanded', 'true');
+    expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await panel.locator('#notion-log-tab').focus();
+    await panel.keyboard.press('ArrowRight');
+    await expect(panel.locator('#review-tab')).toHaveAttribute('aria-selected', 'true');
+    await panel.locator('#open-settings').click();
+    await expect(panel.locator('#settings-panel')).toBeVisible();
+    expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await panel.locator('#settings-back').click();
+    await expect(panel.locator('#review-panel')).toBeVisible();
+  });
+}
+
+test('blank and missing models never admit a Notion save', async () => {
+  const { panel } = await setup({ ...twoSum, code: null });
+  await expect(panel.locator('button[data-result="Solved"]')).toBeDisabled();
+  expect(fixture.notion.counts.mutations).toBe(0);
 });
+
+test('options is a token-free entry into sidebar settings', async () => {
+  const page = await fixture.context.newPage();
+  await page.goto(`chrome-extension://${fixture.extensionId}/options.html`);
+  await expect(page.locator('input')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open LCTrack Settings' })).toBeVisible();
+});
+
+test('a click-time code change requires a new confirmation and rapid repeated clicks create one event', async () => {
+  const { problem, panel } = await setup();
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  await expect(panel.locator('button[data-result="Solved"]')).toBeEnabled();
+  // Simulate a model update before its change notification reaches the extension.
+  await problem.evaluate(() => {
+    const editor = (window as any).monaco.editor.getEditors()[0];
+    editor.getModel().getValue = () => 'const clickTimeCode = 42;';
+  });
+  await choose(panel);
+  await expect(panel.locator('#status')).toContainText('The code changed');
+  await expect(panel.locator('#captured-code')).toHaveText('const clickTimeCode = 42;');
+  expect(fixture.notion.counts.mutations).toBe(0);
+  await panel.locator('button[data-result="Solved"]').evaluate((button: HTMLButtonElement) => {
+    button.click();
+    button.click();
+  });
+  await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
+  expect(
+    fixture.network.filter(
+      (request) => request.method === 'POST' && new URL(request.url).pathname === '/v1/pages',
+    ),
+  ).toHaveLength(2);
+  expect(codes()).toContain('const clickTimeCode = 42;');
+});
+
+test('SPA navigation replaces metadata and code without binding a new save to the old problem', async () => {
+  const { problem, panel } = await setup();
+  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  await problem.evaluate((next) => {
+    history.pushState({}, '', `/problems/${next.slug}/`);
+    document.title = `${next.number}. ${next.title} - LeetCode`;
+    const link = document.querySelector<HTMLAnchorElement>('[data-testid="question-title"] a')!;
+    link.href = `/problems/${next.slug}/`;
+    link.textContent = `${next.number}. ${next.title}`;
+    document.querySelector('[data-testid="difficulty"]')!.textContent = next.difficulty;
+    (window as any).__setModel(next.code, next.language);
+  }, secondProblem);
+  await expect(panel.locator('#problem-title')).toHaveText(secondProblem.title);
+  await expect(panel.locator('#captured-code')).toHaveText(secondProblem.code!);
+  await choose(panel);
+  await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
+  const completed = (await fixture.rpc(panel, { op: 'capture.pending' })).completed!;
+  expect(completed.result.problemPageId).toBeTruthy();
+  const creates = fixture.network.filter(
+    (request) => request.method === 'POST' && new URL(request.url).pathname === '/v1/pages',
+  );
+  expect(JSON.stringify(creates)).toContain(secondProblem.slug);
+  expect(JSON.stringify(creates)).not.toContain(twoSum.slug);
+});
+
+test('a damaged encrypted connection offers a guarded reset and requires reconciliation afterwards', async () => {
+  const problem = await fixture.problem(twoSum);
+  const panel = await fixture.panel(problem);
+  await panel.evaluate(async () => {
+    await chrome.storage.local.set({ 'lctrack.notion.vault.v1': { version: 'damaged' } });
+  });
+  await fixture.stopWorker();
+  await panel.reload();
+  await panel.locator('#open-settings').click();
+  await expect(panel.locator('#disconnect-notion')).toHaveText('Reset saved connection');
+  await panel.locator('#disconnect-notion').click();
+  await expect(panel.locator('#notion-confirm-message')).toContainText(
+    'may already exist in Notion',
+  );
+  await panel.locator('#notion-confirm-cancel').click();
+  expect(
+    await panel.evaluate(
+      async () =>
+        (await chrome.storage.local.get('lctrack.notion.vault.v1'))['lctrack.notion.vault.v1'],
+    ),
+  ).toBeTruthy();
+  await panel.locator('#disconnect-notion').click();
+  await panel.locator('#notion-confirm-accept').click();
+  await expect(panel.locator('#connection-form')).toBeVisible();
+  await expect(panel.locator('#manual-reconciliation')).toBeVisible();
+  expect(fixture.network).toHaveLength(0);
+});
+
+test('renders the approved Log and Review layouts with real synthetic tracker data', async () => {
+  const { problem, panel } = await setup({
+    ...twoSum,
+    code: 'def twoSum(nums, target):\n    seen = {}\n    for i, n in enumerate(nums):\n        if target - n in seen:\n            return [seen[target - n], i]\n        seen[n] = i\n    return []',
+  });
+  await panel.setViewportSize({ width: 466, height: 960 });
+  await expect(panel.locator('button[data-result="Solved"]')).toBeEnabled();
+  await expect(panel.locator('#status')).toHaveText('');
+  await panel.screenshot({
+    path: '/tmp/lctrack-approved-log.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+  const { captureEvent } = await import('../../scripts/benchmark/fixture.js');
+  const sourceId = await panel.evaluate(
+    async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url)!.id!,
+    problem.url(),
+  );
+  for (const [index, title] of [
+    'Two Sum',
+    'Longest Substring Without Repeating Characters',
+    'Valid Parentheses',
+    'Merge Intervals',
+  ].entries()) {
+    const event = captureEvent(index + 70);
+    const slug = title.toLowerCase().replaceAll(' ', '-');
+    event.problem = {
+      ...event.problem,
+      title,
+      slug,
+      number: index + 1,
+      url: `https://leetcode.com/problems/${slug}/`,
+      difficulty: index % 2 ? 'Medium' : 'Easy',
+    };
+    event.attempt = {
+      ...event.attempt,
+      result: 'Needed help',
+      attemptedAt: '2026-08-01T12:00:00.000Z',
+      attemptedOn: '2026-08-01',
+    };
+    await fixture.rpc(panel, {
+      op: 'capture.submit',
+      event,
+      source: { tabId: sourceId, fingerprint: `synthetic-visual-${index}` },
+    });
+  }
+  await panel.locator('#review-tab').click();
+  await expect(panel.locator('#review-list li')).toHaveCount(4);
+  await panel.screenshot({
+    path: '/tmp/lctrack-approved-review.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+  await panel.locator('#open-settings').click();
+  await panel.screenshot({
+    path: '/tmp/lctrack-approved-settings.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+});
+
+for (const editor of ['monaco', 'codemirror'] as const) {
+  test(`Daily and locked views never poll full ${editor} model text`, async () => {
+    const problem = await fixture.problem({ ...twoSum, editor });
+    const panel = await fixture.panel(problem);
+    const reads = await problem.evaluate(async (editor) => {
+      let reads = 0;
+      if (editor === 'monaco') {
+        const model = (window as any).monaco.editor.getEditors()[0].getModel();
+        const original = model.getValue;
+        model.getValue = () => {
+          reads++;
+          return original();
+        };
+      } else {
+        const doc = (document.querySelector('.cm-content') as any).cmView.view.state.doc;
+        const original = doc.toString;
+        doc.toString = () => {
+          reads++;
+          return original();
+        };
+      }
+      (window as any).__fullTextReads = () => reads;
+      await new Promise((resolve) => setTimeout(resolve, 850));
+      return reads;
+    }, editor);
+    expect(reads).toBe(0);
+    await panel.locator('#notion-log-tab').click();
+    await expect(panel.locator('#log-private')).toBeHidden();
+    expect(
+      await problem.evaluate(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 850));
+        return (window as any).__fullTextReads();
+      }),
+    ).toBe(0);
+    expect(fixture.network).toHaveLength(0);
+  });
+}

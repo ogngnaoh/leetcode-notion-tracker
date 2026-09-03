@@ -1,6 +1,4 @@
-import type { AttemptResult } from '../../src/shared/contract.js';
-import { getProblemStatus, sendCaptureBody } from './api.js';
-import { CaptureSessionStore } from './capture-session.js';
+import { NotionPanel } from './notion-panel.js';
 import {
   DAILY_REPS_STORAGE_KEY,
   currentDailySessionStartedAt,
@@ -18,15 +16,13 @@ import type {
 } from './leetcode-context-runtime.js';
 import {
   GET_LEETCODE_CONTEXT_MESSAGE,
+  GET_LEETCODE_MODEL_MESSAGE,
+  metadataOnlyContext,
   LEETCODE_CONTEXT_CHANGED_MESSAGE,
 } from './leetcode-context-runtime.js';
 import type { LeetCodeSnapshot } from './leetcode-extraction.js';
-import { SidePanelController, type SidePanelView } from './sidepanel-controller.js';
-import { SidePanelTabCoordinator, type VisibleTab } from './sidepanel-tab-coordinator.js';
 import { createSnapshotReader } from './sidepanel-snapshot-reader.js';
 import { difficultyBadgeClass } from './difficulty-badge.js';
-import { openDashboardShortcut } from './dashboard-shortcut.js';
-import { getSettings } from './storage.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
@@ -34,10 +30,6 @@ function element<T extends HTMLElement>(id: string): T {
   return value as T;
 }
 
-const dailyRepsTab = element<HTMLButtonElement>('daily-reps-tab');
-const notionLogTab = element<HTMLButtonElement>('notion-log-tab');
-const dailyRepsPanel = element<HTMLElement>('daily-reps-panel');
-const notionLogPanel = element<HTMLElement>('notion-log-panel');
 const dailyProgressElement = document.querySelector<HTMLElement>('.daily-progress');
 if (!dailyProgressElement) throw new Error('Missing Daily Reps progress panel.');
 const dailyProgress: HTMLElement = dailyProgressElement;
@@ -74,24 +66,6 @@ const deleteSessionDialog = element<HTMLDialogElement>('delete-session-dialog');
 const cancelDeleteSession = element<HTMLButtonElement>('cancel-delete-session');
 const confirmDeleteSession = element<HTMLButtonElement>('confirm-delete-session');
 
-const problemNumber = element<HTMLSpanElement>('problem-number');
-const problemTitle = element<HTMLHeadingElement>('problem-title');
-const problemDifficulty = element<HTMLSpanElement>('problem-difficulty');
-const reviewState = element<HTMLSpanElement>('review-state');
-const topics = element<HTMLUListElement>('problem-topics');
-const codeLanguage = element<HTMLSpanElement>('code-language');
-const codeLineCount = element<HTMLSpanElement>('code-line-count');
-const capturedCode = element<HTMLPreElement>('captured-code');
-const outcomeActions = element<HTMLDivElement>('outcome-actions');
-const retryAttempt = element<HTMLButtonElement>('retry-attempt');
-const successConfirmation = element<HTMLParagraphElement>('success-confirmation');
-const status = element<HTMLParagraphElement>('status');
-const openOptions = element<HTMLButtonElement>('open-options');
-const openDashboard = element<HTMLButtonElement>('open-dashboard');
-const outcomeButtons = Array.from(
-  outcomeActions.querySelectorAll<HTMLButtonElement>('button[data-result]'),
-);
-
 const HISTORY_PAGE_SIZE = 10;
 let dailyState: DailyRepsStateV1 | null = null;
 let latestSnapshot: LeetCodeSnapshot | null = null;
@@ -99,10 +73,6 @@ let dailyBusy = false;
 let dailyReadFailed = false;
 let visibleHistoryCount = HISTORY_PAGE_SIZE;
 let pendingDeleteSessionId: string | null = null;
-
-function exactLineCount(code: string): number {
-  return code.length === 0 ? 0 : code.split('\n').length;
-}
 
 function countLabel(count: number, singular: string, plural = `${singular}S`): string {
   return `${count} ${count === 1 ? singular : plural}`;
@@ -172,33 +142,6 @@ function renderDailySnapshot(snapshot: LeetCodeSnapshot | null): void {
     );
   }
   updateDailyControls();
-}
-
-function renderNotionSnapshot(snapshot: LeetCodeSnapshot | null): void {
-  if (!snapshot) {
-    problemNumber.textContent = '—';
-    problemTitle.textContent = 'Open a LeetCode problem';
-    problemDifficulty.className = 'badge badge--muted';
-    problemDifficulty.textContent = 'Unknown';
-    renderTopics(topics, []);
-    codeLanguage.textContent = 'Unknown';
-    codeLineCount.textContent = '0 lines';
-    capturedCode.textContent = '';
-    return;
-  }
-
-  problemNumber.textContent = snapshot.problem.number
-    ? `#${snapshot.problem.number}`
-    : 'UNNUMBERED';
-  problemTitle.textContent = snapshot.problem.title;
-  problemDifficulty.className = `badge ${difficultyBadgeClass(snapshot.problem.difficulty)}`;
-  problemDifficulty.textContent = snapshot.problem.difficulty;
-  renderTopics(topics, snapshot.problem.topics);
-  codeLanguage.textContent = snapshot.language;
-  const code = snapshot.codeAvailable ? snapshot.code : '';
-  const lines = exactLineCount(code);
-  codeLineCount.textContent = `${lines} ${lines === 1 ? 'line' : 'lines'}`;
-  capturedCode.textContent = code;
 }
 
 function createRepRow(rep: DailyRep, removable: boolean): HTMLLIElement {
@@ -408,40 +351,10 @@ async function runDailyMutation(
   }
 }
 
-function render(view: SidePanelView): void {
-  renderDailySnapshot(view.snapshot);
-  renderNotionSnapshot(view.snapshot);
-  reviewState.textContent = view.reviewLabel;
-  outcomeActions.hidden = view.mode !== 'ready';
-  retryAttempt.hidden = view.mode !== 'retry';
-  successConfirmation.hidden = view.mode === 'retry' || view.loggedResult === null;
-  for (const button of outcomeButtons) button.disabled = view.busy;
-  for (const button of outcomeButtons) {
-    button.setAttribute('aria-pressed', String(button.dataset.result === view.loggedResult));
-  }
-  retryAttempt.disabled = view.busy;
-  retryAttempt.setAttribute('aria-busy', String(view.busy));
-  successConfirmation.textContent = view.loggedResult ? 'Attempt logged.' : '';
-  status.textContent = view.message;
-  status.className =
-    view.mode === 'ready' && view.loggedResult !== null
-      ? 'status success'
-      : view.mode === 'blocked' || view.mode === 'retry'
-        ? 'status error'
-        : 'status';
-  openOptions.dataset.attention = String(view.showSettings);
-}
-
-async function activeTab(): Promise<VisibleTab> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id === undefined) throw new Error('No active tab found.');
-  return { id: tab.id, ...(tab.url === undefined ? {} : { url: tab.url }) };
-}
-
 const readSnapshot = createSnapshotReader({
-  sendMessage: (tabId) =>
+  sendMessage: (tabId, full) =>
     chrome.tabs.sendMessage(tabId, {
-      type: GET_LEETCODE_CONTEXT_MESSAGE,
+      type: full ? GET_LEETCODE_MODEL_MESSAGE : GET_LEETCODE_CONTEXT_MESSAGE,
     }) as Promise<ContentScriptResponse | undefined>,
   injectContentScripts: async (tabId) => {
     await chrome.scripting.executeScript({
@@ -452,59 +365,32 @@ const readSnapshot = createSnapshotReader({
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
   },
 });
-
-const sessionStorage = {
-  get: async (key: string) => chrome.storage.session.get(key),
-  set: async (items: Record<string, unknown>) => chrome.storage.session.set(items),
-  remove: async (key: string) => chrome.storage.session.remove(key),
-};
-
-const tabCoordinator = new SidePanelTabCoordinator({
-  getActiveTab: activeTab,
-  readSnapshot,
-  createController: (tabId) =>
-    new SidePanelController({
-      store: new CaptureSessionStore(sessionStorage, tabId),
-      getSettings,
-      getFreshSnapshot: () => readSnapshot(tabId),
-      getProblemStatus,
-      sendCaptureBody,
-      randomUUID: () => crypto.randomUUID(),
-      now: () => new Date(),
-      initialCaptureEnabled: false,
-    }),
-  render,
-});
-
-async function selectTrackerTab(tab: 'daily' | 'notion', focus: boolean): Promise<void> {
-  const dailySelected = tab === 'daily';
-  dailyRepsTab.setAttribute('aria-selected', String(dailySelected));
-  dailyRepsTab.tabIndex = dailySelected ? 0 : -1;
-  notionLogTab.setAttribute('aria-selected', String(!dailySelected));
-  notionLogTab.tabIndex = dailySelected ? -1 : 0;
-  dailyRepsPanel.hidden = !dailySelected;
-  notionLogPanel.hidden = dailySelected;
-  if (focus) (dailySelected ? dailyRepsTab : notionLogTab).focus();
-  await tabCoordinator.setCaptureEnabled(!dailySelected);
+const notionPanel = new NotionPanel({ readSnapshot, onMetadata: renderDailySnapshot });
+let sourceTabId: number | null = null;
+let sourceRevision = 0;
+async function refreshSource(expectedTabId?: number): Promise<void> {
+  const revision = ++sourceRevision;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (
+      revision !== sourceRevision ||
+      tab?.id === undefined ||
+      (expectedTabId !== undefined && tab.id !== expectedTabId)
+    )
+      return;
+    sourceTabId = tab.id;
+    // Immediately remove the previous tab's metadata and private snapshot.
+    notionPanel.sourceChanged(tab.id, null);
+    const context = tab.url?.startsWith('https://leetcode.com/problems/')
+      ? await readSnapshot(tab.id)
+      : null;
+    if (revision !== sourceRevision) return;
+    notionPanel.sourceChanged(tab.id, metadataOnlyContext(context));
+  } catch {
+    if (revision === sourceRevision)
+      setDailyStatus('Could not read this tab. Open a LeetCode problem and try again.', 'error');
+  }
 }
-
-function handleTabKeydown(event: KeyboardEvent): void {
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-  event.preventDefault();
-  const selectDaily = event.key === 'ArrowLeft' || event.key === 'Home';
-  void selectTrackerTab(selectDaily ? 'daily' : 'notion', true);
-}
-
-for (const button of outcomeButtons) {
-  button.addEventListener('click', () => {
-    void tabCoordinator.selectResult(button.dataset.result as AttemptResult);
-  });
-}
-retryAttempt.addEventListener('click', () => void tabCoordinator.retryPending());
-dailyRepsTab.addEventListener('click', () => void selectTrackerTab('daily', false));
-notionLogTab.addEventListener('click', () => void selectTrackerTab('notion', false));
-dailyRepsTab.addEventListener('keydown', handleTabKeydown);
-notionLogTab.addEventListener('keydown', handleTabKeydown);
 
 editDailyGoal.setAttribute('aria-expanded', 'false');
 editDailyGoal.addEventListener('click', openGoalEditor);
@@ -621,59 +507,27 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   if (
-    sender.tab?.id === undefined ||
+    sender.tab?.id !== sourceTabId ||
+    sender.id !== chrome.runtime.id ||
+    !message ||
     typeof message !== 'object' ||
-    message === null ||
     !('type' in message) ||
     message.type !== LEETCODE_CONTEXT_CHANGED_MESSAGE
-  ) {
+  )
     return;
-  }
   const changed = message as LeetCodeContextChangedMessage;
-  void tabCoordinator.acceptContext(sender.tab.id, changed.context);
+  if (changed.context?.codeAvailable) return;
+  notionPanel.sourceChanged(sender.tab.id, metadataOnlyContext(changed.context));
 });
-
-chrome.tabs.onActivated.addListener(
-  (activeInfo) => void tabCoordinator.rebindActiveTab(activeInfo.tabId),
-);
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (!tab.active || (changeInfo.url === undefined && changeInfo.status !== 'complete')) return;
-  void tabCoordinator.refreshActiveTab(tabId, tab.url);
+chrome.tabs.onActivated.addListener((info) => {
+  void refreshSource(info.tabId);
+});
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (!tab.active || (change.url === undefined && change.status !== 'complete')) return;
+  void refreshSource(tabId);
 });
 chrome.windows.onFocusChanged.addListener((windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
-  void tabCoordinator.rebindActiveTab();
-});
-
-openOptions.addEventListener('click', () => void chrome.runtime.openOptionsPage());
-openDashboard.addEventListener('click', () => {
-  openDashboard.disabled = true;
-  void getSettings()
-    .then((settings) =>
-      openDashboardShortcut(settings.bridgeUrl, {
-        queryTabs: () => chrome.tabs.query({}),
-        focusWindow: async (windowId) => {
-          await chrome.windows.update(windowId, { focused: true });
-        },
-        activateTab: async (tabId) => {
-          await chrome.tabs.update(tabId, { active: true });
-        },
-        createTab: async (url) => {
-          await chrome.tabs.create({ url });
-        },
-      }),
-    )
-    .catch((error: unknown) => {
-      status.textContent =
-        error instanceof Error && error.message.includes('Bridge URL')
-          ? error.message
-          : 'Could not open the dashboard. Check Bridge settings and make sure Chrome can open the local bridge.';
-      status.className = 'status error';
-      openOptions.dataset.attention = 'true';
-    })
-    .finally(() => {
-      openDashboard.disabled = false;
-    });
+  if (windowId !== chrome.windows.WINDOW_ID_NONE) void refreshSource();
 });
 
 void requestDailyReps({ type: 'DAILY_REPS', action: 'read' })
@@ -691,12 +545,4 @@ void requestDailyReps({ type: 'DAILY_REPS', action: 'read' })
     updateDailyControls();
   });
 
-void tabCoordinator.rebindActiveTab().catch((error: unknown) => {
-  const message =
-    error instanceof Error
-      ? error.message
-      : 'Could not read the current problem. Refresh the LeetCode tab.';
-  setDailyStatus(message, 'error');
-  status.textContent = message;
-  status.className = 'status error';
-});
+void refreshSource();
