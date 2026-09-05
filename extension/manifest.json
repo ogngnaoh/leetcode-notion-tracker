@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LCTrack",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Daily LeetCode reps with optional Notion capture",
   "minimum_chrome_version": "142",
   "incognito": "not_allowed",
