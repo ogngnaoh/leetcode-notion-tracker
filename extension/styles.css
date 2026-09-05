@@ -454,8 +454,7 @@ body {
   background: var(--color-pink);
 }
 
-.problem-kicker,
-.review-row {
+.problem-kicker {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -695,7 +694,7 @@ body {
   height: 27px;
 }
 .tracker-tabs {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-inline: -12px;
   margin-bottom: 18px;
   border-inline: 0;
@@ -713,7 +712,6 @@ body {
   min-width: 0;
 }
 #notion-log-panel,
-#review-panel,
 .settings-panel,
 .recovery-panel {
   font-size: 14px;
@@ -875,115 +873,6 @@ body {
 #open-settings {
   border-color: transparent;
 }
-#review-message {
-  margin-block: 10px;
-}
-.review-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-block: 16px 18px;
-  padding: 12px 0;
-  border-radius: 4px;
-  background: var(--color-pink);
-}
-.review-summary > div {
-  text-align: center;
-  padding-inline: 7px;
-}
-.review-summary > div + div {
-  border-left: 1px solid rgb(0 0 0 / 35%);
-}
-.review-summary > div > span {
-  font-size: 13px;
-}
-.summary-value {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 5px;
-}
-.summary-value,
-.review-summary strong {
-  font-size: 27px;
-  font-weight: 500;
-  line-height: 1.3;
-  margin-top: 4px;
-}
-.summary-value > span {
-  margin-right: 4px;
-}
-#edit-review-goal {
-  padding: 0;
-  color: var(--color-black);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-}
-#review-search,
-#review-filter {
-  width: 100%;
-  min-height: 40px;
-  margin-bottom: 12px;
-  border: 1px solid var(--color-muted);
-  border-radius: 3px;
-  padding: 8px 10px;
-  background: transparent;
-  font: inherit;
-}
-.review-list {
-  list-style: decimal;
-  padding-left: 22px;
-  margin: 0;
-}
-.review-list > li {
-  position: relative;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--color-border-strong);
-}
-.review-row-content h3 {
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.review-row-content p {
-  margin-top: 4px;
-  font-size: 13px;
-}
-.review-list a {
-  display: inline-block;
-  margin-top: 7px;
-  color: var(--color-cobalt);
-  font-weight: 500;
-  text-decoration: none;
-  min-height: 28px;
-}
-.review-list a:hover {
-  text-decoration: underline;
-}
-.overdue {
-  color: var(--color-critical);
-}
-#review-count {
-  font-size: 12px;
-}
-#review-more {
-  min-height: 36px;
-  padding: 5px 12px;
-  background: transparent;
-  border: 1px solid var(--color-black);
-  font-size: 13px;
-}
-#review-private > .section-heading-row {
-  margin-top: 15px;
-}
-#reset-review {
-  margin-top: 24px;
-  background: transparent;
-  color: var(--color-critical);
-  min-height: 44px;
-  font-size: 14px;
-}
 .empty-message {
   padding-block: 20px;
   color: var(--text-secondary);
@@ -1110,15 +999,6 @@ body {
   .captured-code {
     max-height: 200px;
   }
-  .review-row-content {
-    padding-right: 74px;
-  }
-  .review-list a {
-    position: absolute;
-    right: 0;
-    top: 16px;
-    margin-top: 0;
-  }
 }
 @media (max-height: 520px) {
   .captured-code {
@@ -1136,24 +1016,16 @@ body {
   text-transform: none;
 }
 
-.review-summary strong {
-  display: block;
-}
-
 /* Match the approved compact typography; Daily Reps keeps its existing labels. */
 #notion-log-panel h2,
-#review-panel h2,
-#review-panel h3,
 .settings-panel h2,
 .settings-panel h3,
 #notion-log-panel .btn,
-#review-panel .btn,
 .settings-panel .btn {
   text-transform: none;
   letter-spacing: normal;
 }
-#notion-log-panel,
-#review-panel {
+#notion-log-panel {
   font-size: 16px;
 }
 .section-title {
@@ -1168,14 +1040,6 @@ body {
   font-weight: 600;
 }
 .tracker-tab {
-  font-size: 14px;
-}
-.review-row-content h3 {
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-.review-row-content p {
   font-size: 14px;
 }
 .outcome {
@@ -1257,9 +1121,6 @@ body {
   .tracker-tabs {
     margin-bottom: 22px;
   }
-  .review-row-content {
-    padding-right: 82px;
-  }
 }
 
 .goal-edit {
@@ -1269,17 +1130,4 @@ body {
   height: 34px;
   padding: 0;
   color: var(--text-primary);
-}
-.review-search-field {
-  position: relative;
-}
-.review-search-field > svg {
-  position: absolute;
-  top: 10px;
-  left: 11px;
-  color: var(--text-secondary);
-  pointer-events: none;
-}
-.review-search-field #review-search {
-  padding-left: 38px;
 }

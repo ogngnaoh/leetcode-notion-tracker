@@ -1,5 +1,9 @@
 # Direct Notion implementation status
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+> Review-tab designs and acceptance evidence describe the earlier release; the current sidebar
+> has Daily Reps and Log, with review in Notion. Security and recovery details remain relevant.
+
 Release candidate: **0.3.0**, 2026-09-04. This document maps the accepted criteria in the
 [implementation plan](DIRECT_NOTION_IMPLEMENTATION_PLAN.md) to reviewable evidence. All automated
 flows use synthetic data and disposable browser profiles. No installed extension, real credential,

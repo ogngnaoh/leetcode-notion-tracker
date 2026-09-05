@@ -1,5 +1,7 @@
 # Solution page chips — 2026-09-02
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+
 The user approved a single native Solution page chip in the Grind table that opens the saved
 Attempt in the current page, instead of redirecting the Problem row's own OPEN button.
 

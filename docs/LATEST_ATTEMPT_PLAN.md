@@ -1,5 +1,7 @@
 # Latest Attempt change
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+
 ## Agreed scope
 
 - Keep the existing two databases; one stable current Attempt page per Problem.

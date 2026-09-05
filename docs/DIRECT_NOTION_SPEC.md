@@ -1,5 +1,9 @@
 # Direct Notion connection and integrated sidebar
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+> Review-tab designs and acceptance evidence describe the earlier release; the current sidebar
+> has Daily Reps and Log, with review in Notion. Security and recovery details remain relevant.
+
 Status: implemented release specification, prepared 2026-09-03 and completed 2026-09-04. Synthetic
 validation uses disposable profiles and fixtures. Installed extensions, real credentials, and live
 Notion data have not been changed by this work.

@@ -1,5 +1,9 @@
 # Native helper and integrated sidebar
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+> Review-tab designs and acceptance evidence describe the earlier release; the current sidebar
+> has Daily Reps and Log, with review in Notion. Security and recovery details remain relevant.
+
 Superseded runtime proposal: the user selected direct extension-to-Notion planning after reviewing
 the benchmark. See [Direct Notion specification](DIRECT_NOTION_SPEC.md) and
 [implementation plan](DIRECT_NOTION_IMPLEMENTATION_PLAN.md). The approved sidebar visual below

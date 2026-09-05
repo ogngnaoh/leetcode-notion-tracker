@@ -122,7 +122,12 @@ test('connects in sidebar with explicit preferences, returns to Log after the gr
   await panel.locator('#manifest-file').setInputFiles({
     name: 'notion-manifest.json',
     mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(directManifest)),
+    buffer: Buffer.from(
+      JSON.stringify({
+        ...directManifest,
+        parentPageId: directManifest.parentPageId.replaceAll('-', ''),
+      }),
+    ),
   });
   await panel.locator('#preferences-file').setInputFiles({
     name: 'dashboard-settings.json',
@@ -212,7 +217,7 @@ for (const outcome of ['Needed help', 'Solved']) {
   });
 }
 
-test('Lock clears code and Review across open panels; unlock returns to the chosen view', async () => {
+test('Lock clears private code across open panels; unlock returns to the chosen view', async () => {
   const { problem, panel } = await setup();
   await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
   const second = await fixture.panel(problem);
@@ -270,38 +275,18 @@ test('uncertain save remains globally frozen across source navigation and checki
   await problem.close();
 });
 
-test('Review loads without an external dashboard, filters locally and resets only its own preferences', async () => {
+test('two-tab sidebar keeps Notion saves while removing the review queue', async () => {
   const { panel } = await setup();
+  await expect(panel.getByRole('tab')).toHaveText(['Daily Reps', 'Log']);
+  await expect(panel.locator('#review-panel')).toHaveCount(0);
   await choose(panel, 'Needed help');
   await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
-  await panel.locator('#review-tab').click();
-  await expect(panel.locator('#review-updated')).toContainText('Updated');
   const mark = fixture.network.length;
-  await panel.locator('#review-search').fill('no such problem');
-  await panel.locator('#review-filter').selectOption('needed-help');
-  await expect(panel.locator('#review-list li')).toHaveCount(0);
+  await panel.locator('#daily-reps-tab').click();
+  await panel.locator('#open-settings').click();
+  await panel.locator('#settings-back').click();
+  await expect(panel.locator('#daily-reps-panel')).toBeVisible();
   expect(fixture.network).toHaveLength(mark);
-  await panel.locator('#edit-review-goal').click();
-  await panel.locator('#review-goal').fill('6');
-  await panel.locator('#review-goal-form button[type="submit"]').click();
-  await expect(panel.locator('#review-goal-value')).toHaveText('6');
-  const mutations = fixture.notion.counts.mutations;
-  await panel.locator('#reset-review').click();
-  await expect(panel.locator('#notion-confirm-dialog')).toBeVisible();
-  await panel.locator('#notion-confirm-cancel').click();
-  expect(
-    (await fixture.rpc(panel, { op: 'connection.state' })).preferences?.newProblemSessionStartedAt,
-  ).toBeUndefined();
-  await panel.locator('#reset-review').click();
-  await panel.locator('#notion-confirm-accept').click();
-  await expect
-    .poll(
-      async () =>
-        (await fixture.rpc(panel, { op: 'connection.state' })).preferences
-          ?.newProblemSessionStartedAt,
-    )
-    .toBeTruthy();
-  expect(fixture.notion.counts.mutations).toBe(mutations);
 });
 
 for (const width of [320, 360, 400, 480]) {
@@ -319,14 +304,20 @@ for (const width of [320, 360, 400, 480]) {
     );
     await panel.locator('#notion-log-tab').focus();
     await panel.keyboard.press('ArrowRight');
-    await expect(panel.locator('#review-tab')).toHaveAttribute('aria-selected', 'true');
+    await expect(panel.locator('#daily-reps-tab')).toHaveAttribute('aria-selected', 'true');
+    await panel.keyboard.press('ArrowLeft');
+    await expect(panel.locator('#notion-log-tab')).toHaveAttribute('aria-selected', 'true');
+    await panel.keyboard.press('Home');
+    await expect(panel.locator('#daily-reps-tab')).toHaveAttribute('aria-selected', 'true');
+    await panel.keyboard.press('End');
+    await expect(panel.locator('#notion-log-tab')).toHaveAttribute('aria-selected', 'true');
     await panel.locator('#open-settings').click();
     await expect(panel.locator('#settings-panel')).toBeVisible();
     expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
     await panel.locator('#settings-back').click();
-    await expect(panel.locator('#review-panel')).toBeVisible();
+    await expect(panel.locator('#notion-log-panel')).toBeVisible();
   });
 }
 
@@ -422,7 +413,7 @@ test('a damaged encrypted connection offers a guarded reset and requires reconci
   expect(fixture.network).toHaveLength(0);
 });
 
-test('renders the approved Log and Review layouts with real synthetic tracker data', async () => {
+test('renders the simplified Log and Settings layouts', async () => {
   const { problem, panel } = await setup({
     ...twoSum,
     code: 'def twoSum(nums, target):\n    seen = {}\n    for i, n in enumerate(nums):\n        if target - n in seen:\n            return [seen[target - n], i]\n        seen[n] = i\n    return []',
@@ -432,46 +423,6 @@ test('renders the approved Log and Review layouts with real synthetic tracker da
   await expect(panel.locator('#status')).toHaveText('');
   await panel.screenshot({
     path: '/tmp/lctrack-approved-log.png',
-    fullPage: true,
-    animations: 'disabled',
-  });
-  const { captureEvent } = await import('../../scripts/benchmark/fixture.js');
-  const sourceId = await panel.evaluate(
-    async (url) => (await chrome.tabs.query({})).find((tab) => tab.url === url)!.id!,
-    problem.url(),
-  );
-  for (const [index, title] of [
-    'Two Sum',
-    'Longest Substring Without Repeating Characters',
-    'Valid Parentheses',
-    'Merge Intervals',
-  ].entries()) {
-    const event = captureEvent(index + 70);
-    const slug = title.toLowerCase().replaceAll(' ', '-');
-    event.problem = {
-      ...event.problem,
-      title,
-      slug,
-      number: index + 1,
-      url: `https://leetcode.com/problems/${slug}/`,
-      difficulty: index % 2 ? 'Medium' : 'Easy',
-    };
-    event.attempt = {
-      ...event.attempt,
-      result: 'Needed help',
-      attemptedAt: '2026-08-01T12:00:00.000Z',
-      attemptedOn: '2026-08-01',
-    };
-    await fixture.rpc(panel, {
-      op: 'capture.submit',
-      event,
-      source: { tabId: sourceId, fingerprint: `synthetic-visual-${index}` },
-    });
-  }
-  await panel.locator('#review-tab').click();
-  await expect(panel.locator('#review-list li')).toHaveCount(4);
-  await panel.screenshot({
-    path: '/tmp/lctrack-approved-review.png',
     fullPage: true,
     animations: 'disabled',
   });

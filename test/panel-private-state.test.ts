@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  PrivateResponseGate,
-  PanelStateRevision,
-  selectReviewRows,
-} from '../extension/src/panel-private-state.js';
+import { PrivateResponseGate, PanelStateRevision } from '../extension/src/panel-private-state.js';
 
 describe('panel private response gate', () => {
   it('rejects a reply already in transit when Lock or navigation clears the panel', () => {
@@ -12,16 +8,6 @@ describe('panel private response gate', () => {
     gate.invalidate();
     expect(gate.accepts(started)).toBe(false);
     expect(gate.accepts(gate.ticket())).toBe(true);
-  });
-  it('combines review date/outcome and normalized search without truncating the source', () => {
-    const rows = [
-      { title: 'Two Sum', nextReview: '2026-09-03', practiceState: 'Solved' },
-      { title: 'Three Sum', nextReview: '2026-09-02', practiceState: 'Needed help' },
-      { title: 'Other', nextReview: '2026-09-02', practiceState: 'Solved' },
-    ];
-    expect(selectReviewRows(rows, '2026-09-03', 'needed-help', ' SUM ')).toEqual([rows[1]]);
-    expect(selectReviewRows(rows, '2026-09-03', 'today', '')).toEqual([rows[0]]);
-    expect(rows).toHaveLength(3);
   });
 });
 

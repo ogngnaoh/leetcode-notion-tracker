@@ -1,5 +1,9 @@
 # Direct Notion overhaul: implementation plan
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+> Review-tab designs and acceptance evidence describe the earlier release; the current sidebar
+> has Daily Reps and Log, with review in Notion. Security and recovery details remain relevant.
+
 Status: implemented; final release validation recorded in the companion implementation status.
 Prepared 2026-09-03 and completed 2026-09-04.
 
