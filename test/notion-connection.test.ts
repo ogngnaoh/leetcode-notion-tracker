@@ -46,6 +46,26 @@ function dataSource(
 }
 
 describe('read-only connection/import', () => {
+  it('normalizes compact and uppercase Notion IDs from existing setup manifests', () => {
+    const compact = (id: string) => id.replaceAll('-', '').toUpperCase();
+    expect(
+      parseConnectionManifest({
+        ...manifest,
+        parentPageId: compact(manifest.parentPageId),
+        problems: {
+          databaseId: compact(manifest.problems.databaseId),
+          dataSourceId: compact(manifest.problems.dataSourceId),
+        },
+      }),
+    ).toEqual(manifest);
+    expect(() =>
+      parseConnectionManifest({
+        ...manifest,
+        parentPageId: compact(manifest.problems.databaseId),
+      }),
+    ).toThrow();
+  });
+
   it('requires exact v4 UUID bindings and explicit validated preferences', () => {
     expect(parseConnectionManifest(manifest)).toEqual(manifest);
     for (const invalid of [

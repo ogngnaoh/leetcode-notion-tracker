@@ -6,7 +6,7 @@
 LeetCode public DOM → metadata-only content publication → Daily Reps (default)
 LeetCode editor model → explicit snapshot read → Log → confirmed frozen event
                                                     ↓
-Chrome sidebar: Daily Reps / Log / Review / Settings
+Chrome sidebar: Daily Reps / Log / Settings
   → typed packaged-page messages → extension background worker
       ├─ Daily Reps → serialized browser-local repetitions and archives
       ├─ vault → encrypted connection, preferences, one pending event, last completed receipt
@@ -60,18 +60,17 @@ second, and at most two retries for safe reads. Query POSTs are classified separ
 10 seconds yield control to the user. Actual fetch and body consumption are aborted after 20 seconds;
 one operation has a 120-second budget. SDK retries are disabled and logs are sanitized.
 
-## Sidebar and Review
+## Sidebar
 
 Daily Reps starts each panel opening and uses public metadata only. Full code is requested for
 unlocked Log and a confirmed outcome; it is not broadcast to every panel. The versioned extraction
 protocol rejects stale script publications and reinjects matching scripts after extension reload.
 Monaco and CodeMirror are read without focusing, scrolling, editing, private APIs, or DOM fragments.
 
-Review loads on demand, paginates completely before marking a snapshot fresh, and renders local
-search/filters in batches of 20. It preserves the old new-problem goal and exact optional reset
-boundary through an explicit token-free preferences import. Reset changes only an encrypted local
-counting timestamp. Goal/session preference generations and completed-event identities invalidate
-old caches. Lock drains pending cache writes, purges session data, and fences late hydration/results.
+The sidebar has two tabs: Daily Reps and Log. Review happens directly in Notion; no sidebar
+queue, filters, counters, or review requests remain. The existing worker protocol, encrypted
+preferences and cache purging remain compatible with saved vaults. Confirmed captures still
+update review state in Notion. Lock continues to purge private session data and fence late results.
 
 Settings contains the only credential form. Chrome options only opens that same sidebar surface.
 All private responses carry vault and execution identity; panels also reject responses invalidated
@@ -79,8 +78,7 @@ by Lock or source navigation. Recovery is profile-wide even after its original t
 
 The toolbar icon opens a tab-scoped panel; the unassigned `toggle-side-panel` command opens/closes
 it once the user chooses a shortcut. `onOpened`/`onClosed` plus `runtime.getContexts` restore toggle
-state after worker retirement. Chrome 142 is required. There is no action popup. Review links open
-a new LeetCode tab and preserve the original editor.
+state after worker retirement. Chrome 142 is required. There is no action popup.
 
 ## Trust and operations
 

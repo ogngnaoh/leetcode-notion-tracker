@@ -19,13 +19,3 @@ export interface LeetCodeContext {
   difficulty: Difficulty;
   topics: string[];
 }
-
-export interface ExtensionSettings {
-  bridgeUrl: string;
-  bridgeToken: string;
-}
-
-export const DEFAULT_SETTINGS: ExtensionSettings = {
-  bridgeUrl: 'http://127.0.0.1:8787',
-  bridgeToken: '',
-};

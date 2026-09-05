@@ -11,7 +11,13 @@ import { DIFFICULTY_OPTIONS } from '../../src/notion/presentation.js';
 import { verifyV2DataSource } from '../../src/notion/verify-data-source.js';
 import type { ReviewPreferences } from './notion-protocol.js';
 
-const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+const uuid = z
+  .string()
+  .regex(/^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i)
+  .transform((value) => {
+    const compact = value.replaceAll('-', '').toLowerCase();
+    return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`;
+  });
 const ids = z.object({ databaseId: uuid, dataSourceId: uuid }).strict();
 const manifestSchema = z
   .object({

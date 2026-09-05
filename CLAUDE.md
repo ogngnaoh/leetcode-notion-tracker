@@ -26,25 +26,26 @@ npm run format           # prettier --write .
 ```
 extension/src/*.ts   esbuild (scripts/build-extension.mjs) -> dist/extension/*.js
 extension/           manifest.json, *.html, styles.css, icons/, vendor/ copied verbatim
-src/bridge/          Hono server on :8787 — the only thing holding the Notion token
+src/tracker/         shared capture, repository, review scheduling, and retry receipts
+src/bridge/          optional legacy Hono server on :8787 and maintenance dashboard
 src/notion/          setup, migration, and verification CLIs
 src/launcher/        shared bridge-launcher lifecycle
 macos/               native on-demand menu-bar controller source
-test/*.ts            35 vitest files (Node, no browser)
-test/browser/*.ts    3 Playwright specs, loaded as an unpacked extension
+test/*.ts            vitest unit and route tests (Node, no browser)
+test/browser/*.ts    packaged direct-extension and legacy dashboard Playwright suites
 docs/                ARCHITECTURE, NOTION_SCHEMA, SECURITY-MODEL, MANUAL_TEST
 ```
 
-Load `dist/extension` unpacked — never `extension/`, which has no compiled JS.
+Load `dist/extension` unpacked — never `extension/`, which has no compiled JS. Preserve the existing
+load path when updating: loading another checkout creates a new extension identity. The current
+extension connects directly to Notion and keeps its token in the encrypted local vault. See
+`docs/SECURITY-MODEL.md` for the approved direct-connection boundary and session-key limits.
 
 ## Gotchas
 
-**Port 8787 must be free for `npm run test:browser`.** The Playwright mock bridge claims it and
-fails hard with `EADDRINUSE` if the real bridge is running. Subtler: a still-open `/dashboard` tab
-polling `127.0.0.1:8787` hits the _mock_ bridge, and `expectOnlyStatusPathSince` in
-`test/browser/mv3-capture.spec.ts` asserts every GET is the expected status path — so stray polling
-surfaces as an unrelated-looking timeout in `SPA publication rebinds status…`, not as a port error.
-Check for a running bridge and open dashboard tabs before believing that failure.
+**Browser tests use synthetic services.** The direct extension suite intercepts Notion requests
+in a disposable Chromium profile; it does not use the legacy bridge or real credentials. The
+separate dashboard fixture suite binds `127.0.0.1:8791`, so that port must be free.
 
 **LeetCode's editor is Monaco, and extension accelerators preempt the page.** Any keyboard shortcut
 the manifest claims is taken browser-wide before the editor sees it. `Cmd/Ctrl+Shift+L` is Monaco's
@@ -73,8 +74,7 @@ worker is torn down while an open panel survives it. Drop either and the key sil
 
 **Version bumps touch four places.** AGENTS.md requires a patch bump for every shipped code change:
 `package.json`, both version fields in `package-lock.json`, and `extension/manifest.json`.
-`test/extension-sidepanel-static.test.ts` hardcodes the version in its title and its assertion, so it
-must change in the same commit.
+Check `test/extension-sidepanel-static.test.ts` for version coherence assertions when bumping.
 
 **Do not regenerate `package-lock.json` to bump a version** — edit the two version fields textually.
 Regenerating it in a sandboxed environment has pulled in non-npmjs registry URLs. Before committing a
@@ -82,10 +82,10 @@ lockfile change, confirm every `resolved` URL still points at `registry.npmjs.or
 
 ## Verification
 
-Some behavior cannot be reached by the automated suites, and `docs/MANUAL_TEST.md` marks which steps
-decide correctness. Two live examples: full code capture from a scrolled Monaco editor (step 8), and
-the keyboard toggle (step 12) — Chrome delivers extension accelerators above the page and rejects
-`sidePanel.open()` without a gesture, so the unit tests exercise the toggle only against fake APIs
-and the static test cannot tell a registered command from a working one. Step 12d, the worker-restart
-path, has no automated coverage at all. A green `npm run check` does not cover these; say so rather
-than implying it does.
+The packaged browser suite uses synthetic Notion responses and editor fixtures. It verifies
+recovery and worker/browser restart flows, but cannot establish real Notion write permissions or
+compatibility with the user's current LeetCode editor. The manual guide covers those checks and
+the real keyboard entry point: Chrome delivers extension accelerators above the page and requires
+a user gesture for `sidePanel.open()`. Test the toggle after a real side-panel worker retirement
+as well. A green `npm run check` does not prove those installed-profile behaviors; report live and
+synthetic verification separately. See [manual QA](docs/MANUAL_TEST.md).

@@ -1,5 +1,7 @@
 # Native helper benchmark — 2026-09-03
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+
 Historical measurement: the subsequent accepted [direct Notion specification](DIRECT_NOTION_SPEC.md)
 supersedes this report’s native-helper recommendation. The results below remain an account of the
 earlier synthetic experiment, not a performance claim for the direct extension.

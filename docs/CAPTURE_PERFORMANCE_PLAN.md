@@ -1,5 +1,7 @@
 # Synchronous capture performance
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+
 Scope: outcome click (`Needed help` / `Solved`) through durable Notion success. Panel startup,
 background queues, deployment, live test captures and schema changes are outside this change.
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '..');
 
 describe('one-click side panel artifact', () => {
-  it('opens on an accessible standalone Daily Reps tab with Log and Review secondary', async () => {
+  it('opens on an accessible standalone Daily Reps tab with Log secondary', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     expect(html).toMatch(/role="tablist"[\s\S]*id="daily-reps-tab"[\s\S]*Daily Reps/);
@@ -53,16 +53,16 @@ describe('one-click side panel artifact', () => {
     expect(options).toMatch(/<h1>LCTrack<\/h1>/);
   });
 
-  it('keeps exactly two compact outcomes and separates local, review, and credential inputs', async () => {
+  it('keeps exactly two compact outcomes and separates local and credential inputs', async () => {
     const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
 
     const outcomes = [...html.matchAll(/data-result="([^"]+)"/g)].map((match) => match[1]);
     expect(outcomes).toEqual(['Needed help', 'Solved']);
     expect(html).toContain('id="connection-form"');
     expect(html).not.toMatch(/id="reload"/i);
-    expect(html).toContain('id="review-goal"');
+    expect(html).not.toContain('id="review-goal"');
     expect(html).toMatch(/<input[^>]*id="daily-goal-input"[^>]*min="1"[^>]*max="100"/);
-    expect(html).toContain('id="review-filter"');
+    expect(html).not.toContain('id="review-filter"');
     expect(html).not.toMatch(/<textarea\b/i);
     expect(html).toContain('<details');
     expect(html).toContain('id="code-language"');
@@ -112,14 +112,14 @@ describe('one-click side panel artifact', () => {
     expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*gap:\s*var\(--space-2\)/);
   });
 
-  it('integrates Review and Settings without broad browser permissions', async () => {
+  it('integrates Settings without broad browser permissions', async () => {
     const [html, manifestText] = await Promise.all([
       readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
     ]);
     const manifest = JSON.parse(manifestText) as { permissions?: string[] };
 
-    expect(html).toContain('id="review-panel"');
+    expect(html).not.toContain('id="review-panel"');
     expect(html).toContain('id="settings-panel"');
     expect(html).not.toContain('id="open-dashboard"');
     expect(manifest.permissions).toEqual(['activeTab', 'scripting', 'sidePanel', 'storage']);

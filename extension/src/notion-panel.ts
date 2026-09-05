@@ -7,23 +7,16 @@ import { requestNotion, NotionMessageError } from './api.js';
 import type { LeetCodeSnapshot } from './leetcode-extraction.js';
 import { metadataOnlyContext } from './leetcode-context-runtime.js';
 import type { NotionOperation, NotionState, NotionChanged } from './notion-protocol.js';
-import {
-  PrivateResponseGate,
-  PanelStateRevision,
-  safeProblemUrl,
-  selectReviewRows,
-  type ReviewFilter,
-} from './panel-private-state.js';
+import { PrivateResponseGate, PanelStateRevision } from './panel-private-state.js';
 import { difficultyBadgeClass } from './difficulty-badge.js';
 
-type View = 'daily' | 'log' | 'review' | 'settings';
+type View = 'daily' | 'log' | 'settings';
 const panels = {
   daily: 'daily-reps-panel',
   log: 'notion-log-panel',
-  review: 'review-panel',
   settings: 'settings-panel',
 } as const;
-const tabs = { daily: 'daily-reps-tab', log: 'notion-log-tab', review: 'review-tab' } as const;
+const tabs = { daily: 'daily-reps-tab', log: 'notion-log-tab' } as const;
 const el = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing panel element ${id}`);
@@ -70,10 +63,6 @@ export class NotionPanel {
   private readonly extraction = new PrivateResponseGate();
   private actionBusy = false;
   private logReads = 0;
-  private visibleRows = 20;
-  private reviewError = '';
-  private reviewLoading = false;
-  private lastReviewKey = '';
   private statusError = '';
   private savedReview: { slug: string; eventId: string; review: ReviewState } | null = null;
   private confirmation: (() => Promise<void>) | null = null;
@@ -81,22 +70,22 @@ export class NotionPanel {
   private connectionReadError = '';
 
   constructor(private readonly dependencies: NotionPanelDependencies) {
-    for (const name of ['daily', 'log', 'review'] as const) {
+    for (const name of ['daily', 'log'] as const) {
       button(tabs[name], () => {
         void this.select(name);
       });
       el(tabs[name]).addEventListener('keydown', (event) => {
-        const order = ['daily', 'log', 'review'] as const;
+        const order = ['daily', 'log'] as const;
         const index = order.indexOf(name);
         const next =
           event.key === 'Home'
             ? 0
             : event.key === 'End'
-              ? 2
+              ? order.length - 1
               : event.key === 'ArrowRight'
-                ? (index + 1) % 3
+                ? (index + 1) % order.length
                 : event.key === 'ArrowLeft'
-                  ? (index + 2) % 3
+                  ? (index + order.length - 1) % order.length
                   : null;
         if (next === null) return;
         event.preventDefault();
@@ -111,7 +100,7 @@ export class NotionPanel {
     button('settings-back', () => {
       void this.select(this.previousView);
     });
-    for (const id of ['log-connect', 'review-connect'])
+    for (const id of ['log-connect'])
       button(id, () => {
         void this.select('settings');
       });
@@ -126,55 +115,6 @@ export class NotionPanel {
         void this.capture(outcome.dataset.result as AttemptResult);
       });
     }
-    button('refresh-review', () => {
-      void this.loadReview(true);
-    });
-    field('review-search').addEventListener('input', () => {
-      this.visibleRows = 20;
-      this.renderReview();
-    });
-    el('review-filter').addEventListener('change', () => {
-      this.visibleRows = 20;
-      this.renderReview();
-    });
-    button('review-more', () => {
-      this.visibleRows += 20;
-      this.renderReview();
-    });
-    button('edit-review-goal', () => {
-      field('review-goal').value = String(this.state?.preferences?.dailyNewProblemGoal ?? 10);
-      show('review-goal-form', true);
-      field('review-goal').focus();
-    });
-    const closeGoal = () => {
-      show('review-goal-form', false);
-      el('edit-review-goal').focus();
-    };
-    button('cancel-review-goal', closeGoal);
-    field('review-goal').addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeGoal();
-      }
-    });
-    el('review-goal-form').addEventListener('submit', (event) => {
-      event.preventDefault();
-      const goal = Number(field('review-goal').value);
-      if (!Number.isInteger(goal) || goal < 1 || goal > 100) return;
-      void this.run({ op: 'preferences.setGoal', goal }).then((ok) => {
-        if (ok) closeGoal();
-      });
-    });
-    button('reset-review', () =>
-      this.confirm(
-        'Reset the new-problem count?',
-        'Only this local session count restarts. Your Problems, Attempts, review schedule, and Daily Reps stay unchanged.',
-        async () => {
-          await this.run({ op: 'preferences.resetSession' });
-          await this.loadReview(true);
-        },
-      ),
-    );
     button('lock-notion', () => {
       void this.lock();
     });
@@ -291,15 +231,6 @@ export class NotionPanel {
       const state = await requestNotion({ op: 'connection.state' });
       if (!this.authority.accepts(ticket)) return;
       if (!this.accept(state)) return;
-      if (
-        this.view === 'review' &&
-        state.connection.unlocked &&
-        !state.busy &&
-        !state.review &&
-        !this.reviewLoading &&
-        this.reviewKey() !== this.lastReviewKey
-      )
-        void this.loadReview(false);
     } catch (error) {
       if (!this.authority.accepts(ticket)) return;
       this.connectionReadError = error instanceof NotionMessageError ? error.code : 'UNAVAILABLE';
@@ -357,16 +288,8 @@ export class NotionPanel {
     }
     for (const input of document.querySelectorAll<HTMLInputElement>('input[type="password"]'))
       input.value = '';
-    for (const id of [
-      'captured-code',
-      'pending-code',
-      'pending-detail',
-      'review-list',
-      'success-confirmation',
-    ])
+    for (const id of ['captured-code', 'pending-code', 'pending-detail', 'success-confirmation'])
       text(id, '');
-    field('review-search').value = '';
-    this.reviewError = '';
     this.statusError = '';
     this.closeConfirmation();
   }
@@ -386,7 +309,7 @@ export class NotionPanel {
     this.extraction.invalidate();
     for (const name of Object.keys(panels) as View[]) show(panels[name], name === view);
     el('open-settings').setAttribute('aria-expanded', String(view === 'settings'));
-    for (const name of ['daily', 'log', 'review'] as const) {
+    for (const name of ['daily', 'log'] as const) {
       const selected = name === view;
       el(tabs[name]).setAttribute('aria-selected', String(selected));
       el(tabs[name]).tabIndex =
@@ -402,7 +325,6 @@ export class NotionPanel {
     }
     if (!this.state) await this.refreshState();
     if (view === 'log' && this.state?.connection.unlocked) await this.loadLog(true);
-    if (view === 'review' && this.state?.connection.unlocked) await this.loadReview(false);
   }
 
   private async run(operation: NotionOperation, success = ''): Promise<boolean> {
@@ -438,7 +360,6 @@ export class NotionPanel {
           : 'The operation could not be completed. Stored data was preserved.';
       this.statusError = message;
       text('settings-status', message);
-      this.reviewError = message;
       await this.refreshState();
       return false;
     } finally {
@@ -552,7 +473,6 @@ export class NotionPanel {
         event,
         source: { tabId, fingerprint: snapshot.fingerprint, navigationId },
       });
-      if ((this.view as View) === 'review') await this.loadReview(true);
     } catch {
       this.statusError =
         'Could not prepare this attempt. Confirm the editor is readable and code is at most 20,000 characters.';
@@ -562,36 +482,8 @@ export class NotionPanel {
     }
   }
 
-  private reviewKey(): string {
-    return `${this.state?.connection.generation}:${this.state?.completed?.eventId ?? ''}:${JSON.stringify(this.state?.preferences)}`;
-  }
-
-  private async loadReview(force: boolean): Promise<void> {
-    if (!this.state?.connection.unlocked || this.reviewLoading) return;
-    this.reviewLoading = true;
-    this.lastReviewKey = this.reviewKey();
-    const ticket = this.authority.ticket();
-    this.reviewError = '';
-    text('review-message', 'Loading reviews…');
-    el<HTMLButtonElement>('refresh-review').disabled = true;
-    try {
-      const state = await requestNotion({ op: force ? 'review.refresh' : 'review.read' });
-      if (!this.authority.accepts(ticket)) return;
-      this.accept(state);
-    } catch (error) {
-      if (!this.authority.accepts(ticket)) return;
-      this.reviewError =
-        error instanceof NotionMessageError ? error.message : 'Reviews could not be refreshed.';
-      this.renderReview();
-    } finally {
-      this.reviewLoading = false;
-      this.renderReview();
-    }
-  }
-
   private render(): void {
     this.renderLog();
-    this.renderReview();
     this.renderSettings();
     this.renderPending();
   }
@@ -684,97 +576,6 @@ export class NotionPanel {
                     ? 'The editor is not readable yet. Open the problem editor and try again.'
                     : ''),
     );
-  }
-
-  private renderReview(): void {
-    const state = this.state;
-    const unlocked = !!state?.connection.unlocked;
-    const snapshot = unlocked ? state?.review : null;
-    show('review-connect', !unlocked);
-    text('review-connect', state?.connection.configured ? 'Unlock Notion' : 'Connect Notion');
-    show('review-private', unlocked);
-    el<HTMLButtonElement>('refresh-review').disabled =
-      !unlocked || this.actionBusy || this.reviewLoading || !!state?.busy;
-    text(
-      'review-updated',
-      snapshot
-        ? `${snapshot.stale || this.reviewError ? 'Saved view · ' : ''}Updated ${dateLabel(snapshot.generatedAt)}`
-        : 'Waiting for data',
-    );
-    text(
-      'review-message',
-      !unlocked
-        ? 'Unlock to load reviews.'
-        : this.reviewError ||
-            (snapshot?.stale
-              ? 'Notion refresh failed. Your last saved view is shown.'
-              : !snapshot
-                ? 'Load reviews to see your current session.'
-                : ''),
-    );
-    text('new-problem-count', snapshot ? String(snapshot.newProblemCount) : '—');
-    text('review-goal-value', String(state?.preferences?.dailyNewProblemGoal ?? 10));
-    text('reviews-due', snapshot ? String(snapshot.due.length) : '—');
-    const preferencesBusy = this.actionBusy || this.reviewLoading || !!state?.busy;
-    el<HTMLButtonElement>('edit-review-goal').disabled = !unlocked || preferencesBusy;
-    el<HTMLButtonElement>('reset-review').disabled = !unlocked || preferencesBusy;
-    for (const control of el('review-goal-form').querySelectorAll<
-      HTMLInputElement | HTMLButtonElement
-    >('input, button'))
-      control.disabled = !unlocked || preferencesBusy;
-    const list = el('review-list');
-    list.replaceChildren();
-    const filter = (el<HTMLSelectElement>('review-filter').value || 'all') as ReviewFilter;
-    const rows = snapshot
-      ? selectReviewRows(snapshot.due, snapshot.date, filter, field('review-search').value)
-      : [];
-    const visible = rows.slice(0, this.visibleRows);
-    for (const row of visible) {
-      const item = document.createElement('li');
-      const content = document.createElement('div');
-      content.className = 'review-row-content';
-      const title = document.createElement('h3');
-      title.textContent = row.title;
-      const meta = document.createElement('p');
-      const difficulty = document.createElement('span');
-      difficulty.className = difficultyBadgeClass(row.difficulty);
-      difficulty.textContent = row.difficulty;
-      const overdue =
-        snapshot && row.nextReview < snapshot.date
-          ? Math.round(
-              (Date.parse(`${snapshot.date}T00:00:00Z`) -
-                Date.parse(`${row.nextReview}T00:00:00Z`)) /
-                86400000,
-            )
-          : 0;
-      const due = document.createElement('span');
-      due.textContent = overdue > 0 ? ` · ${overdue}d overdue` : ' · Today';
-      if (overdue > 0) due.className = 'overdue';
-      meta.append(difficulty, due);
-      if (row.practiceState === 'Needed help') meta.append(' · Needed help');
-      content.append(title, meta);
-      item.append(content);
-      const href = safeProblemUrl(row.url);
-      if (href) {
-        const link = document.createElement('a');
-        link.href = href;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = 'Review ↗';
-        link.setAttribute('aria-label', `Review ${row.title} in a new tab`);
-        item.append(link);
-      }
-      list.append(item);
-    }
-    show('review-empty', !!snapshot && rows.length === 0);
-    text(
-      'review-empty',
-      snapshot?.due.length === 0
-        ? 'All caught up. No reviews are due today.'
-        : 'No matching reviews. Try another filter or clear your search.',
-    );
-    text('review-count', snapshot ? `Showing ${visible.length} of ${rows.length}` : '');
-    show('review-more', visible.length < rows.length);
   }
 
   private renderSettings(): void {

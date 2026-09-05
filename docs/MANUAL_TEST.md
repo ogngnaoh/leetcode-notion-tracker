@@ -1,159 +1,104 @@
 # Manual end-to-end test
 
-## Notion setup
+Use this checklist for the current direct-Notion extension. `npm run check` uses synthetic Notion
+and editor fixtures; it does not establish installed-profile behavior or live write permissions.
+Legacy launcher/dashboard checks are in [legacy tools](LEGACY_BRIDGE.md).
 
-1. Create an internal Notion integration.
-2. Create an empty Notion page named `LeetCode Tracker`.
-3. Share that page with the integration.
-4. Fill `.env`.
-5. Run `npm run notion:setup`.
-6. Run `npm run notion:verify`.
-7. Confirm exactly two child databases exist.
+## Prepare and connect
 
-## On-demand menu-bar launcher
+1. Run `npm run check`, then use the built `dist/extension`. For an existing installation, keep its
+   original load path and reload it in `chrome://extensions`; do not load another checkout or clear
+   extension data. Resolve old pending saves and stop legacy writers first, following the
+   [cutover guide](DIRECT_NOTION_CUTOVER.md). Use one normal Chrome profile.
+2. An existing v4 tracker needs no new databases. For a fresh tracker only, follow README setup and
+   confirm exactly two databases. Use the [maintenance guide](NOTION_MAINTENANCE.md) for older schemas.
+3. Open Settings. If it shows Unlock, use the existing passphrase. Otherwise import the token-free
+   v4 `build/notion-manifest.json` and optional `build/dashboard-settings.json`, enter the dedicated
+   integration token, and create/confirm a passphrase of at least 16 characters. Review and confirm
+   the import preview, then Connect. Never import `.env` or expose credentials in screenshots/logs.
+4. Confirm Connect succeeds with read-only checks. This is schema/binding verification, not proof
+   of write permission. Confirm Chrome's Extension options page opens sidebar Settings without a
+   separate credential form.
 
-1. Confirm the bridge is stopped, run `npm run build:menu-bar`, and open `build/LCTrack.app`.
-2. Confirm no Dock icon or Terminal window remains and a status icon appears in the menu bar.
-3. Confirm the dashboard opens once and the menu reports **Bridge is running**.
-4. Confirm **Open Dashboard** opens the configured localhost dashboard and **View Log** opens the
-   ignored `build/lc-menu-bar.log`.
-5. Choose **Stop Bridge** and confirm the menu reports it stopped and the extension reports the bridge
-   unavailable. Choose **Start Bridge** and confirm it returns without restarting automatically.
-6. Choose **Quit LCTrack** while it owns the bridge and confirm both the menu icon and bridge stop.
-7. Start the bridge with `lc-log.command`, then open `LCTrack.app`. Confirm it reports **Bridge is
-   running elsewhere** and offers **Start Bridge**, not **Stop Bridge**, rather than terminating the
-   visible process.
-8. Log out and back in, and confirm LCTrack does not start by itself and no login item or LaunchAgent
-   was installed.
+## Daily Reps and layout
 
-## Visible Terminal fallback
+1. Open a LeetCode problem and LCTrack. Confirm Daily Reps is initially selected, Log is the other
+   tab, and Settings is available. There is no Review tab or legacy Dashboard link.
+2. With Notion locked and even if the code editor is unavailable, set a goal of 3 and log the same
+   problem twice. Confirm two separate local repetitions. Remove a mistaken rep and add it again.
+3. Reach/exceed the goal and confirm logging remains enabled. Change the goal, then Finish & reset;
+   confirm the dialog includes any shortfall and the goal carries forward after confirmation.
+4. Expand History, inspect archived problem metadata and links, then reopen the panel and confirm
+   persistence. Archive deletion requires confirmation. Retain an earlier-date session and confirm
+   the warning does not reset it automatically or block logging.
+5. At normal width and approximately 320 px, confirm readable masthead, tabs, metadata, goal and
+   outcome controls, no horizontal overflow, and visible keyboard focus. Empty lists/history stay
+   hidden until they contain data; populated rows and collapsed history summaries remain compact.
+6. Daily Reps makes no Notion requests. Local repetitions and Notion outcome saves remain separate.
 
-1. In Finder, set Terminal.app as the **Open with** default for `lc-log.command`, select **Change All**,
-   and place `lc-log.command` in the Dock's document area.
-2. Click it once and confirm a visibly titled Terminal window reports the bridge listening on the
-   configured localhost port.
-3. Click it again and confirm it reports the existing healthy bridge without starting another process.
-4. Press Ctrl-C in the original window and confirm the bridge stops.
-5. Confirm the extension reports the bridge unavailable, then click the Dock launcher once and confirm
-   service returns.
-6. Temporarily occupy the configured port with a non-tracker process, click the launcher, and confirm
-   it refuses startup without terminating that process.
-7. Run `./lc-log.command` directly from another terminal host and confirm it starts without a
-   terminal-brand restriction.
+## Recognition and complete code
 
-## Bridge API
+- Open LCTrack from an Accepted submission page without clicking the editor or Description. Confirm
+  the current title, number, difficulty and available mounted-description topics appear.
+- Reopen while the editor hydrates. Confirm recognition recovers without scrolling or focusing it.
+  Changing Description/submission routes for the same problem must not create repetitions or saves.
+- Navigate to a different problem. Hidden old descriptions must not supply its metadata.
+- Unlock in Settings and open Log. Confirm title, difficulty, topics, language and complete code.
+  Use a solution longer than the editor viewport; scroll so neither first nor last line is visible.
+  Confirm both lines and the true total line count appear in the preview. Synthetic editor fixtures
+  cannot establish compatibility with the current live LeetCode editor.
+- Enter LeetCode focus mode and confirm full code and language remain available. Edit a line and
+  confirm the preview updates without focusing or scrolling the editor on the user's behalf.
+- Reload the extension while LeetCode remains open, unlock and reopen Log. Confirm the versioned
+  handshake recovers recognition without refreshing the page. Missing code must block capture.
+- Open a non-LeetCode tab and confirm capture is unavailable.
 
-1. Start either explicit daily launcher (or run `npm run dev:bridge` for development).
-2. Open `http://127.0.0.1:8787/health`.
-3. Confirm the JSON response reports `ok: true`.
-4. Run the sample curl request in `examples/curl-capture.sh` after exporting `BRIDGE_TOKEN`.
-5. Confirm one Problem and one Attempt appear in Notion.
-6. Run the identical curl request again.
-7. Confirm no second Attempt is created.
+## User-confirmed live save
 
-## Dashboard settings
+Use your own genuine outcome; do not create dummy production attempts to complete this checklist.
 
-1. Open `/dashboard` in each normal, empty, stale, loading, and unavailable state and confirm
-   **Settings** remains visible.
-2. Open Settings and confirm the current target is selected in a number input bounded from 1 to 100.
-3. Cancel once with the button and once with Escape; confirm focus returns to **Settings**.
-4. Save a new target and confirm the denominator changes immediately without a Notion refresh.
-5. Restart the bridge and confirm the target survives in ignored `build/dashboard-settings.json`.
-6. Make `build/` temporarily unwritable, attempt a save, and confirm the dialog stays open with a live
-   error while the prior target remains displayed.
+1. In Log, inspect the expanded code preview and choose Needed help or Solved. Confirm success only
+   after Notion writes finish. Inspect the Problem and Attempt directly in Notion: correct problem,
+   code, language, result and attempt timestamp; stable External Key and Client Event ID.
+2. When a later genuine attempt is ready, save it and confirm it updates the same retained Attempt
+   page/link with a new Client Event ID, preserving unrelated notes. Latest means newest timestamp,
+   including Needed help after Solved; it does not mean latest successful solution.
+3. Confirm First Attempt remains the earliest recorded capture. Needed help sets streak 0 and
+   same-day Next Review; consecutive Solved captures schedule 1, 3, 7, then 14 days, and streak 5
+   becomes Mastered with no next review. Check only transitions naturally exercised by your work;
+   the synthetic suite covers the full sequence without changing production progress.
+4. Check your review queue directly in Notion. Sidebar removal does not remove review-state writes.
 
-## Extension
+## Lock, restart and recovery
 
-### Recognition without page interaction
+1. With no save in flight, select Lock now. Confirm Log's private content disappears and Daily Reps
+   still works. A wrong passphrase must leave saved state intact; the correct one unlocks it.
+2. Let the idle worker retire and reopen Log during the same Chrome session. Confirm it stays
+   unlocked. Fully exit Chrome, then reopen: Settings must require unlock. Extension reload,
+   update or disable/re-enable also clears the unlock key. Closing a window alone may not exit Chrome.
+3. If a real save is interrupted, preserve its recovery state. Unlock must not automatically submit
+   it. Check saved result is read-only; Retry same attempt keeps the original code, timestamp and ID,
+   even after navigation or a browser restart. Never create a fresh event to escape uncertainty.
+4. Empty/conflicting/incomplete discovery does not prove the previous write failed. Inspect and
+   reconcile the exact Notion result before changing writers or discarding recovery. Follow the
+   [recovery guide](DIRECT_NOTION_CUTOVER.md#interrupted-saves). Lock or network abort cannot undo an
+   accepted remote write. A reported Lock failure requires retry or full Chrome exit.
+5. Use the disposable automated suite for deliberate network loss, denied access, vault corruption,
+   reset/disconnect and uncertain-write failure injection. Do not clear the user's extension data
+   or alter live integration permissions merely for QA. Record which cases were synthetic and
+   which were observed live.
 
-- Open LCTrack directly from an Accepted submission page without clicking the editor or Description.
-  Confirm the current question's title, number, difficulty, and mounted description topics appear.
-- Close and reopen LCTrack while the page is animating or the editor is still loading. Confirm
-  recognition recovers automatically, without scrolling or focusing the editor.
-- With the panel open, change from Description to an accepted submission for the same problem.
-  Confirm the problem stays recognized and no repetition or Notion attempt is created automatically.
-- Navigate to a different problem and confirm the earlier hidden description never supplies its
-  title, difficulty, or topics.
+## Tab scope and keyboard entry point
 
-### Full workflow
+These checks require real Chrome gestures; opening the sidebar HTML as a test tab is insufficient.
 
-1. Run `npm run build:extension`.
-2. Load `dist/extension` as an unpacked extension.
-3. Save bridge settings in the options page.
-4. Open `https://leetcode.com/problems/two-sum/`.
-5. Open the extension side panel.
-6. Confirm **Daily Reps** is selected, **Notion Log** is secondary, and no bridge request occurs yet.
-7. With bridge settings empty and with the code editor unavailable, set a goal of 3 and confirm the
-   current problem can still be logged twice as two distinct repetitions.
-8. Remove either current rep, log it again, and confirm the count and newest-first list update.
-9. Reach and exceed the goal; confirm completion styling appears and logging remains enabled.
-10. Lower or raise the goal so the count is below target, select **Finish & reset**, and confirm the
-    dialog states the count and shortfall. Finish and confirm the goal carries forward.
-11. Expand the archived session and confirm its problem metadata, topics, time, and link. Reload the
-    panel and confirm it persists; delete the archive and confirm deletion requires confirmation.
-12. Seed or retain a session from an earlier local date and confirm the warning appears without an
-    automatic reset or logging block.
-13. Confirm the empty Daily Reps view shows only the progress band, compact problem strip, and
-    **Log rep** action. The current-session list and history should appear only when they contain data,
-    and the current problem should not repeat LeetCode's own **Open problem** link.
-14. At both a normal side-panel width and approximately 320 px, confirm the masthead, tabs, goal
-    editor, problem metadata, and actions remain readable without horizontal scrolling or clipped
-    labels. Use the keyboard to confirm the blue focus ring remains visible on every control.
-15. Log several reps and confirm each row stays to two compact lines (problem, then metadata/time).
-    Finish the session and confirm its collapsed history summary stays on one line until expanded.
-16. Switch to **Notion Log** and confirm bridge status is requested only now.
-17. Switch to another tab and confirm LCTrack is not open there. Click the extension icon on that tab
-    and confirm its own panel opens, then return to the original LeetCode tab and confirm its
-    tab-scoped panel remains available.
-18. In **Notion Log**, without focusing or scrolling the editor, confirm title, difficulty, topics,
-    language, and the complete code appear.
-19. Open a problem whose solution is longer than the code editor viewport, and scroll the editor so
-    that neither the first nor the last line is on screen. Confirm the side panel reports the
-    solution's true total line count and that the captured code block contains both the first and the
-    last line. This is the check that decides whether full code capture works; the automated suites
-    were rewritten alongside the feature and cannot decide it.
-20. Enter LeetCode focus mode and confirm the same complete code and language remain available. Edit
-    a line without leaving focus mode and confirm the side panel updates without focusing or
-    scrolling the editor.
-21. Confirm the square-terminal logo and spaced `LC TRACK` masthead render above the two accessible
-    mode tabs. In **Notion Log**, confirm the compact problem
-    card, followed by exactly two equal outcomes, `Needed help` and `Solved`, and then expanded code.
-22. Confirm **Dashboard ↗** is visible inside **Notion Log**. Open the dashboard, return to LeetCode,
-    click **Dashboard ↗**, and confirm it focuses that exact tab and Chrome window without
-    duplicating it.
-23. Close the dashboard, click **Dashboard ↗** again, and confirm one replacement tab opens.
-24. Open `chrome://extensions/shortcuts`, confirm LCTrack lists **Toggle LCTrack side panel** with an
-    empty key field, and assign one. This group of checks decides whether the keyboard entry point
-    works: `sidePanel.open()` is rejected without a real user gesture, so neither vitest nor
-    Playwright can drive it, and the unit tests exercise the toggle only against fake APIs.
-    a. On a LeetCode problem tab with the panel closed, press the key and confirm the panel opens.
-    b. Press it again and confirm the panel closes.
-    c. Open it with the key, close it with the panel's own close control, then press the key and
-    confirm it opens rather than doing nothing — this is what `onClosed` tracking is for.
-    d. Open the panel, leave Chrome untouched for a minute or two so the service worker shuts down
-    (`chrome://extensions` shows it stop), then press the key and confirm it closes the panel
-    rather than reopening it — this is what `hydrateOpenPanels` is for, and it is the one path
-    no automated check reaches.
-    e. Confirm the key you chose still does whatever it did in the LeetCode editor before.
-25. Choose one truthful outcome and confirm all outcomes remain active with that result selected.
-26. Choose another outcome for unchanged code and confirm it creates a second Client Event ID.
-27. Confirm the Notion Problem and immutable Attempts match both submitted events.
-28. For an uncertain write, confirm `Retry same attempt` is the sole action and reuses the exact body.
-
-## First-attempt acceptance
-
-1. Capture `Needed help` for a new Problem and confirm today's dashboard count increases once, solved
-   streak is 0, and Next Review is today.
-2. Review that Problem and confirm a new Attempt is created without increasing today's count.
-3. Capture `Solved` for another new Problem and confirm the count increases once and Next Review is
-   tomorrow.
-
-## Failure checks
-
-- Stop the bridge and verify the extension shows a useful error.
-- Use a wrong bridge token and verify HTTP 401 is surfaced.
-- Open a non-LeetCode tab and verify capture is blocked.
-- Reload the extension while LeetCode remains open and verify the versioned startup handshake
-  reinjects the current scripts and recognizes it without refreshing the page.
-- Save an invalid Bridge URL and confirm **Dashboard ↗** points back to Bridge settings with an
-  actionable error.
+1. Click the toolbar icon on a problem tab. Switch tabs: LCTrack should not automatically carry over.
+   Click the icon there to open that tab's panel, then confirm the original panel remains available.
+2. At `chrome://extensions/shortcuts`, assign the initially unbound Toggle LCTrack side panel
+   command. Choose a key that does not replace a needed editor command.
+3. On a problem tab, press it to open, then close the panel. Open again, close with the panel's own
+   control, and confirm the shortcut opens it correctly afterward.
+4. Leave an open panel idle until its worker retires, then confirm the shortcut closes the existing
+   panel. This checks real side-panel state hydration, distinct from automated worker recovery.
+5. Confirm your other LeetCode editor shortcuts still work. Chrome's own restricted pages do not
+   deliver extension shortcuts; the toolbar icon remains the entry point there.

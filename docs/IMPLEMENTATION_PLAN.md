@@ -1,5 +1,7 @@
 # Minimal implementation plan
 
+> Historical implementation record. For current operation, use the [documentation index](README.md).
+
 This is the order for completing the project with real credentials.
 
 ## Phase 1: Baseline

@@ -57,17 +57,6 @@
         >
           Log
         </button>
-        <button
-          id="review-tab"
-          class="tracker-tab"
-          type="button"
-          role="tab"
-          aria-selected="false"
-          aria-controls="review-panel"
-          tabindex="-1"
-        >
-          Review
-        </button>
       </nav>
 
       <section
@@ -271,116 +260,6 @@
           Open Log to check the current problem.
         </p>
         <button id="log-connect" class="btn btn--block" type="button">Connect Notion</button>
-      </section>
-
-      <section
-        id="review-panel"
-        class="tracker-tab-panel"
-        role="tabpanel"
-        aria-labelledby="review-tab"
-        hidden
-      >
-        <div class="section-heading-row">
-          <div>
-            <h2 class="view-heading">Review</h2>
-            <p id="review-updated" class="muted">Waiting for data</p>
-          </div>
-          <button
-            id="refresh-review"
-            class="btn icon-button"
-            type="button"
-            aria-label="Refresh reviews"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="22"
-              height="22"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              aria-hidden="true"
-            >
-              <path d="M20 7v5h-5M4 17v-5h5M19.5 11a8 8 0 0 0-14-5M4.5 13a8 8 0 0 0 14 5" />
-            </svg>
-          </button>
-        </div>
-        <p id="review-message" class="status" role="status" aria-live="polite"></p>
-        <button id="review-connect" class="btn btn--block" type="button">Connect Notion</button>
-        <div id="review-private" hidden>
-          <div class="review-summary">
-            <div>
-              <span>New this session</span>
-              <div class="summary-value">
-                <span id="new-problem-count">—</span><span>/</span
-                ><span id="review-goal-value">10</span>
-                <button
-                  id="edit-review-goal"
-                  class="text-action goal-edit"
-                  type="button"
-                  aria-label="Edit new-problem goal"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="22"
-                    height="22"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.7"
-                    aria-hidden="true"
-                  >
-                    <path d="m15 4 5 5M4 20l5-1L20 8a2.1 2.1 0 0 0-4-4L5 15l-1 5Z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div><span>Reviews due</span><strong id="reviews-due">—</strong></div>
-          </div>
-          <form id="review-goal-form" class="inline-form" hidden>
-            <label for="review-goal">New-problem goal</label
-            ><input id="review-goal" type="number" min="1" max="100" required />
-            <div class="dialog-actions">
-              <button class="btn" type="submit">Save goal</button
-              ><button id="cancel-review-goal" class="btn btn--quiet" type="button">Cancel</button>
-            </div>
-          </form>
-          <label class="sr-only" for="review-search">Search problems</label>
-          <div class="review-search-field">
-            <svg
-              viewBox="0 0 24 24"
-              width="21"
-              height="21"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              aria-hidden="true"
-            >
-              <circle cx="10" cy="10" r="7" />
-              <path d="m15 15 6 6" />
-            </svg>
-            <input
-              id="review-search"
-              type="search"
-              placeholder="Search problems"
-              autocomplete="off"
-            />
-          </div>
-          <label class="sr-only" for="review-filter">Review filter</label
-          ><select id="review-filter">
-            <option value="all">All due</option>
-            <option value="today">Today</option>
-            <option value="overdue">Overdue</option>
-            <option value="needed-help">Needed help</option>
-          </select>
-          <ol id="review-list" class="review-list"></ol>
-          <p id="review-empty" class="empty-message" hidden></p>
-          <div class="section-heading-row">
-            <p id="review-count" class="muted"></p>
-            <button id="review-more" class="btn" type="button" hidden>Show more</button>
-          </div>
-          <button id="reset-review" class="btn btn--critical btn--block" type="button">
-            Reset session count
-          </button>
-        </div>
       </section>
 
       <section
