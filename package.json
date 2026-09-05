@@ -1,6 +1,6 @@
 {
   "name": "leetcode-notion-tracker",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -36,7 +36,7 @@
     "@hono/node-server": "^2.0.10",
     "@notionhq/client": "^5.23.2",
     "dotenv": "^17.2.3",
-    "hono": "^4.12.31",
+    "hono": "^4.12.34",
     "zod": "^4.3.6"
   },
   "devDependencies": {
