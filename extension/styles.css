@@ -406,7 +406,7 @@ body {
   color: var(--color-white);
 }
 
-.btn--dark:hover {
+.btn--dark:not(:disabled):hover {
   border-color: var(--color-cobalt);
   background: var(--color-cobalt);
   color: var(--color-white);
@@ -418,7 +418,7 @@ body {
   color: var(--color-black);
 }
 
-.btn--outline:hover {
+.btn--outline:not(:disabled):hover {
   border-color: var(--color-black);
   background: var(--color-black);
   color: var(--color-white);
@@ -736,10 +736,9 @@ body {
   color: var(--text-secondary);
 }
 .problem-panel {
-  padding: 0 0 14px;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--color-border-strong);
+  padding: var(--space-3);
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-black);
 }
 .log-problem-heading {
   display: grid;
@@ -748,27 +747,38 @@ body {
   margin-block: 13px 8px;
 }
 #problem-number {
-  font-size: 24px;
-  font-weight: 500;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding-top: 4px;
 }
 .log-problem-heading .problem-title {
-  font-size: 23px;
+  font-size: 20px;
   line-height: 1.3;
   margin: 0 0 3px;
   overflow-wrap: anywhere;
 }
 #problem-difficulty {
-  font-size: 14px;
+  display: inline-flex;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: var(--border-width) solid currentColor;
+  font-size: 11px;
+  line-height: 18px;
 }
 .review-state {
-  margin-block: 9px;
+  margin-block: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 .topics {
   margin: 0;
-  padding: 0;
+  padding: 10px 0 0;
   gap: 5px 10px;
-  border: 0;
+  border-top: var(--border-width) solid var(--border-control);
   color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 18px;
 }
 .topics li + li::before {
   content: '·';
@@ -783,7 +793,7 @@ body {
 .code-disclosure {
   margin: 0;
   border-color: var(--color-black);
-  border-radius: 3px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 .code-disclosure summary {
@@ -825,24 +835,27 @@ body {
 }
 .outcome {
   min-height: 44px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   font-size: 14px;
   font-weight: 500;
 }
 .outcome[data-result='Needed help'] {
   border-color: var(--color-black);
-  background: transparent;
+  background: var(--color-white);
+  color: var(--color-black);
 }
 .outcome[data-result='Solved'] {
   border-color: var(--color-black);
-  background: var(--color-cobalt);
+  background: var(--color-black);
   color: var(--color-white);
 }
-.outcome[data-result='Needed help']:hover {
-  background: var(--color-white);
+.outcome[data-result='Needed help']:not(:disabled):hover {
+  background: var(--color-black);
+  color: var(--color-white);
 }
-.outcome[data-result='Solved']:hover {
-  background: var(--color-blue-deep);
+.outcome[data-result='Solved']:not(:disabled):hover {
+  border-color: var(--color-cobalt);
+  background: var(--color-cobalt);
 }
 .privacy-note {
   font-size: 12px;
@@ -868,7 +881,7 @@ body {
   padding: 6px;
   border-color: var(--color-black);
   background: transparent;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 #open-settings {
   border-color: transparent;
@@ -897,7 +910,7 @@ body {
   width: 100%;
   min-height: 40px;
   border: 1px solid var(--color-muted);
-  border-radius: 3px;
+  border-radius: var(--radius);
   padding: 8px;
   background: var(--color-white);
   font: inherit;
@@ -925,11 +938,6 @@ body {
   min-width: 0;
   font-size: 12px;
   font-weight: 400;
-}
-.primary-action {
-  border-color: var(--color-black);
-  background: var(--color-cobalt);
-  color: var(--color-white);
 }
 .settings-panel .btn {
   font-size: 13px;
@@ -1130,4 +1138,43 @@ body {
   height: 34px;
   padding: 0;
   color: var(--text-primary);
+}
+
+/* Shared action states across Daily Reps, Log, and Settings. */
+.btn--dark:disabled,
+.btn--outline:disabled,
+.outcome[data-result]:disabled {
+  border-color: var(--text-secondary);
+  background: var(--color-white);
+  color: var(--text-secondary);
+  opacity: 1;
+}
+#notion-log-panel .problem-panel > .section-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.code-disclosure summary {
+  position: static;
+  display: flex;
+  justify-content: space-between;
+  width: auto;
+  height: auto;
+  padding: 8px 10px;
+  background: var(--color-white);
+}
+.code-disclosure summary .sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+}
+.captured-code {
+  padding: 12px;
+  font-size: 12px;
 }

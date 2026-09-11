@@ -259,7 +259,9 @@
         <p id="status" class="status" role="status" aria-live="polite">
           Open Log to check the current problem.
         </p>
-        <button id="log-connect" class="btn btn--block" type="button">Connect Notion</button>
+        <button id="log-connect" class="btn btn--dark btn--block" type="button">
+          Connect Notion
+        </button>
       </section>
 
       <section
@@ -323,7 +325,7 @@
               accept the reviewed goal/session preferences.</span
             ></label
           >
-          <button class="btn btn--block primary-action" type="submit">Connect Notion</button>
+          <button class="btn btn--block btn--dark" type="submit">Connect Notion</button>
         </form>
         <form id="unlock-form" class="settings-form" hidden>
           <h3>Unlock Notion</h3>
@@ -333,7 +335,7 @@
             type="password"
             autocomplete="current-password"
             required
-          /><button class="btn btn--block primary-action" type="submit">Unlock Notion</button
+          /><button class="btn btn--block btn--dark" type="submit">Unlock Notion</button
           ><button id="forgot-passphrase" class="btn btn--quiet text-action" type="button">
             Forgot passphrase?
           </button>
@@ -343,7 +345,9 @@
             Unlocked until Chrome fully exits, or this extension reloads, updates or is disabled.
             Closing a window may leave Chrome running.
           </p>
-          <button id="lock-notion" class="btn btn--block" type="button">Lock now</button>
+          <button id="lock-notion" class="btn btn--outline btn--block" type="button">
+            Lock now
+          </button>
           <details class="settings-disclosure">
             <summary>Change passphrase</summary>
             <form id="change-passphrase-form" class="settings-form">
@@ -367,7 +371,7 @@
                 minlength="16"
                 autocomplete="new-password"
                 required
-              /><button class="btn" type="submit">Change passphrase</button>
+              /><button class="btn btn--outline" type="submit">Change passphrase</button>
             </form>
           </details>
           <details class="settings-disclosure">
@@ -384,7 +388,7 @@
               <p class="field-help">
                 The replacement must access the same two databases. Pending recovery stays intact.
               </p>
-              <button class="btn" type="submit">Replace token</button>
+              <button class="btn btn--outline" type="submit">Replace token</button>
             </form>
           </details>
         </div>
@@ -402,7 +406,7 @@
             ><input id="reconciled-confirm" type="checkbox" /><span
               >I inspected Notion and reconciled the uncertain result.</span
             ></label
-          ><button id="acknowledge-reconciliation" class="btn" type="button">
+          ><button id="acknowledge-reconciliation" class="btn btn--outline" type="button">
             Confirm reconciliation
           </button>
         </div>
@@ -421,7 +425,9 @@
           <summary>Original captured code</summary>
           <pre id="pending-code" class="captured-code" tabindex="0"></pre>
         </details>
-        <button id="retry-attempt" class="btn btn--block" type="button">Retry same attempt</button>
+        <button id="retry-attempt" class="btn btn--dark btn--block" type="button">
+          Retry same attempt
+        </button>
       </section>
       <dialog
         id="notion-confirm-dialog"
