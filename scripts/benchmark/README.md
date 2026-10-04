@@ -7,7 +7,7 @@ idle observation:
 
 ```sh
 npm run build
-npx playwright test test/browser/direct-performance.spec.ts
+npm run benchmark:browser
 node --import tsx scripts/benchmark/direct-idle.ts
 ```
 
@@ -86,10 +86,10 @@ grace period, and a local-only operation that must not spawn a helper.
 ## Focused validation
 
 ```sh
-npx vitest run test/native-benchmark.test.ts
+npx vitest run test/capture-integration.test.ts
 ```
 
-The fixture tests cover fragmented UTF-8 framing, oversized messages, strict mock routes,
+The retained integration tests cover strict mock routes,
 the 6/10/5 capture request budgets, separate dashboard request accounting, retained state after
 service recreation, and concurrent same-problem captures. This benchmark is development tooling,
 not a shipped extension/runtime release, so it does not change product version numbers.

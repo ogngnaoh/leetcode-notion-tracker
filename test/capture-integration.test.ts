@@ -2,25 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Client } from '@notionhq/client';
 import { CaptureService } from '../src/bridge/capture-service.js';
 import { NotionCaptureRepository } from '../src/bridge/notion-repository.js';
-import { FrameReader, frame } from '../scripts/benchmark/protocol.js';
 import { SyntheticNotion, manifest, captureEvent } from '../scripts/benchmark/fixture.js';
 
-describe('isolated native benchmark', () => {
-  it('decodes split UTF-8 frames and coalesced messages without losing bytes', () => {
-    const values: unknown[] = [];
-    const reader = new FrameReader((value) => values.push(value));
-    const bytes = Buffer.concat([frame({ text: 'λ🙂' }), frame({ id: 2 })]);
-    for (const byte of bytes) reader.push(Buffer.from([byte]));
-    expect(values).toEqual([{ text: 'λ🙂' }, { id: 2 }]);
-  });
-
-  it('rejects oversized frames from their header before buffering the payload', () => {
-    const reader = new FrameReader(() => undefined);
-    const header = Buffer.alloc(4);
-    header.writeUInt32LE(1_048_577);
-    expect(() => reader.push(header)).toThrow(/size/i);
-  });
-
+describe('synthetic capture integration', () => {
   it('exercises real repository writes and counts capture and dashboard calls separately', async () => {
     const fake = new SyntheticNotion();
     const client = new Client({

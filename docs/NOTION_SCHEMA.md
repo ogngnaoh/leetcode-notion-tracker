@@ -108,8 +108,8 @@ an exact v2/version-2 rerun is a no-op.
 Problems uses the 🧩 icon and “Current practice state and review schedule. Managed by LC Log.”
 Attempts uses the 📝 icon and “Immutable history of confirmed practice attempts. Managed by LC
 Log.” This is legacy presentation text; current captures retain one stable latest Attempt page
-per problem, as described above. The strict CLI presentation verifier expects neither database to
-have a cover or lock. Sidebar Connect verifies schema and bindings without this presentation gate;
+per problem, as described above. The CLI presentation verifier expects neither database to
+have a cover; database UI locks are allowed. Sidebar Connect verifies schema and bindings without this presentation gate;
 a CLI presentation failure alone does not establish whether row writes are permitted.
 
 Problems has `Review queue` (due on/before today, then review date/title ascending) and `All

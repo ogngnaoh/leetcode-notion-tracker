@@ -2,8 +2,11 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/browser',
+  testMatch: ['mv3-capture.spec.ts', 'notion-lifecycle.spec.ts'],
   fullyParallel: false,
   workers: 1,
+  retries: 0,
+  maxFailures: 1,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   outputDir: 'build/playwright-results',

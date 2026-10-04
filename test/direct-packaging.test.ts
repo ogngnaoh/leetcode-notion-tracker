@@ -1,10 +1,7 @@
-import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
-import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
-const execute = promisify(execFile);
 const builtins = [...new Set(builtinModules.map((name) => name.replace(/^node:/, '')))]
   .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   .join('|');
@@ -28,7 +25,6 @@ describe('direct extension packaging', () => {
   });
 
   it('ships browser-only JavaScript with no Node builtin import or dynamic require', async () => {
-    await execute(process.execPath, ['scripts/build-extension.mjs']);
     for (const name of [
       'background.js',
       'content.js',

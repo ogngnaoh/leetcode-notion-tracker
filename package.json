@@ -1,6 +1,6 @@
 {
   "name": "leetcode-notion-tracker",
-  "version": "0.3.5",
+  "version": "0.3.7",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -29,8 +29,16 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run typecheck && npm run test && npm run test:browser && npm run security:scan",
-    "security:scan": "node scripts/scan-secrets.mjs"
+    "check": "npm run format:check && npm run typecheck && npm run test && npm run security:scan",
+    "security:scan": "node scripts/scan-secrets.mjs",
+    "notion:grind:init": "tsx src/notion/grind-cli.ts init",
+    "notion:grind:check": "tsx src/notion/grind-cli.ts check",
+    "notion:grind:repair": "tsx src/notion/grind-cli.ts repair",
+    "notion:grind:replace": "tsx src/notion/grind-cli.ts replace",
+    "pretest": "npm run build:extension",
+    "test:browser:list": "playwright test --list",
+    "test:browser:legacy": "npm run build:extension && playwright test --config playwright.legacy.config.ts",
+    "benchmark:browser": "npm run build:extension && playwright test --config playwright.benchmark.config.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.10",

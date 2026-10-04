@@ -14,5 +14,11 @@
     "types": ["node", "chrome", "vitest/globals"],
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts", "extension/src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "extension/src/**/*.ts",
+    "test/**/*.ts",
+    "playwright*.config.ts",
+    "scripts/benchmark/direct-performance.spec.ts"
+  ]
 }

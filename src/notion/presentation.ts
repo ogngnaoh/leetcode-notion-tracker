@@ -144,7 +144,7 @@ export function verifyDatabasePresentation(
     throw new Error(`${label} description mismatch.`);
   }
   if (database?.cover != null) throw new Error(`${label} cover must be empty.`);
-  if (database?.is_locked === true) throw new Error(`${label} must not be locked.`);
+  // UI locks protect structure and do not prevent API property writes.
 }
 
 function normalized(value: unknown): unknown {

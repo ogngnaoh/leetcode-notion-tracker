@@ -145,3 +145,9 @@ fixtures for failure injection; do not change production permissions or create d
    settings preserved. The automated dashboard suite covers these synthetic failure states.
 5. When explicitly checking a live legacy configuration, confirm a deliberate preference change
    survives bridge restart in ignored `build/dashboard-settings.json`.
+
+## Optional browser regression checks
+
+`npm run test:browser:legacy` runs the synthetic legacy dashboard suite. It launches a test browser
+and is separate from both the browser-free `npm run check` and the current extension browser suite.
+Run it when changing the legacy dashboard, not for ordinary extension or Grind maintenance work.

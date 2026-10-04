@@ -133,3 +133,9 @@ With one page of receipts, a normal replacement uses 10 Notion requests (previou
 captures use 6. Success still means the Notion writes finished, not merely that work was queued.
 Retries reload durable state, and pending receipts remain until both the Attempt and Problem are
 updated. Notion latency, retries, and extra pages of notes/receipts still affect elapsed time.
+
+## Grind curriculum recovery
+
+Use [Grind recovery](GRIND_RECOVERY.md) for repeatable roster checks, original-page restoration,
+UI protections, and explicit replacement of permanently unavailable checklist rows. This workflow
+keeps completion resets separate and never rewrites Attempt history.

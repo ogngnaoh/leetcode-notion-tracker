@@ -1,0 +1,1086 @@
+{
+  "version": 1,
+  "source": "Verified 120-row Grind backup, 2026-09-02; cross-checked against live curriculum on 2026-10-04. LeetCode list dy84w0tv.",
+  "entries": [
+    {
+      "slot": "day-1-01",
+      "day": 1,
+      "block": "A",
+      "order": 1,
+      "slug": "contains-duplicate",
+      "title": "Contains Duplicate",
+      "number": 217
+    },
+    {
+      "slot": "day-1-02",
+      "day": 1,
+      "block": "A",
+      "order": 2,
+      "slug": "valid-anagram",
+      "title": "Valid Anagram",
+      "number": 242
+    },
+    {
+      "slot": "day-1-03",
+      "day": 1,
+      "block": "A",
+      "order": 3,
+      "slug": "two-sum",
+      "title": "Two Sum",
+      "number": 1
+    },
+    {
+      "slot": "day-1-04",
+      "day": 1,
+      "block": "A",
+      "order": 4,
+      "slug": "group-anagrams",
+      "title": "Group Anagrams",
+      "number": 49
+    },
+    {
+      "slot": "day-1-05",
+      "day": 1,
+      "block": "A",
+      "order": 5,
+      "slug": "valid-sudoku",
+      "title": "Valid Sudoku",
+      "number": 36
+    },
+    {
+      "slot": "day-1-06",
+      "day": 1,
+      "block": "A",
+      "order": 6,
+      "slug": "longest-consecutive-sequence",
+      "title": "Longest Consecutive Sequence",
+      "number": 128
+    },
+    {
+      "slot": "day-1-07",
+      "day": 1,
+      "block": "A",
+      "order": 7,
+      "slug": "happy-number",
+      "title": "Happy Number",
+      "number": 202
+    },
+    {
+      "slot": "day-1-08",
+      "day": 1,
+      "block": "B",
+      "order": 8,
+      "slug": "encode-and-decode-strings",
+      "title": "Encode and Decode Strings",
+      "number": 271
+    },
+    {
+      "slot": "day-1-09",
+      "day": 1,
+      "block": "B",
+      "order": 9,
+      "slug": "longest-substring-without-repeating-characters",
+      "title": "Longest Substring Without Repeating Characters",
+      "number": 3
+    },
+    {
+      "slot": "day-1-10",
+      "day": 1,
+      "block": "B",
+      "order": 10,
+      "slug": "minimum-size-subarray-sum",
+      "title": "Minimum Size Subarray Sum",
+      "number": 209
+    },
+    {
+      "slot": "day-1-11",
+      "day": 1,
+      "block": "B",
+      "order": 11,
+      "slug": "longest-repeating-character-replacement",
+      "title": "Longest Repeating Character Replacement",
+      "number": 424
+    },
+    {
+      "slot": "day-1-12",
+      "day": 1,
+      "block": "B",
+      "order": 12,
+      "slug": "permutation-in-string",
+      "title": "Permutation in String",
+      "number": 567
+    },
+    {
+      "slot": "day-1-13",
+      "day": 1,
+      "block": "B",
+      "order": 13,
+      "slug": "product-of-array-except-self",
+      "title": "Product of Array Except Self",
+      "number": 238
+    },
+    {
+      "slot": "day-1-14",
+      "day": 1,
+      "block": "B",
+      "order": 14,
+      "slug": "subarray-sum-equals-k",
+      "title": "Subarray Sum Equals K",
+      "number": 560
+    },
+    {
+      "slot": "day-1-15",
+      "day": 1,
+      "block": "C",
+      "order": 15,
+      "slug": "plus-one",
+      "title": "Plus One",
+      "number": 66
+    },
+    {
+      "slot": "day-1-16",
+      "day": 1,
+      "block": "C",
+      "order": 16,
+      "slug": "spiral-matrix",
+      "title": "Spiral Matrix",
+      "number": 54
+    },
+    {
+      "slot": "day-1-17",
+      "day": 1,
+      "block": "C",
+      "order": 17,
+      "slug": "rotate-image",
+      "title": "Rotate Image",
+      "number": 48
+    },
+    {
+      "slot": "day-1-18",
+      "day": 1,
+      "block": "C",
+      "order": 18,
+      "slug": "set-matrix-zeroes",
+      "title": "Set Matrix Zeroes",
+      "number": 73
+    },
+    {
+      "slot": "day-1-19",
+      "day": 1,
+      "block": "C",
+      "order": 19,
+      "slug": "multiply-strings",
+      "title": "Multiply Strings",
+      "number": 43
+    },
+    {
+      "slot": "day-1-20",
+      "day": 1,
+      "block": "C",
+      "order": 20,
+      "slug": "valid-palindrome",
+      "title": "Valid Palindrome",
+      "number": 125
+    },
+    {
+      "slot": "day-2-01",
+      "day": 2,
+      "block": "A",
+      "order": 1,
+      "slug": "two-sum-ii-input-array-is-sorted",
+      "title": "Two Sum II - Input Array Is Sorted",
+      "number": 167
+    },
+    {
+      "slot": "day-2-02",
+      "day": 2,
+      "block": "A",
+      "order": 2,
+      "slug": "container-with-most-water",
+      "title": "Container With Most Water",
+      "number": 11
+    },
+    {
+      "slot": "day-2-03",
+      "day": 2,
+      "block": "A",
+      "order": 3,
+      "slug": "3sum",
+      "title": "3Sum",
+      "number": 15
+    },
+    {
+      "slot": "day-2-04",
+      "day": 2,
+      "block": "A",
+      "order": 4,
+      "slug": "find-the-duplicate-number",
+      "title": "Find the Duplicate Number",
+      "number": 287
+    },
+    {
+      "slot": "day-2-05",
+      "day": 2,
+      "block": "A",
+      "order": 5,
+      "slug": "palindromic-substrings",
+      "title": "Palindromic Substrings",
+      "number": 647
+    },
+    {
+      "slot": "day-2-06",
+      "day": 2,
+      "block": "A",
+      "order": 6,
+      "slug": "longest-palindromic-substring",
+      "title": "Longest Palindromic Substring",
+      "number": 5
+    },
+    {
+      "slot": "day-2-07",
+      "day": 2,
+      "block": "A",
+      "order": 7,
+      "slug": "best-time-to-buy-and-sell-stock",
+      "title": "Best Time to Buy and Sell Stock",
+      "number": 121
+    },
+    {
+      "slot": "day-2-08",
+      "day": 2,
+      "block": "B",
+      "order": 8,
+      "slug": "maximum-subarray",
+      "title": "Maximum Subarray",
+      "number": 53
+    },
+    {
+      "slot": "day-2-09",
+      "day": 2,
+      "block": "B",
+      "order": 9,
+      "slug": "jump-game",
+      "title": "Jump Game",
+      "number": 55
+    },
+    {
+      "slot": "day-2-10",
+      "day": 2,
+      "block": "B",
+      "order": 10,
+      "slug": "jump-game-ii",
+      "title": "Jump Game II",
+      "number": 45
+    },
+    {
+      "slot": "day-2-11",
+      "day": 2,
+      "block": "B",
+      "order": 11,
+      "slug": "gas-station",
+      "title": "Gas Station",
+      "number": 134
+    },
+    {
+      "slot": "day-2-12",
+      "day": 2,
+      "block": "B",
+      "order": 12,
+      "slug": "merge-triplets-to-form-target-triplet",
+      "title": "Merge Triplets to Form Target Triplet",
+      "number": 1899
+    },
+    {
+      "slot": "day-2-13",
+      "day": 2,
+      "block": "B",
+      "order": 13,
+      "slug": "partition-labels",
+      "title": "Partition Labels",
+      "number": 763
+    },
+    {
+      "slot": "day-2-14",
+      "day": 2,
+      "block": "B",
+      "order": 14,
+      "slug": "hand-of-straights",
+      "title": "Hand of Straights",
+      "number": 846
+    },
+    {
+      "slot": "day-2-15",
+      "day": 2,
+      "block": "C",
+      "order": 15,
+      "slug": "valid-parenthesis-string",
+      "title": "Valid Parenthesis String",
+      "number": 678
+    },
+    {
+      "slot": "day-2-16",
+      "day": 2,
+      "block": "C",
+      "order": 16,
+      "slug": "meeting-rooms",
+      "title": "Meeting Rooms",
+      "number": 252
+    },
+    {
+      "slot": "day-2-17",
+      "day": 2,
+      "block": "C",
+      "order": 17,
+      "slug": "merge-intervals",
+      "title": "Merge Intervals",
+      "number": 56
+    },
+    {
+      "slot": "day-2-18",
+      "day": 2,
+      "block": "C",
+      "order": 18,
+      "slug": "insert-interval",
+      "title": "Insert Interval",
+      "number": 57
+    },
+    {
+      "slot": "day-2-19",
+      "day": 2,
+      "block": "C",
+      "order": 19,
+      "slug": "non-overlapping-intervals",
+      "title": "Non-overlapping Intervals",
+      "number": 435
+    },
+    {
+      "slot": "day-2-20",
+      "day": 2,
+      "block": "C",
+      "order": 20,
+      "slug": "meeting-rooms-ii",
+      "title": "Meeting Rooms II",
+      "number": 253
+    },
+    {
+      "slot": "day-3-01",
+      "day": 3,
+      "block": "A",
+      "order": 1,
+      "slug": "binary-search",
+      "title": "Binary Search",
+      "number": 704
+    },
+    {
+      "slot": "day-3-02",
+      "day": 3,
+      "block": "A",
+      "order": 2,
+      "slug": "search-a-2d-matrix",
+      "title": "Search a 2D Matrix",
+      "number": 74
+    },
+    {
+      "slot": "day-3-03",
+      "day": 3,
+      "block": "A",
+      "order": 3,
+      "slug": "search-in-rotated-sorted-array",
+      "title": "Search in Rotated Sorted Array",
+      "number": 33
+    },
+    {
+      "slot": "day-3-04",
+      "day": 3,
+      "block": "A",
+      "order": 4,
+      "slug": "find-minimum-in-rotated-sorted-array",
+      "title": "Find Minimum in Rotated Sorted Array",
+      "number": 153
+    },
+    {
+      "slot": "day-3-05",
+      "day": 3,
+      "block": "A",
+      "order": 5,
+      "slug": "koko-eating-bananas",
+      "title": "Koko Eating Bananas",
+      "number": 875
+    },
+    {
+      "slot": "day-3-06",
+      "day": 3,
+      "block": "A",
+      "order": 6,
+      "slug": "time-based-key-value-store",
+      "title": "Time Based Key-Value Store",
+      "number": 981
+    },
+    {
+      "slot": "day-3-07",
+      "day": 3,
+      "block": "A",
+      "order": 7,
+      "slug": "valid-parentheses",
+      "title": "Valid Parentheses",
+      "number": 20
+    },
+    {
+      "slot": "day-3-08",
+      "day": 3,
+      "block": "B",
+      "order": 8,
+      "slug": "min-stack",
+      "title": "Min Stack",
+      "number": 155
+    },
+    {
+      "slot": "day-3-09",
+      "day": 3,
+      "block": "B",
+      "order": 9,
+      "slug": "evaluate-reverse-polish-notation",
+      "title": "Evaluate Reverse Polish Notation",
+      "number": 150
+    },
+    {
+      "slot": "day-3-10",
+      "day": 3,
+      "block": "B",
+      "order": 10,
+      "slug": "daily-temperatures",
+      "title": "Daily Temperatures",
+      "number": 739
+    },
+    {
+      "slot": "day-3-11",
+      "day": 3,
+      "block": "B",
+      "order": 11,
+      "slug": "car-fleet",
+      "title": "Car Fleet",
+      "number": 853
+    },
+    {
+      "slot": "day-3-12",
+      "day": 3,
+      "block": "B",
+      "order": 12,
+      "slug": "last-stone-weight",
+      "title": "Last Stone Weight",
+      "number": 1046
+    },
+    {
+      "slot": "day-3-13",
+      "day": 3,
+      "block": "B",
+      "order": 13,
+      "slug": "kth-largest-element-in-a-stream",
+      "title": "Kth Largest Element in a Stream",
+      "number": 703
+    },
+    {
+      "slot": "day-3-14",
+      "day": 3,
+      "block": "B",
+      "order": 14,
+      "slug": "kth-largest-element-in-an-array",
+      "title": "Kth Largest Element in an Array",
+      "number": 215
+    },
+    {
+      "slot": "day-3-15",
+      "day": 3,
+      "block": "C",
+      "order": 15,
+      "slug": "top-k-frequent-elements",
+      "title": "Top K Frequent Elements",
+      "number": 347
+    },
+    {
+      "slot": "day-3-16",
+      "day": 3,
+      "block": "C",
+      "order": 16,
+      "slug": "k-closest-points-to-origin",
+      "title": "K Closest Points to Origin",
+      "number": 973
+    },
+    {
+      "slot": "day-3-17",
+      "day": 3,
+      "block": "C",
+      "order": 17,
+      "slug": "task-scheduler",
+      "title": "Task Scheduler",
+      "number": 621
+    },
+    {
+      "slot": "day-3-18",
+      "day": 3,
+      "block": "C",
+      "order": 18,
+      "slug": "design-twitter",
+      "title": "Design Twitter",
+      "number": 355
+    },
+    {
+      "slot": "day-3-19",
+      "day": 3,
+      "block": "C",
+      "order": 19,
+      "slug": "maximum-depth-of-binary-tree",
+      "title": "Maximum Depth of Binary Tree",
+      "number": 104
+    },
+    {
+      "slot": "day-3-20",
+      "day": 3,
+      "block": "C",
+      "order": 20,
+      "slug": "same-tree",
+      "title": "Same Tree",
+      "number": 100
+    },
+    {
+      "slot": "day-4-01",
+      "day": 4,
+      "block": "A",
+      "order": 1,
+      "slug": "invert-binary-tree",
+      "title": "Invert Binary Tree",
+      "number": 226
+    },
+    {
+      "slot": "day-4-02",
+      "day": 4,
+      "block": "A",
+      "order": 2,
+      "slug": "balanced-binary-tree",
+      "title": "Balanced Binary Tree",
+      "number": 110
+    },
+    {
+      "slot": "day-4-03",
+      "day": 4,
+      "block": "A",
+      "order": 3,
+      "slug": "diameter-of-binary-tree",
+      "title": "Diameter of Binary Tree",
+      "number": 543
+    },
+    {
+      "slot": "day-4-04",
+      "day": 4,
+      "block": "A",
+      "order": 4,
+      "slug": "subtree-of-another-tree",
+      "title": "Subtree of Another Tree",
+      "number": 572
+    },
+    {
+      "slot": "day-4-05",
+      "day": 4,
+      "block": "A",
+      "order": 5,
+      "slug": "binary-tree-level-order-traversal",
+      "title": "Binary Tree Level Order Traversal",
+      "number": 102
+    },
+    {
+      "slot": "day-4-06",
+      "day": 4,
+      "block": "A",
+      "order": 6,
+      "slug": "binary-tree-right-side-view",
+      "title": "Binary Tree Right Side View",
+      "number": 199
+    },
+    {
+      "slot": "day-4-07",
+      "day": 4,
+      "block": "A",
+      "order": 7,
+      "slug": "validate-binary-search-tree",
+      "title": "Validate Binary Search Tree",
+      "number": 98
+    },
+    {
+      "slot": "day-4-08",
+      "day": 4,
+      "block": "B",
+      "order": 8,
+      "slug": "lowest-common-ancestor-of-a-binary-search-tree",
+      "title": "Lowest Common Ancestor of a Binary Search Tree",
+      "number": 235
+    },
+    {
+      "slot": "day-4-09",
+      "day": 4,
+      "block": "B",
+      "order": 9,
+      "slug": "kth-smallest-element-in-a-bst",
+      "title": "Kth Smallest Element in a BST",
+      "number": 230
+    },
+    {
+      "slot": "day-4-10",
+      "day": 4,
+      "block": "B",
+      "order": 10,
+      "slug": "count-good-nodes-in-binary-tree",
+      "title": "Count Good Nodes in Binary Tree",
+      "number": 1448
+    },
+    {
+      "slot": "day-4-11",
+      "day": 4,
+      "block": "B",
+      "order": 11,
+      "slug": "construct-binary-tree-from-preorder-and-inorder-traversal",
+      "title": "Construct Binary Tree from Preorder and Inorder Traversal",
+      "number": 105
+    },
+    {
+      "slot": "day-4-12",
+      "day": 4,
+      "block": "B",
+      "order": 12,
+      "slug": "reverse-linked-list",
+      "title": "Reverse Linked List",
+      "number": 206
+    },
+    {
+      "slot": "day-4-13",
+      "day": 4,
+      "block": "B",
+      "order": 13,
+      "slug": "merge-two-sorted-lists",
+      "title": "Merge Two Sorted Lists",
+      "number": 21
+    },
+    {
+      "slot": "day-4-14",
+      "day": 4,
+      "block": "B",
+      "order": 14,
+      "slug": "linked-list-cycle",
+      "title": "Linked List Cycle",
+      "number": 141
+    },
+    {
+      "slot": "day-4-15",
+      "day": 4,
+      "block": "C",
+      "order": 15,
+      "slug": "remove-nth-node-from-end-of-list",
+      "title": "Remove Nth Node From End of List",
+      "number": 19
+    },
+    {
+      "slot": "day-4-16",
+      "day": 4,
+      "block": "C",
+      "order": 16,
+      "slug": "reorder-list",
+      "title": "Reorder List",
+      "number": 143
+    },
+    {
+      "slot": "day-4-17",
+      "day": 4,
+      "block": "C",
+      "order": 17,
+      "slug": "copy-list-with-random-pointer",
+      "title": "Copy List with Random Pointer",
+      "number": 138
+    },
+    {
+      "slot": "day-4-18",
+      "day": 4,
+      "block": "C",
+      "order": 18,
+      "slug": "add-two-numbers",
+      "title": "Add Two Numbers",
+      "number": 2
+    },
+    {
+      "slot": "day-4-19",
+      "day": 4,
+      "block": "C",
+      "order": 19,
+      "slug": "lru-cache",
+      "title": "LRU Cache",
+      "number": 146
+    },
+    {
+      "slot": "day-4-20",
+      "day": 4,
+      "block": "C",
+      "order": 20,
+      "slug": "implement-trie-prefix-tree",
+      "title": "Implement Trie (Prefix Tree)",
+      "number": 208
+    },
+    {
+      "slot": "day-5-01",
+      "day": 5,
+      "block": "A",
+      "order": 1,
+      "slug": "number-of-islands",
+      "title": "Number of Islands",
+      "number": 200
+    },
+    {
+      "slot": "day-5-02",
+      "day": 5,
+      "block": "A",
+      "order": 2,
+      "slug": "max-area-of-island",
+      "title": "Max Area of Island",
+      "number": 695
+    },
+    {
+      "slot": "day-5-03",
+      "day": 5,
+      "block": "A",
+      "order": 3,
+      "slug": "surrounded-regions",
+      "title": "Surrounded Regions",
+      "number": 130
+    },
+    {
+      "slot": "day-5-04",
+      "day": 5,
+      "block": "A",
+      "order": 4,
+      "slug": "pacific-atlantic-water-flow",
+      "title": "Pacific Atlantic Water Flow",
+      "number": 417
+    },
+    {
+      "slot": "day-5-05",
+      "day": 5,
+      "block": "A",
+      "order": 5,
+      "slug": "rotting-oranges",
+      "title": "Rotting Oranges",
+      "number": 994
+    },
+    {
+      "slot": "day-5-06",
+      "day": 5,
+      "block": "A",
+      "order": 6,
+      "slug": "walls-and-gates",
+      "title": "Walls and Gates",
+      "number": 286
+    },
+    {
+      "slot": "day-5-07",
+      "day": 5,
+      "block": "A",
+      "order": 7,
+      "slug": "clone-graph",
+      "title": "Clone Graph",
+      "number": 133
+    },
+    {
+      "slot": "day-5-08",
+      "day": 5,
+      "block": "B",
+      "order": 8,
+      "slug": "graph-valid-tree",
+      "title": "Graph Valid Tree",
+      "number": 261
+    },
+    {
+      "slot": "day-5-09",
+      "day": 5,
+      "block": "B",
+      "order": 9,
+      "slug": "number-of-connected-components-in-an-undirected-graph",
+      "title": "Number of Connected Components in an Undirected Graph",
+      "number": 323
+    },
+    {
+      "slot": "day-5-10",
+      "day": 5,
+      "block": "B",
+      "order": 10,
+      "slug": "redundant-connection",
+      "title": "Redundant Connection",
+      "number": 684
+    },
+    {
+      "slot": "day-5-11",
+      "day": 5,
+      "block": "B",
+      "order": 11,
+      "slug": "course-schedule",
+      "title": "Course Schedule",
+      "number": 207
+    },
+    {
+      "slot": "day-5-12",
+      "day": 5,
+      "block": "B",
+      "order": 12,
+      "slug": "course-schedule-ii",
+      "title": "Course Schedule II",
+      "number": 210
+    },
+    {
+      "slot": "day-5-13",
+      "day": 5,
+      "block": "B",
+      "order": 13,
+      "slug": "network-delay-time",
+      "title": "Network Delay Time",
+      "number": 743
+    },
+    {
+      "slot": "day-5-14",
+      "day": 5,
+      "block": "B",
+      "order": 14,
+      "slug": "design-add-and-search-words-data-structure",
+      "title": "Design Add and Search Words Data Structure",
+      "number": 211
+    },
+    {
+      "slot": "day-5-15",
+      "day": 5,
+      "block": "C",
+      "order": 15,
+      "slug": "subsets",
+      "title": "Subsets",
+      "number": 78
+    },
+    {
+      "slot": "day-5-16",
+      "day": 5,
+      "block": "C",
+      "order": 16,
+      "slug": "subsets-ii",
+      "title": "Subsets II",
+      "number": 90
+    },
+    {
+      "slot": "day-5-17",
+      "day": 5,
+      "block": "C",
+      "order": 17,
+      "slug": "permutations",
+      "title": "Permutations",
+      "number": 46
+    },
+    {
+      "slot": "day-5-18",
+      "day": 5,
+      "block": "C",
+      "order": 18,
+      "slug": "letter-combinations-of-a-phone-number",
+      "title": "Letter Combinations of a Phone Number",
+      "number": 17
+    },
+    {
+      "slot": "day-5-19",
+      "day": 5,
+      "block": "C",
+      "order": 19,
+      "slug": "combination-sum",
+      "title": "Combination Sum",
+      "number": 39
+    },
+    {
+      "slot": "day-5-20",
+      "day": 5,
+      "block": "C",
+      "order": 20,
+      "slug": "combination-sum-ii",
+      "title": "Combination Sum II",
+      "number": 40
+    },
+    {
+      "slot": "day-6-01",
+      "day": 6,
+      "block": "A",
+      "order": 1,
+      "slug": "climbing-stairs",
+      "title": "Climbing Stairs",
+      "number": 70
+    },
+    {
+      "slot": "day-6-02",
+      "day": 6,
+      "block": "A",
+      "order": 2,
+      "slug": "min-cost-climbing-stairs",
+      "title": "Min Cost Climbing Stairs",
+      "number": 746
+    },
+    {
+      "slot": "day-6-03",
+      "day": 6,
+      "block": "A",
+      "order": 3,
+      "slug": "house-robber",
+      "title": "House Robber",
+      "number": 198
+    },
+    {
+      "slot": "day-6-04",
+      "day": 6,
+      "block": "A",
+      "order": 4,
+      "slug": "house-robber-ii",
+      "title": "House Robber II",
+      "number": 213
+    },
+    {
+      "slot": "day-6-05",
+      "day": 6,
+      "block": "A",
+      "order": 5,
+      "slug": "unique-paths",
+      "title": "Unique Paths",
+      "number": 62
+    },
+    {
+      "slot": "day-6-06",
+      "day": 6,
+      "block": "A",
+      "order": 6,
+      "slug": "decode-ways",
+      "title": "Decode Ways",
+      "number": 91
+    },
+    {
+      "slot": "day-6-07",
+      "day": 6,
+      "block": "A",
+      "order": 7,
+      "slug": "word-break",
+      "title": "Word Break",
+      "number": 139
+    },
+    {
+      "slot": "day-6-08",
+      "day": 6,
+      "block": "B",
+      "order": 8,
+      "slug": "coin-change",
+      "title": "Coin Change",
+      "number": 322
+    },
+    {
+      "slot": "day-6-09",
+      "day": 6,
+      "block": "B",
+      "order": 9,
+      "slug": "coin-change-ii",
+      "title": "Coin Change II",
+      "number": 518
+    },
+    {
+      "slot": "day-6-10",
+      "day": 6,
+      "block": "B",
+      "order": 10,
+      "slug": "partition-equal-subset-sum",
+      "title": "Partition Equal Subset Sum",
+      "number": 416
+    },
+    {
+      "slot": "day-6-11",
+      "day": 6,
+      "block": "B",
+      "order": 11,
+      "slug": "target-sum",
+      "title": "Target Sum",
+      "number": 494
+    },
+    {
+      "slot": "day-6-12",
+      "day": 6,
+      "block": "B",
+      "order": 12,
+      "slug": "longest-increasing-subsequence",
+      "title": "Longest Increasing Subsequence",
+      "number": 300
+    },
+    {
+      "slot": "day-6-13",
+      "day": 6,
+      "block": "B",
+      "order": 13,
+      "slug": "longest-common-subsequence",
+      "title": "Longest Common Subsequence",
+      "number": 1143
+    },
+    {
+      "slot": "day-6-14",
+      "day": 6,
+      "block": "B",
+      "order": 14,
+      "slug": "maximum-product-subarray",
+      "title": "Maximum Product Subarray",
+      "number": 152
+    },
+    {
+      "slot": "day-6-15",
+      "day": 6,
+      "block": "C",
+      "order": 15,
+      "slug": "best-time-to-buy-and-sell-stock-with-cooldown",
+      "title": "Best Time to Buy and Sell Stock with Cooldown",
+      "number": 309
+    },
+    {
+      "slot": "day-6-16",
+      "day": 6,
+      "block": "C",
+      "order": 16,
+      "slug": "interleaving-string",
+      "title": "Interleaving String",
+      "number": 97
+    },
+    {
+      "slot": "day-6-17",
+      "day": 6,
+      "block": "C",
+      "order": 17,
+      "slug": "edit-distance",
+      "title": "Edit Distance",
+      "number": 72
+    },
+    {
+      "slot": "day-6-18",
+      "day": 6,
+      "block": "C",
+      "order": 18,
+      "slug": "generate-parentheses",
+      "title": "Generate Parentheses",
+      "number": 22
+    },
+    {
+      "slot": "day-6-19",
+      "day": 6,
+      "block": "C",
+      "order": 19,
+      "slug": "word-search",
+      "title": "Word Search",
+      "number": 79
+    },
+    {
+      "slot": "day-6-20",
+      "day": 6,
+      "block": "C",
+      "order": 20,
+      "slug": "palindrome-partitioning",
+      "title": "Palindrome Partitioning",
+      "number": 131
+    }
+  ]
+}

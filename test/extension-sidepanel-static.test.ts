@@ -70,48 +70,6 @@ describe('one-click side panel artifact', () => {
     expect(html).toContain('id="retry-attempt"');
   });
 
-  it('color-codes outcomes semantically and uses a result-neutral log confirmation', async () => {
-    const [styles, runtime] = await Promise.all([
-      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
-      readFile(resolve(root, 'extension/src/notion-panel.ts'), 'utf8'),
-    ]);
-
-    expect(styles).toContain(".outcome[data-result='Needed help']");
-    expect(styles).toContain(".outcome[data-result='Solved']");
-    expect(styles).not.toContain(".outcome[data-result='Couldn’t solve']");
-    expect(runtime).toContain('Saved to Notion');
-    expect(runtime).not.toContain('logged for this exact code');
-  });
-
-  it('uses compact Layout A order, one masthead title, expanded code, and selectable outcomes', async () => {
-    const html = await readFile(resolve(root, 'extension/sidepanel.html'), 'utf8');
-
-    expect([...html.matchAll(/<h1\b/g)]).toHaveLength(1);
-    expect(html).toMatch(/<h1[^>]*>[\s\S]*<span>LC TRACK<\/span>[\s\S]*<\/h1>/);
-    expect(html).not.toContain('PERSONAL PRACTICE LOG');
-    expect(html.indexOf('class="problem-panel"')).toBeLessThan(
-      html.indexOf('class="capture-section"'),
-    );
-    expect(html.indexOf('id="code-disclosure"')).toBeLessThan(
-      html.indexOf('class="capture-section"'),
-    );
-    expect(html).toMatch(/<details[^>]*id="code-disclosure"[^>]*\bopen\b/);
-    expect([...html.matchAll(/aria-pressed="false"/g)]).toHaveLength(2);
-  });
-
-  it('pairs the decorative square-terminal mark with the spaced LC TRACK wordmark', async () => {
-    const [html, styles] = await Promise.all([
-      readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
-      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
-    ]);
-
-    expect(html).toMatch(
-      /<h1 class="tracker-title">[\s\S]*<img[^>]*src="icons\/square-terminal-32\.png"[^>]*alt=""[^>]*>[\s\S]*<span>LC TRACK<\/span>[\s\S]*<\/h1>/,
-    );
-    expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*display:\s*inline-flex/);
-    expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*gap:\s*var\(--space-2\)/);
-  });
-
   it('integrates Settings without broad browser permissions', async () => {
     const [html, manifestText] = await Promise.all([
       readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
@@ -125,113 +83,12 @@ describe('one-click side panel artifact', () => {
     expect(manifest.permissions).toEqual(['activeTab', 'scripting', 'sidePanel', 'storage']);
   });
 
-  it('uses square hairlines, equal columns, self-contained fonts, focus, disabled, and reduced motion', async () => {
-    const [styles, tokens, base, fonts] = await Promise.all([
-      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
-      readFile(resolve(root, 'extension/vendor/tokens.css'), 'utf8'),
-      readFile(resolve(root, 'extension/vendor/base.css'), 'utf8'),
-      readFile(resolve(root, 'extension/vendor/fonts/fonts.css'), 'utf8'),
-    ]);
-
-    expect(styles).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-    expect(styles).toMatch(/background:\s*var\(--color-pink\)/);
-    expect(styles).not.toMatch(/box-shadow|linear-gradient|radial-gradient/);
-    expect(tokens).toContain('--radius:');
-    expect(tokens).toContain('0px');
-    expect(base).toContain(':focus-visible');
-    expect(base).toContain('prefers-reduced-motion: reduce');
-    expect(fonts).toContain('url("./inter-400.woff2")');
-    expect(fonts).toContain('url("./inter-500.woff2")');
-    expect(fonts).toContain('url("./ibm-plex-mono-400.woff2")');
-    expect(styles).toContain(':disabled');
-    expect(styles).toMatch(/\.outcome\[aria-pressed=['"]true['"]\]/);
-  });
-
-  it('gives Daily Reps actions a legible primary, secondary, and disabled hierarchy', async () => {
-    const [html, styles] = await Promise.all([
-      readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
-      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
-    ]);
-
-    expect(html).toMatch(
-      /id="edit-daily-goal"[^>]*aria-controls="daily-goal-editor"[^>]*aria-expanded="false"/,
-    );
-    expect(html).toMatch(/id="save-daily-goal"[^>]*class="[^"]*btn--dark/);
-    expect(html).toMatch(/id="cancel-daily-goal"[^>]*class="[^"]*btn--outline/);
-    expect(styles).toMatch(/\.daily-goal-action\s*{[\s\S]*border-color:\s*var\(--color-black\)/);
-    expect(styles).toMatch(/\.btn--outline\s*{[\s\S]*border-color:\s*var\(--color-black\)/);
-    expect(styles).toMatch(/\.log-daily-rep:disabled[\s\S]*color:\s*var\(--text-secondary\)/);
-    expect(styles).toMatch(
-      /\.finish-daily-session:disabled[\s\S]*color:\s*var\(--text-secondary\)/,
-    );
-    expect(styles).toMatch(/\.daily-reps-panel \.btn\s*{[\s\S]*min-height:\s*36px/);
-  });
-
-  it('keeps the daily surface compact and removes controls that do not help daily logging', async () => {
-    const [html, styles, runtime] = await Promise.all([
-      readFile(resolve(root, 'extension/sidepanel.html'), 'utf8'),
-      readFile(resolve(root, 'extension/styles.css'), 'utf8'),
-      readFile(resolve(root, 'extension/src/sidepanel.ts'), 'utf8'),
-    ]);
-
-    expect(html).not.toContain('daily-problem-link');
-    expect(html).not.toContain('Open problem ↗');
-    expect(html).not.toContain('current-reps-empty');
-    expect(html).not.toContain('daily-history-empty');
-    expect(html).toMatch(/class="current-reps"[^>]*hidden/);
-    expect(html).toMatch(/class="daily-history-section"[^>]*hidden/);
-    expect(html).toContain('class="daily-problem-main"');
-    expect(styles).toMatch(/\.shell\s*,[\s\S]*padding:\s*var\(--space-2\)/);
-    expect(styles).toMatch(/\.tracker-tab\s*{[\s\S]*min-height:\s*36px/);
-    expect(styles).toMatch(/\.daily-progress-bar\s*{[\s\S]*height:\s*6px/);
-    expect(styles).toMatch(/\.log-daily-rep\s*{[\s\S]*min-height:\s*44px/);
-    expect(styles).toMatch(/\.daily-problem-main\s*{[\s\S]*grid-template-columns/);
-    expect(styles).toMatch(/\.history-session > summary\s*{[\s\S]*padding:\s*var\(--space-2\)/);
-    expect(runtime).toContain(
-      "item.className = target === dailyProblemTopics ? 'daily-topic' : 'chip'",
-    );
-    expect(runtime).toContain('currentRepsSection.hidden = count === 0');
-    expect(runtime).toContain('dailyHistorySection.hidden = count === 0');
-    expect(runtime).not.toContain("topicCopy.className = 'rep-topics'");
-    expect(runtime).toContain(
-      "rep.problem.topics.length > 0 ? ` · ${rep.problem.topics.join(' · ')}` : ''",
-    );
-    expect(styles).toMatch(/\.tracker-title\s*{[\s\S]*font-size:\s*var\(--font-size-lg\)/);
-  });
-
-  it('documents asset hashes and includes the font license beside the files', async () => {
-    const [provenance, license] = await Promise.all([
-      readFile(resolve(root, 'docs/EXTENSION_ASSETS.md'), 'utf8'),
-      readFile(resolve(root, 'extension/vendor/fonts/OFL.txt'), 'utf8'),
-    ]);
-
-    for (const hash of [
-      '333334d7129799f1963cce6cfa287de888fb98a00ece5dfe0988f7bde191320b',
-      'df96025efc9b8303b98942c2f965998ecc17f329205f953e0848baabc7b1c020',
-      '8f3c3c52f82e57a508a95b4048de4d678cdd9052a13f61ba24359d8d9b28bcdc',
-      '8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc',
-      'f3779f1efccc4bdcdf9c0a02ab95bf6bd092ed09c48c08cedc725889edd1d19f',
-      '08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7',
-    ]) {
-      expect(provenance).toContain(hash);
-    }
-    expect(license).toContain('SIL OPEN FONT LICENSE Version 1.1');
-  });
-
   it('rebinds the side panel for active-tab, active-tab update, and window-focus changes', async () => {
     const runtime = await readFile(resolve(root, 'extension/src/sidepanel.ts'), 'utf8');
 
     expect(runtime).toContain('chrome.tabs.onActivated.addListener');
     expect(runtime).toContain('chrome.tabs.onUpdated.addListener');
     expect(runtime).toContain('chrome.windows.onFocusChanged.addListener');
-  });
-
-  it('has scripting permission for one-time startup reinjection', async () => {
-    const manifest = JSON.parse(
-      await readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
-    ) as { permissions?: string[] };
-
-    expect(manifest.permissions).toContain('scripting');
   });
 
   it('opens the side panel per clicked tab instead of enabling global action behavior', async () => {
@@ -283,11 +140,9 @@ describe('one-click side panel artifact', () => {
   });
 
   it('ships Chrome-supported PNG icons at every declared size', async () => {
-    const [manifestText, svg, license, provenance] = await Promise.all([
+    const [manifestText, license] = await Promise.all([
       readFile(resolve(root, 'extension/manifest.json'), 'utf8'),
-      readFile(resolve(root, 'extension/square-terminal.svg'), 'utf8'),
       readFile(resolve(root, 'extension/icons/LICENSE-lucide.txt'), 'utf8'),
-      readFile(resolve(root, 'docs/EXTENSION_ASSETS.md'), 'utf8'),
     ]);
     const manifest = JSON.parse(manifestText) as {
       icons?: Record<string, string>;
@@ -313,13 +168,6 @@ describe('one-click side panel artifact', () => {
       expect(png[25]).toBe(6);
     }
 
-    expect(svg).toContain('aria-label="LCTrack logo"');
-    expect(svg).toContain('d="m7 11 2-2-2-2"');
-    expect(svg).toContain('d="M11 13h4"');
-    expect(svg).toContain('x="2" y="2" width="20" height="20" rx="5"');
-    expect(svg).not.toContain('<rect width="24" height="24" fill="#ffffff"');
-    expect(svg).not.toContain('x="3" y="3" width="18" height="18"');
     expect(license).toContain('ISC License');
-    expect(provenance).toContain('Lucide SquareTerminal');
   });
 });

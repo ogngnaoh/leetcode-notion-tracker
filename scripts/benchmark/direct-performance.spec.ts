@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { cpus, release } from 'node:os';
-import { DirectExtensionFixture, TEST_PASSPHRASE } from './direct-extension-fixture.js';
-import { captureEvent } from '../../scripts/benchmark/fixture.js';
+import {
+  DirectExtensionFixture,
+  TEST_PASSPHRASE,
+} from '../../test/browser/direct-extension-fixture.js';
+import { captureEvent } from './fixture.js';
 
 test('measures nine direct MV3 samples separately from unlock and cold-worker work', async () => {
   test.setTimeout(180_000);

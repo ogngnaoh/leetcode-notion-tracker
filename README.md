@@ -37,7 +37,7 @@ docs/             Architecture, schema, security, and manual QA
 
 - Node.js 22+
 - Chrome 142+
-- Playwright's bundled Chromium (`npx playwright install chromium`) for `npm run check`
+- Optional: Playwright's bundled Chromium for explicit browser integration tests
 - A Notion workspace
 - A Notion internal integration with read, insert, and update content capabilities
 - One empty Notion page shared with that integration
@@ -220,26 +220,39 @@ widths, wrapping, date formatting, frozen title column, disabled subtasks, and h
 lines. `notion:verify` detects presentation drift as well as schema drift; unrelated user-created
 views are allowed.
 
+## Grind checklist recovery
+
+For the configured 120-problem Grind cycle, use `npm run notion:grind:check` to audit the roster
+and `npm run notion:grind:repair` to restore original trashed rows, curriculum fields, locks,
+and daily checklist views. Repair preserves progress and solutions. See
+[Grind recovery](docs/GRIND_RECOVERY.md) for one-time bindings, backups, and explicit replacement
+of permanently unavailable rows. These are local commands, independent of capture and reset.
+
 ## Quality checks
 
 ```bash
 npm run check
 ```
 
-This runs formatting checks, TypeScript, unit tests, the extension production build, a headless
-single-worker MV3 suite using the
-[official persistent-context extension pattern](https://playwright.dev/docs/chrome-extensions) in
-Playwright's bundled Chromium, and the security scan. Install the aligned browser once after
-dependencies:
+This runs formatting, TypeScript, a fresh extension build, fast unit/integration tests, and the
+security scan. **It never launches a browser.** `npm test` also builds once before testing so
+packaging checks always inspect current output.
+
+Use the smaller real-browser suite when changing extension UI, messaging, storage access, or
+service-worker lifecycle behavior, and before an extension release:
 
 ```bash
-npx playwright install chromium
+npm run test:browser:list # Lists the tests without launching Chrome
+npm run test:browser      # Explicitly launches isolated Chrome for Testing
 ```
 
-The MV3 suite uses an isolated Chromium profile and a synthetic Notion REST fixture. Worker
-requests are intercepted before they can reach a real service; LeetCode-shaped navigation pages are
-fulfilled in memory. No `.env`, real credential, existing browser profile, or live tracker is used.
-The legacy dashboard fixture suite remains separate.
+Install its browser once with `npx playwright install chromium`. Browser tests use synthetic
+Notion/LeetCode fixtures and disposable profiles, never your real credentials or live tracker.
+Runs use one worker, no retries, and stop on the first failure. Headless Chrome for Testing can
+still appear in the macOS Dock. Browser runs are opt-in; a passing `check` is not browser evidence.
+
+Legacy dashboard tests and performance measurements require separate commands. See the
+[test policy and coverage map](docs/TESTING.md) for what to run and what was removed.
 
 ## Scope boundaries
 

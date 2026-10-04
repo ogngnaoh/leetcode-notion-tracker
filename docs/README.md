@@ -12,6 +12,8 @@
 - [Legacy bridge tools](LEGACY_BRIDGE.md): optional maintenance/rollback tools and their manual QA.
 - [Asset provenance](EXTENSION_ASSETS.md): bundled design assets and licenses.
 
+- [Test policy and coverage](TESTING.md): browser-free default checks and explicit browser/legacy runs.
+
 ## Historical implementation records
 
 These record earlier decisions and verification at the time; they are not current setup steps or

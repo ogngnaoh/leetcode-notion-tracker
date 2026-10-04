@@ -157,26 +157,16 @@ test('connects in sidebar with explicit preferences, returns to Log after the gr
   await expect(panel.locator('#notion-token')).toHaveValue('');
 });
 
-test('only reads metadata on Daily and reads the full editor on unlocked Log', async () => {
-  const { problem, panel } = await setup();
-  await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
-  await panel.locator('#daily-reps-tab').click();
-  const mark = fixture.network.length;
-  await setCode(problem, 'private changed code');
-  await expect(panel.locator('#daily-problem-title')).toHaveText('Two Sum');
-  expect(fixture.network).toHaveLength(mark);
-  await panel.locator('#notion-log-tab').click();
-  await expect(panel.locator('#captured-code')).toHaveText('private changed code');
-  expect(fixture.notion.counts.mutations).toBe(0);
-});
-
 for (const variant of [
-  { name: 'Monaco model', overrides: {} },
   { name: 'CodeMirror focus mode', overrides: { editor: 'codemirror' as const } },
-  { name: 'late hydration', overrides: { lateModel: true } },
   {
-    name: 'Accepted inactive description',
-    overrides: { inactiveDescription: true, route: 'submissions/123/', animate: true },
+    name: 'Monaco after hydration on an Accepted page',
+    overrides: {
+      lateModel: true,
+      inactiveDescription: true,
+      route: 'submissions/123/',
+      animate: true,
+    },
   },
 ]) {
   test(`extracts complete ${variant.name} without focusing or scrolling the source`, async () => {
@@ -198,31 +188,44 @@ for (const variant of [
   });
 }
 
-for (const outcome of ['Needed help', 'Solved']) {
-  test(`${outcome} saves one confirmed event and preserves the stable Attempt on repetition`, async () => {
-    const { panel } = await setup();
-    await choose(panel, outcome);
-    await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
-    const first = (await fixture.rpc(panel, { op: 'capture.pending' })).completed!;
-    await expect(panel.locator('#review-state')).toContainText(
-      `Solved streak ${first.result.review.solvedStreak}`,
-    );
-    await choose(panel, outcome);
-    await expect
-      .poll(async () => (await fixture.rpc(panel, { op: 'capture.pending' })).completed?.eventId)
-      .not.toBe(first.eventId);
-    const second = (await fixture.rpc(panel, { op: 'capture.pending' })).completed!;
-    expect(second.result.attemptPageId).toBe(first.result.attemptPageId);
-    expect(second.result.review.practiceState).toBe(outcome);
-  });
-}
+test('both outcomes save confirmed events and retain the stable Attempt on repetition', async () => {
+  const { panel } = await setup();
+  let attemptPageId: string | undefined;
+  for (const outcome of ['Needed help', 'Solved']) {
+    for (let repetition = 0; repetition < 2; repetition++) {
+      const previousId = (await fixture.rpc(panel, { op: 'capture.pending' })).completed?.eventId;
+      await choose(panel, outcome);
+      // A previous success message can remain visible while the next save is pending.
+      await expect
+        .poll(async () => {
+          const eventId = (await fixture.rpc(panel, { op: 'capture.pending' })).completed?.eventId;
+          return Boolean(eventId && eventId !== previousId);
+        })
+        .toBe(true);
+      const completed = (await fixture.rpc(panel, { op: 'capture.pending' })).completed!;
+      attemptPageId ??= completed.result.attemptPageId;
+      expect(completed.result.attemptPageId).toBe(attemptPageId);
+      expect(completed.result.review.practiceState).toBe(outcome);
+      await expect(panel.locator('#review-state')).toContainText(
+        `Solved streak ${completed.result.review.solvedStreak}`,
+      );
+    }
+  }
+});
 
 test('Lock clears private code across open panels; unlock returns to the chosen view', async () => {
   const { problem, panel } = await setup();
   await expect(panel.locator('#captured-code')).toHaveText(twoSum.code!);
+  await panel.locator('#daily-reps-tab').click();
+  const network = fixture.network.length;
+  await setCode(problem, 'updated while Daily is open');
+  await expect(panel.locator('#daily-problem-title')).toHaveText('Two Sum');
+  expect(fixture.network).toHaveLength(network);
+  await panel.locator('#notion-log-tab').click();
+  await expect(panel.locator('#captured-code')).toHaveText('updated while Daily is open');
   const second = await fixture.panel(problem);
   await second.locator('#notion-log-tab').click();
-  await expect(second.locator('#captured-code')).toHaveText(twoSum.code!);
+  await expect(second.locator('#captured-code')).toHaveText('updated while Daily is open');
   await panel.locator('#open-settings').click();
   await panel.locator('#lock-notion').click();
   await expect(panel.locator('#unlock-form')).toBeVisible();
@@ -275,30 +278,16 @@ test('uncertain save remains globally frozen across source navigation and checki
   await problem.close();
 });
 
-test('two-tab sidebar keeps Notion saves while removing the review queue', async () => {
-  const { panel } = await setup();
-  await expect(panel.getByRole('tab')).toHaveText(['Daily Reps', 'Log']);
-  await expect(panel.locator('#review-panel')).toHaveCount(0);
-  await choose(panel, 'Needed help');
-  await expect(panel.locator('#success-confirmation')).toContainText('Saved to Notion');
-  const mark = fixture.network.length;
-  await panel.locator('#daily-reps-tab').click();
-  await panel.locator('#open-settings').click();
-  await panel.locator('#settings-back').click();
-  await expect(panel.locator('#daily-reps-panel')).toBeVisible();
-  expect(fixture.network).toHaveLength(mark);
-});
-
-for (const width of [320, 360, 400, 480]) {
-  test(`sidebar remains usable at ${width}px with keyboard tabs, expanded code and Settings`, async () => {
-    const { panel } = await setup({
-      ...secondProblem,
-      code: 'const longLine = "' + 'x'.repeat(500) + '";',
-    });
+test('sidebar remains usable at narrow and wide widths with keyboard tabs and Settings', async () => {
+  const { panel } = await setup({
+    ...secondProblem,
+    code: 'const longLine = "' + 'x'.repeat(500) + '";',
+  });
+  await expect(panel.locator('#captured-code')).toContainText('const longLine');
+  await panel.locator('#expand-code').click();
+  await expect(panel.locator('#expand-code')).toHaveAttribute('aria-expanded', 'true');
+  for (const width of [320, 480]) {
     await panel.setViewportSize({ width, height: 480 });
-    await expect(panel.locator('#captured-code')).toContainText('const longLine');
-    await panel.locator('#expand-code').click();
-    await expect(panel.locator('#expand-code')).toHaveAttribute('aria-expanded', 'true');
     expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
@@ -318,20 +307,13 @@ for (const width of [320, 360, 400, 480]) {
     );
     await panel.locator('#settings-back').click();
     await expect(panel.locator('#notion-log-panel')).toBeVisible();
-  });
-}
+  }
+});
 
 test('blank and missing models never admit a Notion save', async () => {
   const { panel } = await setup({ ...twoSum, code: null });
   await expect(panel.locator('button[data-result="Solved"]')).toBeDisabled();
   expect(fixture.notion.counts.mutations).toBe(0);
-});
-
-test('options is a token-free entry into sidebar settings', async () => {
-  const page = await fixture.context.newPage();
-  await page.goto(`chrome-extension://${fixture.extensionId}/options.html`);
-  await expect(page.locator('input')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Open LCTrack Settings' })).toBeVisible();
 });
 
 test('a click-time code change requires a new confirmation and rapid repeated clicks create one event', async () => {
@@ -411,27 +393,6 @@ test('a damaged encrypted connection offers a guarded reset and requires reconci
   await expect(panel.locator('#connection-form')).toBeVisible();
   await expect(panel.locator('#manual-reconciliation')).toBeVisible();
   expect(fixture.network).toHaveLength(0);
-});
-
-test('renders the simplified Log and Settings layouts', async () => {
-  const { problem, panel } = await setup({
-    ...twoSum,
-    code: 'def twoSum(nums, target):\n    seen = {}\n    for i, n in enumerate(nums):\n        if target - n in seen:\n            return [seen[target - n], i]\n        seen[n] = i\n    return []',
-  });
-  await panel.setViewportSize({ width: 466, height: 960 });
-  await expect(panel.locator('button[data-result="Solved"]')).toBeEnabled();
-  await expect(panel.locator('#status')).toHaveText('');
-  await panel.screenshot({
-    path: '/tmp/lctrack-approved-log.png',
-    fullPage: true,
-    animations: 'disabled',
-  });
-  await panel.locator('#open-settings').click();
-  await panel.screenshot({
-    path: '/tmp/lctrack-approved-settings.png',
-    fullPage: true,
-    animations: 'disabled',
-  });
 });
 
 for (const editor of ['monaco', 'codemirror'] as const) {

@@ -109,6 +109,9 @@ It does not:
 
 ## Deterministic browser tests
 
+Browser tests run explicitly with `npm run test:browser`; the default `npm run check` does not
+launch Chromium. See [test policy](TESTING.md) for the retained coverage and release expectations.
+
 Tests use temporary Chromium profiles, synthetic credentials, public-DOM-shaped LeetCode pages,
 and a stateful synthetic Notion REST fixture. The harness intercepts worker traffic before dispatch
 and blocks unknown destinations; it never loads `.env` or falls through to a real tracker. Forced
@@ -139,3 +142,13 @@ personal notes or code-adjacent reflections, so keep `build/` local and ignored 
 token-free.
 Use the same review-before-apply sequence for `npm run notion:migrate:v3` and
 `npm run notion:migrate:v4`.
+
+## Grind maintenance
+
+The local `notion:grind:*` commands use the existing CLI credential, with SDK retries disabled.
+The versioned curriculum contains only public problem metadata. Workspace bindings, before-change
+property snapshots, and replacement journals stay in ignored `build/`, written atomically with
+mode 0600. Normal repair changes only curriculum fields, restores known page IDs, and reapplies
+UI locks/views. It never writes progress, page bodies, or Attempts. Explicit replacement records
+a durable creation intent before dispatch; an uncertain result cannot authorize another create.
+See [Grind recovery](GRIND_RECOVERY.md) for replacement confirmation and reconciliation.
