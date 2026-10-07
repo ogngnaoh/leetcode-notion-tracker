@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { verifyV2DataSource } from '../src/notion/verify.js';
 import {
+  OPTIONAL_PROBLEMS_TYPES,
   REQUIRED_ATTEMPTS_TYPES,
   REQUIRED_PROBLEMS_TYPES,
   RESULT_OPTIONS,
@@ -37,21 +38,33 @@ function dataSource(
 describe('verifyV2DataSource', () => {
   it('allows only explicitly configured optional Grind fields with their exact types', () => {
     const source = dataSource(
-      { ...REQUIRED_PROBLEMS_TYPES, 'Grind Open': 'formula' },
+      { ...REQUIRED_PROBLEMS_TYPES, ...OPTIONAL_PROBLEMS_TYPES },
       { Attempts: 'attempts-source' },
       { 'Practice State': STATE_OPTIONS },
     );
     const options = {
       relation: { name: 'Attempts', dataSourceId: 'attempts-source' },
       selects: { 'Practice State': STATE_OPTIONS },
-      optionalTypes: { 'Grind Open': 'formula' },
+      optionalTypes: OPTIONAL_PROBLEMS_TYPES,
     };
     expect(() =>
       verifyV2DataSource(source, 'Problems', REQUIRED_PROBLEMS_TYPES, options),
     ).not.toThrow();
-    source.properties['Grind Open'].type = 'rich_text';
+    for (const [name, type] of Object.entries(OPTIONAL_PROBLEMS_TYPES)) {
+      source.properties[name].type = 'rich_text';
+      expect(() =>
+        verifyV2DataSource(source, 'Problems', REQUIRED_PROBLEMS_TYPES, options),
+      ).toThrow(`${name}: expected ${type}`);
+      source.properties[name].type = type;
+    }
+    source.properties.Surprise = { type: 'checkbox' };
     expect(() => verifyV2DataSource(source, 'Problems', REQUIRED_PROBLEMS_TYPES, options)).toThrow(
-      'expected formula',
+      'Surprise: unexpected',
+    );
+    delete source.properties.Surprise;
+    delete source.properties['External Key'];
+    expect(() => verifyV2DataSource(source, 'Problems', REQUIRED_PROBLEMS_TYPES, options)).toThrow(
+      'External Key: missing',
     );
   });
 

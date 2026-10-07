@@ -121,6 +121,21 @@ export const REQUIRED_PROBLEMS_TYPES: Record<string, string> = {
   'First Attempt': 'date',
 };
 
+// Accepted on existing trackers; fresh setup does not provision presentation fields.
+export const OPTIONAL_PROBLEMS_TYPES = {
+  'Grind Block': 'select',
+  'Grind Day': 'select',
+  'Grind Order': 'number',
+  'Grind Done': 'checkbox',
+  'Grind Open': 'formula',
+  Solution: 'formula',
+  'Grind Attempt': 'relation',
+  'Grind 75 Topic': 'select',
+  Core: 'select',
+  'Grind 75 Order': 'number',
+  Done: 'checkbox',
+} as const;
+
 export const V2_REQUIRED_ATTEMPTS_TYPES: Record<string, string> = {
   Attempt: 'title',
   'Client Event ID': 'rich_text',

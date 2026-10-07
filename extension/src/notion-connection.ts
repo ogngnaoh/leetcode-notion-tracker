@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Client } from '@notionhq/client';
 import type { NotionManifest } from '../../src/shared/contract.js';
 import {
+  OPTIONAL_PROBLEMS_TYPES,
   REQUIRED_ATTEMPTS_TYPES,
   REQUIRED_PROBLEMS_TYPES,
   RESULT_OPTIONS,
@@ -118,15 +119,7 @@ export async function verifyNotionConnection(
     verifyV2DataSource(fetched[0], 'Problems', REQUIRED_PROBLEMS_TYPES, {
       relation: { name: 'Attempts', dataSourceId: manifest.attempts.dataSourceId },
       selects: { 'Practice State': STATE_OPTIONS, Difficulty: DIFFICULTY_OPTIONS },
-      optionalTypes: {
-        'Grind Block': 'select',
-        'Grind Day': 'select',
-        'Grind Order': 'number',
-        'Grind Done': 'checkbox',
-        'Grind Open': 'formula',
-        Solution: 'formula',
-        'Grind Attempt': 'relation',
-      },
+      optionalTypes: OPTIONAL_PROBLEMS_TYPES,
     });
     verifyV2DataSource(fetched[1], 'Attempts', REQUIRED_ATTEMPTS_TYPES, {
       relation: { name: 'Problem', dataSourceId: manifest.problems.dataSourceId },

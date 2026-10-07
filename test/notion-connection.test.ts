@@ -88,6 +88,7 @@ describe('read-only connection/import', () => {
   it('validates only two databases and data sources without page writes or presentation APIs', async () => {
     const checked = parseConnectionManifest(manifest);
     const seen: string[] = [];
+    let extraProblemTypes: Record<string, string> = {};
     const client = {
       databases: {
         retrieve: async ({ database_id }: { database_id: string }) => {
@@ -113,7 +114,9 @@ describe('read-only connection/import', () => {
               database_id: problems ? manifest.problems.databaseId : manifest.attempts.databaseId,
             },
             ...dataSource(
-              problems ? REQUIRED_PROBLEMS_TYPES : REQUIRED_ATTEMPTS_TYPES,
+              problems
+                ? { ...REQUIRED_PROBLEMS_TYPES, ...extraProblemTypes }
+                : REQUIRED_ATTEMPTS_TYPES,
               problems ? 'Attempts' : 'Problem',
               problems ? manifest.attempts.dataSourceId : manifest.problems.dataSourceId,
               problems
@@ -126,6 +129,23 @@ describe('read-only connection/import', () => {
     };
     await expect(verifyNotionConnection(client as never, checked)).resolves.toBeUndefined();
     expect(seen).toHaveLength(4);
+
+    const grind75Types = {
+      'Grind 75 Topic': 'select',
+      Core: 'select',
+      'Grind 75 Order': 'number',
+      Done: 'checkbox',
+    };
+    extraProblemTypes = grind75Types;
+    await expect(verifyNotionConnection(client as never, checked)).resolves.toBeUndefined();
+    for (const name of Object.keys(grind75Types)) {
+      extraProblemTypes = { ...grind75Types, [name]: 'rich_text' };
+      await expect(verifyNotionConnection(client as never, checked)).rejects.toThrow('schema');
+    }
+    extraProblemTypes = { ...grind75Types, Surprise: 'checkbox' };
+    await expect(verifyNotionConnection(client as never, checked)).rejects.toThrow('schema');
+    extraProblemTypes = {};
+
     client.databases.retrieve = async () =>
       ({ object: 'database', id: 'wrong', data_sources: [] }) as never;
     await expect(verifyNotionConnection(client as never, checked)).rejects.toThrow('schema');

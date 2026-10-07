@@ -69,7 +69,7 @@ Notion date properties can truncate timestamps to the minute. Write verification
 exact instant or that minute-truncated representation. Receipts preserve exact capture timestamps
 for ordering within a minute; legacy pages without a receipt retain their available date precision.
 
-Existing Grind workspaces may additionally contain exactly these optional Problem properties:
+Existing Grind workspaces may additionally contain these optional Problem properties:
 `Grind Day` (select), `Grind Block` (select), `Grind Order` (number), `Grind Done` (checkbox),
 `Solution` (formula, formerly `Grind Open`, whose legacy name is still accepted), and
 `Grind Attempt` (one-way relation to Attempts). The last field links
@@ -77,7 +77,15 @@ Grind-only duplicate checklist rows without changing the canonical Attempt's `Pr
 The shared formula chooses the latest related Attempt by timestamp, creation time, then page ID,
 and returns a single native page chip for an in-place peek, or an empty list when no saved Attempt
 exists. It does not generate URL links or copy solution bodies. Fresh setup does not create
-Grind scaffolding. Required v4 properties and the two-database boundary are unchanged.
+Grind scaffolding.
+
+The Grind 75 presentation may additionally use `Grind 75 Topic` (select), `Core` (select),
+`Grind 75 Order` (number), and `Done` (checkbox). `Done` is a fresh checklist independent of
+the legacy `Grind Done` progress. These fields are optional and are preserved by captures;
+neither checkbox changes the review schedule, solved streak, or saved Attempt. CLI verification
+and extension connection share the same exact optional-property names and types. Unknown properties
+and incorrect types still fail verification. Required v4 properties and the two-database boundary
+are unchanged.
 
 ## v1→v2 migration contract
 
